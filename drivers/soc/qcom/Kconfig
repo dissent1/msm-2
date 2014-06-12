@@ -167,3 +167,10 @@ config QCOM_DLOAD_MODE_APPSBL
 	depends on QCOM_DLOAD_MODE
 	default n
 	help
+
+config IPQ_TCSR
+        tristate "Qualcomm Technologies Inc Top Control and Status Registers"
+        depends on ARCH_QCOM
+        help
+          Say y here to enable TCSR support.  The TCSR provides control
+          functions for various peripherals.
