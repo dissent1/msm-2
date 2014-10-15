@@ -12,6 +12,13 @@
 
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
+#include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/device.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/clocksource.h>
+#include <linux/clk-provider.h>
 
 #include <asm/mach/arch.h>
 
@@ -44,3 +51,36 @@ static int __init qcom_atomic_pool_size_set(void)
  * postcore_initcall.
  */
 core_initcall(qcom_atomic_pool_size_set);
+static const char * const qcom_qca_dt_match[] __initconst = {
+	"qcom,qca961x-r3pc",
+	NULL
+};
+
+static void __init global_counter_enable(void)
+{
+	struct device_node *node;
+	void __iomem *base;
+
+	node = of_find_compatible_node(NULL, NULL, "qcom,qca-gcnt");
+	if (!node)
+		pr_err("%s:can't find node\n", __func__);
+
+	base = of_iomap(node, 0);
+	of_node_put(node);
+	if (!base)
+		pr_err("%s:no regs for global counter\n", __func__);
+
+	writel_relaxed(1, base);
+	mb(); /* memory barrier */
+	iounmap(base);
+
+#ifdef CONFIG_COMMON_CLK
+	of_clk_init(NULL);
+#endif
+	clocksource_probe();
+}
+
+DT_MACHINE_START(QCOM_QCA_DT, "Qualcomm (Flattened Device Tree)")
+	.dt_compat = qcom_qca_dt_match,
+	.init_time = global_counter_enable,
+MACHINE_END
