@@ -22,3 +22,5 @@ ifdef CONFIG_QCOM_SCM
 obj-$(CONFIG_ARM64) += cpu_ops.o cpu_pwr_ctl.o
 endif
 obj-$(CONFIG_IPQ_TCSR)	+=	ipq_tcsr.o
+
+obj-$(CONFIG_QCOM_CACHE_DUMP) += cache_dump.o
