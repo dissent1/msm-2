@@ -23,6 +23,7 @@
 #include <dt-bindings/sound/ipq4019-audio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/soc/ipq,tcsr.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ4019";
@@ -602,6 +603,12 @@
 		sound: sound@0 {
 			compatible = "qca,ipq4019-audio";
 			status = "disabled";
+		};
+
+		ess_tcsr: ess_tcsr@1953000 {
+			compatible = "ipq,tcsr";
+			reg = <0x1953000 0x1000>;
+			ipq,ess-interface-select = <TCSR_ESS_PSGMII>;
 		};
 
 		usb3_ss_phy: ssphy@0 {
