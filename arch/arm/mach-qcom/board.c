@@ -30,6 +30,7 @@ static const char * const qcom_dt_match[] __initconst = {
 	"qcom,ipq8064",
 	"qcom,msm8660-surf",
 	"qcom,msm8960-cdp",
+	"qcom,ipq4019",
 	NULL
 };
 
@@ -53,6 +54,7 @@ static int __init qcom_atomic_pool_size_set(void)
 core_initcall(qcom_atomic_pool_size_set);
 static const char * const qcom_qca_dt_match[] __initconst = {
 	"qcom,qca961x-r3pc",
+	"qcom,ipq4019",
 	NULL
 };
 
