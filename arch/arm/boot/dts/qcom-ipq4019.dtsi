@@ -385,19 +385,6 @@
 			clocks = <&gcc GCC_SDCC1_APPS_CLK>,
 				 <&gcc GCC_SDCC1_AHB_CLK>;
 			clock-names = "core_clk", "iface_clk";
-
-			/* device core power supply */
-			qcom,vdd-lpm-sup;
-			qcom,vdd-voltage-level = <2900000 2900000>;
-			qcom,vdd-current-level = <200 570000>;
-
-			/* device communication power supply */
-			qcom,vdd-io-lpm-sup;
-			qcom,vdd-io-voltage-level = <1800000 1800000>;
-			qcom,vdd-io-current-level = <200 325000>;
-			qcom,vdd-io-always-on;
-
-
 			qcom,large-address-bus;
 			status = "disabled";
 		};
