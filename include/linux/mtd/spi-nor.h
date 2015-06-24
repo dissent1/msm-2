@@ -211,4 +211,5 @@ static inline struct device_node *spi_nor_get_flash_node(struct spi_nor *nor)
  */
 int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode);
 
+int spi_nor_wait_till_ready(struct spi_nor *nor);
 #endif
