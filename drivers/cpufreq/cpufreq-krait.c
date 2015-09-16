@@ -23,6 +23,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
+#include <linux/fab_scaling.h>
 
 static unsigned int transition_latency;
 static unsigned int voltage_tolerance; /* in percentage */
@@ -176,6 +177,8 @@ static int krait_set_target(struct cpufreq_policy *policy, unsigned int index)
 
 	}
 
+	scale_fabrics();
+
 	return ret;
 }
 
@@ -217,6 +220,7 @@ static int krait_cpufreq_probe(struct platform_device *pdev)
 	unsigned long freq_Hz, freq, max_cpu_freq = 0;
 	struct dev_pm_opp *opp;
 	unsigned long volt, tol;
+	struct fab_scaling_info fab_data;
 
 	cpu_dev = get_cpu_device(0);
 	if (!cpu_dev) {
@@ -310,6 +314,12 @@ static int krait_cpufreq_probe(struct platform_device *pdev)
 			goto out_free_table;
 		}
 		max_cpu_freq = max(max_cpu_freq, freq);
+
+		if (!of_property_read_u32(np, "cpu_freq_idle",
+						&fab_data.idle_freq)) {
+			fab_data.clk = clk;
+			fab_scaling_register(&fab_data);
+		}
 	}
 
 	for (i = 0; i < nr_krait_l2_points; i++) {
@@ -367,6 +377,13 @@ out_put_node:
 
 static int krait_cpufreq_remove(struct platform_device *pdev)
 {
+	unsigned int cpu;
+	struct clk *clk;
+
+	for_each_possible_cpu(cpu) {
+		clk = per_cpu(krait_cpu_clks, cpu);
+		fab_scaling_unregister(clk);
+	}
 	cpufreq_cooling_unregister(cdev);
 	cpufreq_unregister_driver(&krait_cpufreq_driver);
 	dev_pm_opp_free_cpufreq_table(cpu_dev, &freq_table);
