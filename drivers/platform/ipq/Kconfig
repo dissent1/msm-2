@@ -1,0 +1,11 @@
+menu "IPQ specific device drivers"
+	depends on ARCH_QCOM
+
+config BOOTCONFIG_PARTITION
+	tristate "BOOTCONFIG Partition support"
+	help
+	  Say Y here if you would like to use hard disks under Linux which
+	  were partitioned using MTD/EFI.
+
+endmenu
+
