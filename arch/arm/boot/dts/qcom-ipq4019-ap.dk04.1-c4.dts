@@ -18,4 +18,11 @@
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ4019/AP-DK04.1-C4";
+
+	soc {
+		ess-switch@c000000 {
+			switch_lan_bmp = <0xe>; /* lan port bitmap */
+			switch_wan_bmp = <0x30>; /* wan port bitmap */
+		};
+	};
 };
