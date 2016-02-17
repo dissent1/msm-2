@@ -46,7 +46,7 @@
 			clock-latency = <100000>;
 			core-supply = <&smb208_s2a>;
 			voltage-tolerance = <5>;
-			cpu_freq_idle = <800000000>;
+			cpu_fab_threshold = <1000000000>;
 		};
 
 		cpu@1 {
@@ -61,7 +61,7 @@
 			clock-names = "cpu";
 			clock-latency = <100000>;
 			core-supply = <&smb208_s2b>;
-			cpu_freq_idle = <800000000>;
+			cpu_fab_threshold = <1000000000>;
 		};
 
 		L2: l2-cache {
