@@ -3126,6 +3126,19 @@ static u8 nss_core_clk_get_parent(struct clk_hw *hw)
 static int nss_core_clk_set_parent(struct clk_hw *hw, u8 i)
 {
 	int ret;
+	struct clk_dyn_rcg *rcg;
+	struct freq_tbl f = {  200000000, P_PLL0, 2,  1, 2 };
+
+	/* P_PLL0 is 800 Mhz which needs to be divided for 200 Mhz */
+	if (i == gcc_ipq806x_nss_safe_parent) {
+		rcg = to_clk_dyn_rcg(&ubi32_core1_src_clk.clkr.hw);
+		clk_dyn_configure_bank(rcg, &f);
+
+		rcg = to_clk_dyn_rcg(&ubi32_core2_src_clk.clkr.hw);
+		clk_dyn_configure_bank(rcg, &f);
+
+		return 0;
+	}
 
 	ret = clk_dyn_rcg_ops.set_parent(&ubi32_core1_src_clk.clkr.hw, i);
 	if (ret)
@@ -3504,7 +3517,7 @@ static int gcc_ipq806x_probe(struct platform_device *pdev)
 
 	gcc_ipq806x_nss_safe_parent = qcom_find_src_index(&nss_core_clk.hw,
 					gcc_pxo_pll8_pll14_pll18_pll0_map,
-					P_PLL8);
+					P_PLL0);
 	if (gcc_ipq806x_nss_safe_parent < 0)
 		return gcc_ipq806x_nss_safe_parent;
 
