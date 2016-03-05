@@ -46,3 +46,5 @@ usb_f_printer-y			:= f_printer.o
 obj-$(CONFIG_USB_F_PRINTER)	+= usb_f_printer.o
 usb_f_diag-y			:= f_diag.o
 obj-$(CONFIG_USB_F_DIAG)	+= usb_f_diag.o
+usb_f_qdss-y			:= f_qdss.o
+obj-$(CONFIG_USB_F_QDSS)	+= usb_f_qdss.o u_qdss.o
