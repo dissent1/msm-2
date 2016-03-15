@@ -167,7 +167,7 @@ static int qcom_scm_call(struct device *dev, u32 svc_id, u32 cmd_id,
  */
 int __qcom_scm_set_cold_boot_addr(void *entry, const cpumask_t *cpus)
 {
-	return -ENOTSUPP;
+	return 0;
 }
 
 /**
