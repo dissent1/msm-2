@@ -339,9 +339,11 @@ static irqreturn_t wdt_bark_isr(int irq, void *wdd)
 	writel(0, wdt_addr(wdt, WDT_EN));
 	writel(1, wdt_addr(wdt, WDT_BITE_TIME));
 	mb(); /* Avoid unpredictable behaviour in concurrent executions */
+	pr_info("Configuring Watchdog Timer\n");
 	writel(1, wdt_addr(wdt, WDT_RST));
 	writel(1, wdt_addr(wdt, WDT_EN));
 	mb(); /* Make sure the above sequence hits hardware before Reboot. */
+	pr_info("Waiting for Reboot\n");
 
 	mdelay(1);
 	pr_err("Wdog - CTL: 0x%x, BARK TIME: 0x%x, BITE TIME: 0x%x",
