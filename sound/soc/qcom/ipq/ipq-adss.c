@@ -85,6 +85,27 @@ static struct ipq_configs ipq8074_cfgs = {
 };
 static struct ipq_configs *ipq_cfgs;
 
+/* API to write ADSS registers */
+void ipq_audio_adss_writel(uint32_t val, uint32_t offset)
+{
+	if (!adss_audio_local_base) {
+		pr_err("adss_audio_local_base not mapped\n");
+		return;
+	}
+	writel(val, adss_audio_local_base + offset);
+}
+EXPORT_SYMBOL(ipq_audio_adss_writel);
+
+/* API to read ADSS regitsers */
+uint32_t ipq_audio_adss_readl(uint32_t offset)
+{
+	if (adss_audio_local_base)
+		return readl(adss_audio_local_base + offset);
+	pr_err("adss_audio_local_base not mapped\n");
+	return 0;
+}
+EXPORT_SYMBOL(ipq_audio_adss_readl);
+
 /* Channel Number Per Frame for Transmitter/Receiver
  * Real value = val + 1
  */
@@ -470,6 +491,28 @@ static const struct of_device_id ipq_audio_adss_id_table[] = {
 };
 MODULE_DEVICE_TABLE(of, ipq_audio_adss_id_table);
 
+void ipq_audio_adss_init(void)
+{
+	spin_lock_init(&i2s_ctrl_lock);
+	spin_lock_init(&glb_mode_lock);
+	spin_lock_init(&tdm_ctrl_lock);
+
+	/*
+	 * Reset order is critical here.
+	 * First audio block should be out of reset,
+	 * followed by I2S block.
+	 * Since the audio block is brought out of
+	 * reset by hardware by default, it is not
+	 * required to be done in software explicitly.
+	 */
+	ipq_glb_i2s_reset();
+
+	ipq_glb_i2s_interface_en(ENABLE);
+
+	ipq_glb_audio_mode_B1K();
+}
+EXPORT_SYMBOL(ipq_audio_adss_init);
+
 static int ipq_audio_adss_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -497,24 +540,6 @@ static int ipq_audio_adss_probe(struct platform_device *pdev)
 	audio_blk_rst = devm_reset_control_get(&pdev->dev, "blk_rst");
 	if (IS_ERR(audio_blk_rst))
 		return PTR_ERR(audio_blk_rst);
-
-	spin_lock_init(&i2s_ctrl_lock);
-	spin_lock_init(&glb_mode_lock);
-	spin_lock_init(&tdm_ctrl_lock);
-
-	/*
-	 * Reset order is critical here.
-	 * First audio block should be out of reset,
-	 * followed by I2S block.
-	 * Since the audio block is brought out of
-	 * reset by hardware by default, it is not
-	 * required to be done in software explicitly.
-	 */
-	ipq_glb_i2s_reset();
-
-	ipq_glb_i2s_interface_en(ENABLE);
-
-	ipq_glb_audio_mode_B1K();
 
 	return 0;
 }
