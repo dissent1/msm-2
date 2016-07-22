@@ -1003,4 +1003,8 @@
 	qcom,restart_reason {
 		compatible        = "qcom,restart_reason";
 	};
+
+	chosen {
+		bootargs-append = " console=ttyMSM0,115200n8";
+	};
 };
