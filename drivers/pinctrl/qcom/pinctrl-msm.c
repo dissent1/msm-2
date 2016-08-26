@@ -1,4 +1,5 @@
 /*
+
  * Copyright (c) 2013, Sony Mobile Communications AB.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
@@ -199,6 +200,10 @@ static int msm_config_reg(struct msm_pinctrl *pctrl,
 		*bit = g->oe_bit;
 		*mask = 1;
 		break;
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		*bit = g->od_bit;
+		*mask = 1;
+		break;
 	default:
 		return -ENOTSUPP;
 	}
@@ -268,6 +273,9 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 		if (arg)
 			return -EINVAL;
 		arg = 1;
+		break;
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		arg = arg == 1;
 		break;
 	default:
 		return -ENOTSUPP;
@@ -342,6 +350,9 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 		case PIN_CONFIG_INPUT_ENABLE:
 			/* disable output */
 			arg = 0;
+			break;
+		case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+			arg = 1;
 			break;
 		default:
 			dev_err(pctrl->dev, "Unsupported config parameter: %x\n",
