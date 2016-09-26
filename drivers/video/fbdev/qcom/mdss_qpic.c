@@ -229,11 +229,11 @@ int qpic_register_panel(struct mdss_panel_data *pdata)
 void mdss_qpic_set_cfg0(void)
 {
 	/*
-	 * RD_CS_HOLD=1,RD_ACTIVE=8,CS_WR_RD_SETUP=1,
-	 * WR_CS_HOLD,WR_ACTIVE,ADDR_CS_SETUP=1,
+	 * RD_CS_HOLD=1,RD_ACTIVE=8,CS_WR_RD_SETUP=0,
+	 * WR_CS_HOLD,WR_ACTIVE,ADDR_CS_SETUP=0,
 	 * CMD_BUS_ALIGNMENT=0.
 	 */
-	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG0, 0x02108501);
+	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG0, 0x2000101);
 }
 
 void mdss_qpic_reset(void)
