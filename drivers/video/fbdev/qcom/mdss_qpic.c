@@ -613,8 +613,7 @@ static int mdss_qpic_probe(struct platform_device *pdev)
 	qpic_res->pdev = pdev;
 	platform_set_drvdata(pdev, qpic_res);
 
-	res = platform_get_resource_byname(pdev,
-		IORESOURCE_MEM, "qpic_base");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		pr_err("unable to get QPIC reg base address\n");
 		rc = -ENOMEM;
@@ -634,7 +633,7 @@ static int mdss_qpic_probe(struct platform_device *pdev)
 		(int) res->start,
 		(int) qpic_res->qpic_base);
 
-	qpic_res->irq = platform_get_irq_byname(pdev, "lcdc_irq");
+	qpic_res->irq = platform_get_irq(pdev, 0);
 	if (qpic_res->irq < 0) {
 		dev_warn(&pdev->dev, "missing 'lcdc_irq' resource entry");
 		return -EINVAL;
