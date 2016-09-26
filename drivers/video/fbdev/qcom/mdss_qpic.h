@@ -15,7 +15,6 @@
 #define MDSS_QPIC_H
 
 #include <linux/list.h>
-#include <linux/msm-sps.h>
 
 #include <linux/pinctrl/consumer.h>
 #include "mdss_panel.h"
@@ -51,20 +50,11 @@ int mdss_qpic_init(void);
 void mdss_qpic_set_cfg0(void);
 int qpic_send_pkt(u32 cmd, u8 *param, u32 len);
 u32 qpic_read_data(u32 cmd_index, u32 size);
-u32 msm_qpic_get_bam_hdl(struct sps_bam_props *bam);
 int mdss_qpic_panel_on(struct mdss_panel_data *pdata,
 	struct qpic_panel_io_desc *panel_io);
 int mdss_qpic_panel_off(struct mdss_panel_data *pdata,
 	struct qpic_panel_io_desc *panel_io);
 int qpic_register_panel(struct mdss_panel_data *pdata);
-
-/* Structure that defines an SPS end point for a BAM pipe. */
-struct qpic_sps_endpt {
-	struct sps_pipe *handle;
-	struct sps_connect config;
-	struct sps_register_event bam_event;
-	struct completion completion;
-};
 
 struct qpic_data_type {
 	u32 rev;
@@ -80,13 +70,13 @@ struct qpic_data_type {
 	u32 fb_phys;
 	void *cmd_buf_virt;
 	u32 cmd_buf_phys;
-	struct qpic_sps_endpt qpic_endpt;
-	u32 sps_init;
 	u32 irq_requested;
 	struct mdss_panel_data *panel_data;
 	struct qpic_panel_io_desc panel_io;
 	u32 bus_handle;
 	struct completion fifo_eof_comp;
+	struct completion completion;
+	struct dma_chan *chan;
 };
 
 u32 qpic_send_frame(
