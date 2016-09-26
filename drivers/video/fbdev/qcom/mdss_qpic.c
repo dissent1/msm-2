@@ -32,7 +32,7 @@ struct qpic_data_type *qpic_res;
 /* for debugging */
 static u32 use_bam = true;
 static u32 use_irq = true;
-static u32 use_vsync;
+static u32 use_vsync = true;
 
 static const struct of_device_id mdss_qpic_dt_match[] = {
 	{ .compatible = "qcom,mdss_qpic",},
@@ -74,7 +74,7 @@ static void mdss_qpic_pan_display(struct msm_fb_data_type *mfd)
 {
 
 	struct fb_info *fbi;
-	u32 offset, fb_offset, size;
+	u32 offset, fb_offset, size, data;
 	int bpp;
 
 	if (!mfd) {
@@ -109,9 +109,23 @@ static void mdss_qpic_pan_display(struct msm_fb_data_type *mfd)
 		qpic_send_frame(0, 0, fbi->var.xres - 1, fbi->var.yres - 1,
 			(u32 *)fb_offset, size / 2);
 
+		/* Disable vsync interrupt for second packet */
+		if (use_vsync) {
+			data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
+			data &= ~(1 << 0);
+			QPIC_OUTP(QPIC_REG_QPIC_LCDC_CTRL, data);
+		}
+
 		qpic_send_frame(0,  fbi->var.yres / 2, fbi->var.xres - 1,
 			 fbi->var.yres - 1, (u32 *)(fb_offset + (size / 2)),
 			 size / 2);
+
+		/* Enable vsync interrupt after sending second packet */
+		if (use_vsync) {
+			data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
+			data |= (1 << 0);
+			QPIC_OUTP(QPIC_REG_QPIC_LCDC_CTRL, data);
+		}
 	}
 }
 
