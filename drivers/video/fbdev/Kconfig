@@ -1928,6 +1928,8 @@ config PXA3XX_GCU
 
 	  If you compile this as a module, it will be called pxa3xx_gcu.
 
+source "drivers/video/fbdev/qcom/Kconfig"
+
 config FB_MBX
 	tristate "2700G LCD framebuffer support"
 	depends on FB && ARCH_PXA

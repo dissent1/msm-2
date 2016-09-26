@@ -1,55 +1,23 @@
-config FB_MSM_MDSS_WRITEBACK
-	bool "MDSS Writeback Panel"
+config FB_QCOM_QPIC
+	tristate "QPIC Framebuffer support"
+	depends on FB && ARCH_QCOM
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	select FB_SYS_FOPS
 	---help---
-	The MDSS Writeback Panel provides support for routing the output of
-	MDSS frame buffer driver and MDP processing to memory.
+	  Support for QCA QPIC framebuffer.
+	  QPIC is a wrapper module provides support for LCD controller
+	  connected with parallel interfaces pins. This option provides
+	  the support for QPIC framebuffer which can be used for display
+	  operations for QPIC LCD.
 
-config FB_MSM_MDSS_HDMI_PANEL
-	depends on FB_MSM_MDSS
-	bool "MDSS HDMI Tx Panel"
-	default n
+config FB_QCOM_QPIC_ER_SSD1963_PANEL
+	tristate "Qpic MIPI ER ssd1963 Panel"
+	depends on FB_QCOM_QPIC
 	---help---
-	The MDSS HDMI Panel provides support for transmitting TMDS signals of
-	MDSS frame buffer data to connected hdmi compliant TVs, monitors etc.
+	  Support for MIPI ER ssd1963  (800x480) panel
+	  EAST Rising TECHNOLOGY ssd1963
+	  with on-chip full display RAM
+	  use 9-bit parallel interface
 
-config FB_MSM_MDSS_HDMI_MHL_SII8334
-	depends on FB_MSM_MDSS_HDMI_PANEL
-	bool 'MHL SII8334 support '
-	default n
-	---help---
-	  Support the HDMI to MHL conversion.
-	  MHL (Mobile High-Definition Link) technology
-	  uses USB connector to output HDMI content
-
-config FB_MSM_MDSS_MHL3
-	depends on FB_MSM_MDSS_HDMI_PANEL
-	bool "MHL3 SII8620 Support"
-	default n
-	---help---
-	  Support the SiliconImage 8620 MHL Tx transmitter that uses
-	  USB connector to output HDMI content. Transmitter is an
-	  i2c device acting as an HDMI to MHL bridge. Chip supports
-	  MHL 3.0 standard.
-
-config FB_MSM_MDSS_DSI_CTRL_STATUS
-	tristate "DSI controller status check feature"
-	---help---
-	  Check DSI controller status periodically (default period is 5
-	  seconds) by sending Bus-Turn-Around (BTA) command. If DSI controller
-	  fails to acknowledge the BTA command, it sends PANEL_ALIVE=0 status
-	  to HAL layer to reset the controller.
-
-config FB_MSM_MDSS_EDP_PANEL
-	depends on FB_MSM_MDSS
-	bool "MDSS eDP Panel"
-	---help---
-	The MDSS eDP Panel provides support for eDP host controller driver
-	which runs in Video mode only and is responsible for transmitting
-	frame buffer from host SOC to eDP display panel.
-
-config FB_MSM_MDSS_MDP3
-	depends on FB_MSM_MDSS
-	bool "MDP3 display controller"
-	---help---
-	The MDP3 provides support for an older version display controller
-	included in latest display sub-system, known as MDSS.
