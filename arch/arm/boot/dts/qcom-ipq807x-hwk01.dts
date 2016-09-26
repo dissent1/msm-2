@@ -382,6 +382,14 @@
 	status = "ok";
 };
 
+&qpic_lcd {
+	status = "ok";
+};
+
+&qpic_lcd_panel {
+	status = "ok";
+};
+
 &dwc_1 {
 	dr_mode = "peripheral";
 };
