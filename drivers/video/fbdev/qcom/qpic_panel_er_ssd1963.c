@@ -27,7 +27,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/io.h>
 
-#include "mdss.h"
 #include "mdss_qpic.h"
 #include "mdss_qpic_panel.h"
 #include "qpic_panel_er_ssd1963.h"
