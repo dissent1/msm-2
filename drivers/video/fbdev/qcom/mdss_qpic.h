@@ -46,6 +46,8 @@
 #define QPIC_MAX_VSYNC_WAIT_TIME			500
 #define QPIC_MAX_CMD_BUF_SIZE				512
 
+#define QPIC_BAM_TIMEOUT				400
+
 int mdss_qpic_init(void);
 void mdss_qpic_set_cfg0(void);
 int qpic_send_pkt(u32 cmd, u8 *param, u32 len);
@@ -74,6 +76,7 @@ struct qpic_data_type {
 	struct mdss_panel_data *panel_data;
 	struct qpic_panel_io_desc panel_io;
 	u32 bus_handle;
+	unsigned long bam_timeout;
 	struct completion fifo_eof_comp;
 	struct completion completion;
 	struct dma_chan *chan;
