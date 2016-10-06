@@ -316,6 +316,68 @@ struct tc_nssblackhole_qopt {
 	__u8	set_default;/* Sets qdisc to be the default qdisc for enqueue */
 };
 
+/* PPEFIFO section */
+
+enum {
+	TCA_PPEFIFO_UNSPEC,
+	TCA_PPEFIFO_PARMS,
+	__TCA_PPEFIFO_MAX
+};
+
+#define TCA_PPEFIFO_MAX	(__TCA_PPEFIFO_MAX - 1)
+
+struct tc_ppefifo_qopt {
+	__u32	limit;	/* Queue length: bytes for bfifo, packets for pfifo */
+	__u8	set_default;/* Sets qdisc to be the default qdisc for enqueue */
+};
+
+/* PPEHTB section */
+
+enum {
+	TCA_PPEHTB_UNSPEC,
+	TCA_PPEHTB_CLASS_PARMS,
+	TCA_PPEHTB_QDISC_PARMS,
+	__TCA_PPEHTB_MAX
+};
+
+#define TCA_PPEHTB_MAX	(__TCA_PPEHTB_MAX - 1)
+
+struct tc_ppehtb_class_qopt {
+	__u32	burst;		/* Allowed burst size */
+	__u32	rate;		/* Allowed bandwidth for this class */
+	__u32	cburst;		/* Maximum burst size */
+	__u32	crate;		/* Maximum bandwidth for this class */
+	__u32	quantum;	/* Quantum allocation for DRR */
+	__u32	priority;	/* Priority value associated with this class */
+	__u32	overhead;	/* Overhead in bytes per packet */
+};
+
+struct tc_ppehtb_qopt {
+	__u32	r2q;		/* Rate to quantum ratio */
+};
+
+/* PPERED section */
+
+enum {
+	TCA_PPERED_UNSPEC,
+	TCA_PPERED_PARMS,
+	__TCA_PPERED_MAX
+};
+
+#define TCA_PPERED_MAX (__TCA_PPERED_MAX - 1)
+
+struct tc_ppered_alg_parameter {
+	__u32	min;	/* qlen_avg < min: all pkts are enqueued */
+	__u32	max;	/* qlen_avg > max: all pkts are dropped */
+};
+
+struct tc_ppered_qopt {
+	__u32	limit;		/* Queue length */
+	struct tc_ppered_alg_parameter rap;
+				/* RED algorithm parameters */
+	__u8	set_default;	/* Sets qdisc to be the default for enqueue */
+};
+
 /* FIFO section */
 
 struct tc_fifo_qopt {
