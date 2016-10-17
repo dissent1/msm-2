@@ -28,7 +28,6 @@
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/kmemleak.h>
-#include <linux/qcom/diag_dload.h>
 
 #define MAX_INST_NAME_LEN	40
 
@@ -47,7 +46,6 @@ static inline struct diag_opts *to_diag_opts(struct config_item *item)
 static DEFINE_SPINLOCK(ch_lock);
 static LIST_HEAD(usb_diag_ch_list);
 
-static struct dload_struct __iomem *diag_dload;
 
 static struct usb_interface_descriptor intf_desc = {
 	.bLength            =	sizeof intf_desc,
@@ -199,56 +197,6 @@ static void diag_context_release(struct kref *kref)
 
 	spin_unlock(&ctxt->lock);
 	kfree(ctxt);
-}
-
-static void diag_update_pid_and_serial_num(struct diag_context *ctxt)
-{
-	struct usb_composite_dev *cdev = ctxt->cdev;
-	struct usb_gadget_strings **table;
-	struct usb_string *s;
-	struct usb_gadget_string_container *uc;
-	struct dload_struct local_diag_dload = { 0 };
-
-	/*
-	 * update pid and serial number to dload only if diag
-	 * interface is zeroth interface.
-	 */
-	if (intf_desc.bInterfaceNumber)
-		return;
-
-	if (!diag_dload) {
-		pr_debug("%s: unable to update PID and serial_no\n", __func__);
-		return;
-	}
-
-	/* update pid */
-	local_diag_dload.magic_struct.pid = PID_MAGIC_ID;
-	local_diag_dload.pid = cdev->desc.idProduct;
-	local_diag_dload.magic_struct.serial_num = SERIAL_NUM_MAGIC_ID;
-
-	list_for_each_entry(uc, &cdev->gstrings, list) {
-		table = (struct usb_gadget_strings **)uc->stash;
-		if (!table) {
-			pr_err("%s: can't update dload cookie\n", __func__);
-			break;
-		}
-
-		for (s = (*table)->strings; s && s->s; s++) {
-			if (s->id == cdev->desc.iSerialNumber) {
-				strlcpy(local_diag_dload.serial_number, s->s,
-					SERIAL_NUMBER_LENGTH);
-				goto update_dload;
-			}
-		}
-
-	}
-
-update_dload:
-	pr_debug("%s: dload:%p pid:%x serial_num:%s\n",
-				__func__, diag_dload, local_diag_dload.pid,
-				local_diag_dload.serial_number);
-
-	memcpy_toio(diag_dload, &local_diag_dload, sizeof(local_diag_dload));
 }
 
 static void diag_write_complete(struct usb_ep *ep,
@@ -802,11 +750,6 @@ static int diag_function_bind(struct usb_configuration *c,
 			goto fail;
 	}
 
-	/* Allow only first diag channel to update pid and serial no */
-	if (ctxt == list_first_entry(&diag_dev_list,
-				struct diag_context, list_item))
-		diag_update_pid_and_serial_num(ctxt);
-
 	return 0;
 fail:
 	if (f->ss_descriptors)
@@ -1057,15 +1000,6 @@ static int __init diag_init(void)
 		return ret;
 	}
 
-	np = of_find_compatible_node(NULL, NULL, "qcom,msm-imem-diag-dload");
-	if (!np)
-		np = of_find_compatible_node(NULL, NULL, "qcom,android-usb");
-
-	if (!np)
-		pr_warn("diag: failed to find diag_dload imem node\n");
-
-	diag_dload  = np ? of_iomap(np, 0) : NULL;
-
 	return ret;
 }
 
@@ -1074,10 +1008,6 @@ static void __exit diag_exit(void)
 	struct list_head *act, *tmp;
 	struct usb_diag_ch *_ch;
 	unsigned long flags;
-
-	if (diag_dload)
-		iounmap(diag_dload);
-
 	usb_function_unregister(&diagusb_func);
 
 	fdiag_debugfs_remove();
