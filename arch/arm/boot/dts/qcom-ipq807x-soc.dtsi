@@ -13,6 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#include <dt-bindings/clock/qcom,gcc-ipq807x.h>
 #include <dt-bindings/reset/qcom,gcc-ipq807x.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/sound/ipq8074-audio.h>
@@ -504,8 +505,8 @@
 			#size-cells = <0>;
 			reg = <0x78b6000 0x600>;
 			interrupts = <GIC_SPI 96 0x4>;
-			clocks = <&gcc GCC_I2C_CLK>,
-				<&gcc GCC_I2C_CLK>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_I2C_CLK>;
 			clock-names = "iface", "core";
 			clock-frequency  = <100000>;
 			dmas = <&blsp_dma 15>, <&blsp_dma 14>;
@@ -1178,8 +1179,8 @@
 			#size-cells = <0>;
 			reg = <0x78b7000 0x600>;
 			interrupts = <GIC_SPI 97 0x4>;
-			clocks = <&gcc GCC_I2C_CLK>,
-				<&gcc GCC_I2C_CLK>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_I2C_CLK>;
 			clock-names = "iface", "core";
 			clock-frequency  = <100000>;
 			dmas = <&blsp_dma 17>, <&blsp_dma 16>;
@@ -1196,7 +1197,7 @@
 		audio: audio@7700000 {
 			compatible = "qca,ipq8074-audio-adss";
 			reg = <0x7700000 0x34>;
-			resets = <&gcc AUDIO_BLK_ARES>;
+			resets = <&gcc GCC_ADSS_BCR>;
 			reset-names = "blk_rst";
 			status = "disabled";
 		};

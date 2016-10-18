@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -985,8 +985,8 @@
 			#size-cells = <0>;
 			reg = <0x78b6000 0x600>;
 			interrupts = <GIC_SPI 96 0x4>;
-			clocks = <&gcc GCC_I2C_CLK>,
-				<&gcc GCC_I2C_CLK>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_I2C_CLK>;
 			clock-names = "iface", "core";
 			clock-frequency  = <100000>;
 			dmas = <&blsp_bam 15>, <&blsp_bam 14>;
@@ -999,8 +999,8 @@
 			#size-cells = <0>;
 			reg = <0x78b7000 0x600>;
 			interrupts = <GIC_SPI 97 0x4>;
-			clocks = <&gcc GCC_I2C_CLK>,
-				<&gcc GCC_I2C_CLK>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_I2C_CLK>;
 			clock-names = "iface", "core";
 			clock-frequency  = <100000>;
 			dmas = <&blsp_bam 17>, <&blsp_bam 16>;
@@ -1023,7 +1023,7 @@
 		audio: audio@7700000 {
 			compatible = "qca,ipq8074-audio-adss";
 			reg = <0x7700000 0x34>;
-			resets = <&gcc AUDIO_BLK_ARES>;
+			resets = <&gcc GCC_ADSS_BCR>;
 			reset-names = "blk_rst";
 			status = "disabled";
 		};
