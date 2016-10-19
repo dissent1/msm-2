@@ -240,7 +240,6 @@ extern const struct clk_ops clk_byte_ops;
 extern const struct clk_ops clk_byte2_ops;
 extern const struct clk_ops clk_pixel_ops;
 extern const struct clk_ops clk_cdiv_rcg2_ops;
-extern const struct clk_ops clk_cpu_rcg2_ops;
 extern const struct clk_ops clk_muxr_misc_ops;
 
 extern void clk_dyn_configure_bank(struct clk_dyn_rcg *rcg,
