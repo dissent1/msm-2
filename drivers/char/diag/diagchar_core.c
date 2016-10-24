@@ -34,7 +34,9 @@
 #include "diag_dci.h"
 #include "diag_debugfs.h"
 #include "diag_masks.h"
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 #include "diag_usb.h"
 #include "diag_memorydevice.h"
 #include "diag_mux.h"

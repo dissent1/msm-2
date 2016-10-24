@@ -26,7 +26,9 @@
 #include "diag_masks.h"
 #include "diag_dci.h"
 #include "diagfwd.h"
+#ifdef CONFIG_QCOM_SMD
 #include "diagfwd_smd.h"
+#endif
 #include "diagfwd_socket.h"
 #include "diag_mux.h"
 #include "diag_ipc_logging.h"
@@ -472,7 +474,9 @@ int diagfwd_peripheral_init(void)
 			&peripheral_info[TYPE_DCI_CMD][peripheral];
 	}
 
+#ifdef CONFIG_QCOM_SMD
 	diag_smd_init();
+#endif
 	if (driver->supports_sockets)
 		diag_socket_init();
 
@@ -485,7 +489,9 @@ void diagfwd_peripheral_exit(void)
 	uint8_t type;
 	struct diagfwd_info *fwd_info = NULL;
 
+#ifdef CONFIG_QCOM_SMD
 	diag_smd_exit();
+#endif
 	diag_socket_exit();
 
 	for (peripheral = 0; peripheral < NUM_PERIPHERALS; peripheral++) {
@@ -633,11 +639,16 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 		check_channel_state = diag_socket_check_state;
 		break;
 	case TRANSPORT_SOCKET:
+#ifdef CONFIG_QCOM_SMD
 		transport_open = TRANSPORT_SMD;
 		init_fn = diag_smd_init_peripheral;
 		invalidate_fn = diag_smd_invalidate;
 		check_channel_state = diag_smd_check_state;
 		break;
+#else
+		pr_err("Transport SMD is not configured\n");
+		return;
+#endif
 	default:
 		return;
 

@@ -24,7 +24,9 @@
 #include <linux/wakelock.h>
 #include <soc/qcom/smd.h>
 #include <asm/atomic.h>
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 
 /* Size of the USB buffers used for read and write*/
 #define USB_MAX_OUT_BUF 4096

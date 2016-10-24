@@ -32,7 +32,9 @@
 #include "diag_dci.h"
 #include "diag_usb.h"
 #include "diagfwd_peripheral.h"
+#ifdef CONFIG_QCOM_SMD
 #include "diagfwd_smd.h"
+#endif
 #include "diagfwd_socket.h"
 #include "diag_debugfs.h"
 #include "diag_ipc_logging.h"
@@ -42,7 +44,9 @@ static struct dentry *diag_dbgfs_dent;
 static int diag_dbgfs_table_index;
 static int diag_dbgfs_mempool_index;
 static int diag_dbgfs_usbinfo_index;
+#ifdef CONFIG_QCOM_SMD
 static int diag_dbgfs_smdinfo_index;
+#endif
 static int diag_dbgfs_socketinfo_index;
 static int diag_dbgfs_hsicinfo_index;
 static int diag_dbgfs_mhiinfo_index;
@@ -472,6 +476,7 @@ static ssize_t diag_dbgfs_read_usbinfo(struct file *file, char __user *ubuf,
 	return ret;
 }
 
+#ifdef CONFIG_QCOM_SMD
 static ssize_t diag_dbgfs_read_smdinfo(struct file *file, char __user *ubuf,
 				       size_t count, loff_t *ppos)
 {
@@ -577,6 +582,7 @@ static ssize_t diag_dbgfs_read_smdinfo(struct file *file, char __user *ubuf,
 	kfree(buf);
 	return ret;
 }
+#endif
 
 static ssize_t diag_dbgfs_read_socketinfo(struct file *file, char __user *ubuf,
 					  size_t count, loff_t *ppos)
@@ -939,9 +945,11 @@ const struct file_operations diag_dbgfs_status_ops = {
 	.read = diag_dbgfs_read_status,
 };
 
+#ifdef CONFIG_QCOM_SMD
 const struct file_operations diag_dbgfs_smdinfo_ops = {
 	.read = diag_dbgfs_read_smdinfo,
 };
+#endif
 
 const struct file_operations diag_dbgfs_socketinfo_ops = {
 	.read = diag_dbgfs_read_socketinfo,
@@ -983,12 +991,12 @@ int diag_debugfs_init(void)
 				    &diag_dbgfs_status_ops);
 	if (!entry)
 		goto err;
-
+#ifdef CONFIG_QCOM_SMD
 	entry = debugfs_create_file("smdinfo", 0444, diag_dbgfs_dent, 0,
 				    &diag_dbgfs_smdinfo_ops);
 	if (!entry)
 		goto err;
-
+#endif
 	entry = debugfs_create_file("socketinfo", 0444, diag_dbgfs_dent, 0,
 				    &diag_dbgfs_socketinfo_ops);
 	if (!entry)
@@ -1045,7 +1053,9 @@ int diag_debugfs_init(void)
 	diag_dbgfs_table_index = 0;
 	diag_dbgfs_mempool_index = 0;
 	diag_dbgfs_usbinfo_index = 0;
+#ifdef CONFIG_QCOM_SMD
 	diag_dbgfs_smdinfo_index = 0;
+#endif
 	diag_dbgfs_socketinfo_index = 0;
 	diag_dbgfs_hsicinfo_index = 0;
 	diag_dbgfs_bridgeinfo_index = 0;

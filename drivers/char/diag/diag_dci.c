@@ -36,7 +36,9 @@
 #include "diagfwd_cntl.h"
 #include "diag_dci.h"
 #include "diag_masks.h"
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 #include "diagfwd_peripheral.h"
 #include "diag_ipc_logging.h"
 
