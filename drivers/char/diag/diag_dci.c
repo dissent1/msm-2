@@ -25,7 +25,6 @@
 #include <linux/ratelimit.h>
 #include <linux/reboot.h>
 #include <asm/current.h>
-#include <soc/qcom/restart.h>
 #ifdef CONFIG_DIAG_OVER_USB
 #include <linux/usb/usbdiag.h>
 #endif
@@ -1734,8 +1733,6 @@ fill_buffer:
 			 */
 			usleep_range(5000, 5100);
 			/* call download API */
-			msm_set_restart_mode(RESTART_DLOAD);
-			pr_alert("diag: download mode set, Rebooting SoC..\n");
 			kernel_restart(NULL);
 		}
 		return DIAG_DCI_NO_ERROR;
