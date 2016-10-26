@@ -21,4 +21,20 @@ Example:
 
 		#address-cells = <1>;
 		#size-cells = <0>;
+		m25p80@0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "n25q128a11";
+			linux,modalias = "m25p80", "n25q128a11";
+			reg = <0>;
+			spi-max-frequency = <25000000>;
+		};
+		mt29f@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "spinand,mt29f";
+			reg = <1>;
+			spi-max-frequency = <50000000>;
+			status = "okay";
+		};
 	};

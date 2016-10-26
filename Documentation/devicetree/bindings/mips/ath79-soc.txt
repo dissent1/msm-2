@@ -25,3 +25,4 @@ value must be one of the following values:
 - qca,ap147
 - qca,ap151
 - qca,ap152
+- qca,ap152_dual
