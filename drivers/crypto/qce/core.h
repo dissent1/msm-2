@@ -16,6 +16,48 @@
 
 #include "dma.h"
 
+#define DEBUG_MAX_RW_BUF 2048
+#define DEBUG_MAX_FNAME  16
+
+/**
+ * struct qce_stat - statistics of crypto requests per algorithm to qce engine
+ */
+struct qce_stat {
+	u64 aead_sha1_aes_enc;
+	u64 aead_sha1_aes_dec;
+	u64 aead_sha1_des_enc;
+	u64 aead_sha1_des_dec;
+	u64 aead_sha1_3des_enc;
+	u64 aead_sha1_3des_dec;
+	u64 aead_sha256_aes_enc;
+	u64 aead_sha256_aes_dec;
+	u64 aead_sha256_des_enc;
+	u64 aead_sha256_des_dec;
+	u64 aead_sha256_3des_enc;
+	u64 aead_sha256_3des_dec;
+	u64 aead_ccm_aes_enc;
+	u64 aead_ccm_aes_dec;
+	u64 aead_rfc4309_ccm_aes_enc;
+	u64 aead_rfc4309_ccm_aes_dec;
+	u64 aead_op_success;
+	u64 aead_op_fail;
+	u64 aead_bad_msg;
+	u64 ablk_cipher_aes_enc;
+	u64 ablk_cipher_aes_dec;
+	u64 ablk_cipher_des_enc;
+	u64 ablk_cipher_des_dec;
+	u64 ablk_cipher_3des_enc;
+	u64 ablk_cipher_3des_dec;
+	u64 ablk_cipher_op_success;
+	u64 ablk_cipher_op_fail;
+	u64 sha1_digest;
+	u64 sha256_digest;
+	u64 sha1_hmac_digest;
+	u64 sha256_hmac_digest;
+	u64 ahash_op_success;
+	u64 ahash_op_fail;
+};
+
 /**
  * struct qce_device - crypto engine device structure
  * @queue: crypto request queue
@@ -31,6 +73,9 @@
  * @dma: pointer to dma data
  * @burst_size: the crypto burst size
  * @pipe_pair_id: which pipe pair id the device using
+ * @qce_stat: statistics of requests to qce device
+ * @qce_debug_dent: dentry to the "qce" debugfs directory
+ * @qce_debug_read_buf: buffer to store the qce stats
  * @async_req_enqueue: invoked by every algorithm to enqueue a request
  * @async_req_done: invoked by every algorithm to finish its request
  */
@@ -46,6 +91,9 @@ struct qce_device {
 	struct qce_dma_data dma;
 	int burst_size;
 	unsigned int pipe_pair_id;
+	struct qce_stat qce_stat;
+	struct dentry *qce_debug_dent;
+	char qce_debug_read_buf[DEBUG_MAX_RW_BUF];
 	int (*async_req_enqueue)(struct qce_device *qce,
 				 struct crypto_async_request *req);
 	void (*async_req_done)(struct qce_device *qce, int ret);
