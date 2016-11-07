@@ -51,7 +51,7 @@
 			};
 
 			ehci0: usb@1b000000 {
-				compatible = "generic-ehci", "ehci-platform";
+				compatible = "qca,ath79-ehci";
 				reg = <0x1b000000 0x200>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <0>;
@@ -63,7 +63,7 @@
 			};
 
 			ehci1: usb@1b400000 {
-				compatible = "generic-ehci","ehci-platform";
+				compatible = "qca,ath79-ehci";
 				reg = <0x1b400000 0x200>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <1>;

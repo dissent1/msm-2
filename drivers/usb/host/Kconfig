@@ -276,15 +276,12 @@ config USB_CNS3XXX_EHCI
 	  It is needed for high-speed (480Mbit/sec) USB 2.0 device
 	  support.
 
-config USB_EHCI_ATH79
-	bool "EHCI support for AR7XXX/AR9XXX SoCs (DEPRECATED)"
-	depends on (SOC_AR71XX || SOC_AR724X || SOC_AR913X || SOC_AR933X)
+config USB_EHCI_HCD_ATH79
+	tristate "EHCI support for AR7XXX/AR9XXX SoCs"
+	depends on (SOC_AR71XX || SOC_AR724X || SOC_AR913X || SOC_AR933X || SOC_AR934X || SOC_QCA955X || SOC_QCA956X)
 	select USB_EHCI_ROOT_HUB_TT
-	select USB_EHCI_HCD_PLATFORM
 	default y
 	---help---
-	  This option is deprecated now and the driver was removed, use
-	  USB_EHCI_HCD_PLATFORM instead.
 
 	  Enables support for the built-in EHCI controller present
 	  on the Atheros AR7XXX/AR9XXX SoCs.

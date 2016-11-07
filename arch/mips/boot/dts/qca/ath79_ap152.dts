@@ -22,11 +22,13 @@
 #include "ath79.dtsi"
 
 / {
-	compatible = "qca_ap152", "qca,ath79";
+	compatible = "qca,ap152", "qca,ath79";
 	model = "QCA AP152 Board";
 
 	alias {
 		serial0 = "/ahb/apb/uart@18020000";
+		ehci_0 = &ehci0;
+		ehci_1 = &ehci1;
 	};
 
 	memory@0 {
@@ -51,7 +53,7 @@
 			};
 
 			ehci0: usb@1b000000 {
-				compatible = "generic-ehci", "ehci-platform";
+				compatible = "qca,ath79-ehci";
 				reg = <0x1b000000 0x200>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <0>;
@@ -63,7 +65,7 @@
 			};
 
 			ehci1: usb@1b400000 {
-				compatible = "generic-ehci","ehci-platform";
+				compatible = "qca,ath79-ehci";
 				reg = <0x1b400000 0x200>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <1>;
