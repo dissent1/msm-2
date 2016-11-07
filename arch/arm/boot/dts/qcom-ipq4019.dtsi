@@ -605,6 +605,13 @@
 			status = "disabled";
 		};
 
+		tcsr: tcsr@194b000 {
+			compatible = "ipq,tcsr";
+			reg = <0x194b000 0x100>;
+			ipq,usb-hsphy-mode-select = <TCSR_USB_HSPHY_HOST_MODE>;
+			status = "disabled";
+		};
+
 		ess_tcsr: ess_tcsr@1953000 {
 			compatible = "ipq,tcsr";
 			reg = <0x1953000 0x1000>;
