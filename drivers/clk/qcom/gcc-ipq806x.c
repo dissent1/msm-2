@@ -76,6 +76,7 @@ static struct clk_pll pll3 = {
 		.parent_names = (const char *[]){ "pxo" },
 		.num_parents = 1,
 		.ops = &clk_pll_ops,
+		.flags = CLK_IS_CRITICAL,
 	},
 };
 
