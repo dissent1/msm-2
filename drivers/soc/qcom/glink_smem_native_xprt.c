@@ -253,6 +253,7 @@ static DEFINE_MUTEX(probe_lock);
 static struct glink_core_version versions[] = {
 	{1, TRACER_PKT_FEATURE, negotiate_features_v1},
 };
+static struct platform_driver glink_smem_native_driver;
 
 /**
  * send_irq() - send an irq to a remote entity as an event signal
