@@ -82,13 +82,23 @@ static struct notifier_block panic_blk = {
 
 static long qcom_wdt_configure_bark_dump(void *arg)
 {
+	void *scm_regsave;
+
 	long ret = -ENOMEM;
 
-	ret = qcom_scm_regsave(SCM_SVC_UTIL, SCM_CMD_SET_REGSAVE);
-	if (ret)
+	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
+	if (!scm_regsave)
+		return -ENOMEM;
+
+	ret = qcom_scm_regsave(SCM_SVC_UTIL, SCM_CMD_SET_REGSAVE,
+						scm_regsave);
+	if (ret) {
 		pr_err("Setting register save address failed.\n"
 			"Registers won't be dumped on a dog bite\n");
-	return ret;
+		return ret;
+	}
+
+	return 0;
 }
 
 static int qcom_wdt_start_secure(struct watchdog_device *wdd)
