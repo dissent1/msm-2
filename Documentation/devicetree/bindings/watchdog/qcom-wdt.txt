@@ -10,7 +10,14 @@ Required properties :
 			"qcom,kpss-wdt-ipq807x"
 			"qcom,kpss-wdt-ipq40xx"
 
-- reg : shall contain base register location and length
+- reg : shall contain base register location and length as listed
+	in the reg-names property
+- reg-names: Include the following entries
+	- "kpss_wdt" Qualcomm watchdog registers (Required)
+	- "tlv" Memory mapped location for saving crashdump data in
+		TLV format (Optional)
+
+
 - clocks : shall contain the input clock
 
 Optional properties :
@@ -21,7 +28,8 @@ Optional properties :
 Example:
 	watchdog@208a038 {
 		compatible = "qcom,kpss-wdt-ipq8064", "qcom,kpss-wdt-ipq807x", "qcom,kpss-wdt-ipq40xx";
-		reg = <0x0208a038 0x40>;
+		reg = <0x0208a038 0x40>, <0x87b70000 0x10000>;
+		reg-names = "kpss_wdt", "tlv";
 		clocks = <&sleep_clk>;
 		timeout-sec = <10>;
 		interrupts = <0 3 0>;
