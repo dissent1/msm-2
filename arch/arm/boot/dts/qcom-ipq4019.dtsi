@@ -104,6 +104,17 @@
 		};
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		rsvd@87b00000 {
+			/* Reserved for other subsystem */
+			reg = <0x87b00000 0x500000>;
+			no-map;
+		};
+	};
+
 	soc {
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -252,8 +263,8 @@
 
 		watchdog@b017000 {
 			compatible = "qcom,kpss-wdt-ipq40xx";
-			reg = <0xb017000 0x40>;
-			reg-names = "kpss_wdt";
+			reg = <0xb017000 0x40>, <0x87b70000 0x10000>;
+			reg-names = "kpss_wdt", "tlv";
 			interrupt-names = "bark_irq";
 			interrupts = <0 3 0>;
 			clocks = <&sleep_clk>;
