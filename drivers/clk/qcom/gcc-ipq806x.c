@@ -3102,27 +3102,38 @@ nss_core_clk_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
 	return ret;
 }
 
-static int nss_core_clk_determine_rate(struct clk_hw *hw,
-					struct clk_rate_request *req)
+static long nss_core_clk_determine_rate(struct clk_hw *hw, unsigned long rate,
+				 unsigned long *p_rate, struct clk **p)
 {
+	return 0;
+#if 0
 	return clk_dyn_rcg_ops.determine_rate(&ubi32_core1_src_clk.clkr.hw,
-						req);
+						 rate, p_rate, p);
+#endif
 }
 
 static unsigned long
 nss_core_clk_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
+	return 0;
+#if 0
 	return clk_dyn_rcg_ops.recalc_rate(&ubi32_core1_src_clk.clkr.hw,
 						 parent_rate);
+#endif
 }
 
 static u8 nss_core_clk_get_parent(struct clk_hw *hw)
 {
+	return 0;
+#if 0
 	return clk_dyn_rcg_ops.get_parent(&ubi32_core1_src_clk.clkr.hw);
+#endif
 }
 
 static int nss_core_clk_set_parent(struct clk_hw *hw, u8 i)
 {
+	return 0;
+#if 0
 	int ret;
 
 	ret = clk_dyn_rcg_ops.set_parent(&ubi32_core1_src_clk.clkr.hw, i);
@@ -3130,11 +3141,16 @@ static int nss_core_clk_set_parent(struct clk_hw *hw, u8 i)
 		return ret;
 
 	return clk_dyn_rcg_ops.set_parent(&ubi32_core2_src_clk.clkr.hw, i);
+#endif
 }
 
-static struct clk_hw *nss_core_clk_get_safe_parent(struct clk_hw *hw)
+static struct clk *nss_core_clk_get_safe_parent(struct clk_hw *hw)
 {
-	return clk_hw_get_parent_by_index(hw, P_PLL8);
+	return NULL;
+#if 0
+
+	return clk_get_parent_by_index(hw->clk, P_PLL8);
+#endif
 }
 
 static const struct clk_ops clk_ops_nss_core = {
