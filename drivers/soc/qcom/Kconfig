@@ -79,7 +79,7 @@ config MSM_GLINK_LOOPBACK_SERVER
 	 data received from the clients.
 
 config MSM_GLINK_SMEM_NATIVE_XPRT
-	depends on MSM_SMEM
+	depends on QCOM_SMEM
 	depends on MSM_GLINK
 	bool "Generic Link (G-Link) SMEM Native Transport"
 	help
