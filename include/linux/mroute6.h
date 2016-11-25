@@ -118,7 +118,7 @@ struct mfc6_cache {
 
 struct rtmsg;
 extern int ip6mr_get_route(struct net *net, struct sk_buff *skb,
-			   struct rtmsg *rtm, int nowait);
+			   struct rtmsg *rtm, int nowait, u32 portid);
 
 /*
  * Callback to registered modules in the event of updates to a multicast group
