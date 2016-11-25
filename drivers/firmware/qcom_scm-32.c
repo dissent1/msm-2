@@ -500,24 +500,21 @@ int __qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp)
 		req, req_cnt * sizeof(*req), resp, sizeof(*resp));
 }
 
-int __qcom_scm_regsave(u32 svc_id, u32 cmd_id)
+int __qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
 {
 	long ret;
 	struct {
 		unsigned addr;
 		int len;
 	} cmd_buf;
-	/* Area for context dump in secure mode */
-	void *scm_regsave;
 
-	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
 	if (scm_regsave) {
 		cmd_buf.addr = virt_to_phys(scm_regsave);
 		cmd_buf.len  = PAGE_SIZE;
 		ret = qcom_scm_call(svc_id, cmd_id,
 				&cmd_buf, sizeof(cmd_buf), NULL, 0);
 	} else {
-		ret = -ENOMEM;
+		ret = -EINVAL;
 	}
 
 	return ret;

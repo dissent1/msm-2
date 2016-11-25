@@ -910,6 +910,7 @@
 		watchdog@208a000 {
 			compatible = "qcom,kpss-wdt-ipq8064";
 			reg = <0x0208a000 0x100>;
+			reg-names = "kpss_wdt";
 			interrupt-names = "bark_irq";
 			interrupts = <0 3 0>;
 			timeout-sec = <10>;
