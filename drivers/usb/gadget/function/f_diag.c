@@ -235,8 +235,7 @@ static void diag_write_complete(struct usb_ep *ep,
 	if (ctxt->ch && ctxt->ch->notify)
 		ctxt->ch->notify(ctxt->ch->priv, USB_DIAG_WRITE_DONE, d_req);
 
-	kref_put_spinlock_irqsave(&ctxt->kref, diag_context_release,
-			&ctxt->lock);
+	kref_put(&ctxt->kref, diag_context_release);
 }
 
 static void diag_read_complete(struct usb_ep *ep,
@@ -258,8 +257,7 @@ static void diag_read_complete(struct usb_ep *ep,
 	if (ctxt->ch && ctxt->ch->notify)
 		ctxt->ch->notify(ctxt->ch->priv, USB_DIAG_READ_DONE, d_req);
 
-	kref_put_spinlock_irqsave(&ctxt->kref, diag_context_release,
-			&ctxt->lock);
+	kref_put(&ctxt->kref, diag_context_release);
 }
 
 /**
@@ -467,8 +465,7 @@ int usb_diag_read(struct usb_diag_ch *ch, struct diag_request *d_req)
 	/* make sure context is still valid after releasing lock */
 	if (ctxt != ch->priv_usb) {
 		usb_ep_free_request(out, req);
-		kref_put_spinlock_irqsave(&ctxt->kref, diag_context_release,
-				&ctxt->lock);
+		kref_put(&ctxt->kref, diag_context_release);
 		return -EIO;
 	}
 
@@ -544,8 +541,7 @@ int usb_diag_write(struct usb_diag_ch *ch, struct diag_request *d_req)
 	/* make sure context is still valid after releasing lock */
 	if (ctxt != ch->priv_usb) {
 		usb_ep_free_request(in, req);
-		kref_put_spinlock_irqsave(&ctxt->kref, diag_context_release,
-				&ctxt->lock);
+		kref_put(&ctxt->kref, diag_context_release);
 		return -EIO;
 	}
 
