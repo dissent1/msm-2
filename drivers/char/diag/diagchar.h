@@ -21,10 +21,13 @@
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
 #include <linux/sched.h>
-#include <linux/wakelock.h>
+#include <linux/ktime.h>
+#include <linux/device.h>
 #include <soc/qcom/smd.h>
 #include <asm/atomic.h>
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 
 /* Size of the USB buffers used for read and write*/
 #define USB_MAX_OUT_BUF 4096

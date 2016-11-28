@@ -18,7 +18,9 @@
 #include "diagfwd.h"
 #include "diagfwd_cntl.h"
 #include "diagfwd_peripheral.h"
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 #include "diag_dci.h"
 #include "diagmem.h"
 #include "diag_masks.h"

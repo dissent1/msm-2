@@ -72,6 +72,10 @@ extern unsigned int dci_max_clients;
 
 #define DCI_REMOTE_DATA	0
 
+#define NUM_REMOTE_DATA_DEV     2
+#define DIAGFWD_MDM_DCI         NUM_REMOTE_DATA_DEV
+#define NUM_REMOTE_DCI_DEV      (DIAGFWD_MDM_DCI - NUM_REMOTE_DATA_DEV + 1)
+
 #define VALID_DCI_TOKEN(x)	((x >= 0 && x < NUM_DCI_PROC) ? 1 : 0)
 #define BRIDGE_TO_TOKEN(x)	(x - DIAGFWD_MDM_DCI + DCI_REMOTE_BASE)
 #define TOKEN_TO_BRIDGE(x)	(dci_ops_tbl[x].ctx)

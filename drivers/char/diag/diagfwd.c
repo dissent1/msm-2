@@ -26,8 +26,6 @@
 #ifdef CONFIG_DIAG_OVER_USB
 #include <linux/usb/usbdiag.h>
 #endif
-#include <soc/qcom/socinfo.h>
-#include <soc/qcom/restart.h>
 #include "diagmem.h"
 #include "diagchar.h"
 #include "diagfwd.h"
@@ -84,54 +82,15 @@ static int has_device_tree(void)
 
 int chk_config_get_id(void)
 {
-	switch (socinfo_get_msm_cpu()) {
-	case MSM_CPU_8X60:
-		return APQ8060_TOOLS_ID;
-	case MSM_CPU_8960:
-	case MSM_CPU_8960AB:
-		return AO8960_TOOLS_ID;
-	case MSM_CPU_8064:
-	case MSM_CPU_8064AB:
-	case MSM_CPU_8064AA:
-		return APQ8064_TOOLS_ID;
-	case MSM_CPU_8930:
-	case MSM_CPU_8930AA:
-	case MSM_CPU_8930AB:
-		return MSM8930_TOOLS_ID;
-	case MSM_CPU_8974:
-		return MSM8974_TOOLS_ID;
-	case MSM_CPU_8625:
-		return MSM8625_TOOLS_ID;
-	case MSM_CPU_8084:
-		return APQ8084_TOOLS_ID;
-	case MSM_CPU_8916:
-		return MSM8916_TOOLS_ID;
-	case MSM_CPU_8939:
-		return MSM8939_TOOLS_ID;
-	case MSM_CPU_8994:
-		return MSM8994_TOOLS_ID;
-	case MSM_CPU_8226:
-		return APQ8026_TOOLS_ID;
-	case MSM_CPU_8909:
-		return MSM8909_TOOLS_ID;
-	case MSM_CPU_8992:
-		return MSM8992_TOOLS_ID;
-	case MSM_CPU_8996:
-		return MSM_8996_TOOLS_ID;
-	case MSM_CPU_8952:
-		return MSM8952_TOOLS_ID;
-	default:
-		if (driver->use_device_tree) {
-			if (machine_is_msm8974())
-				return MSM8974_TOOLS_ID;
-			else if (machine_is_apq8074())
-				return APQ8074_TOOLS_ID;
-			else
-				return 0;
-		} else {
+	if (driver->use_device_tree) {
+		if (of_machine_is_compatible("qcom,msm8974"))
+			return 4083;
+		else if (of_machine_is_compatible("qcom,apq8974"))
+			return 4090;
+		else
 			return 0;
-		}
-	}
+	} else
+		return 0;
 }
 
 /*
@@ -142,24 +101,6 @@ int chk_apps_only(void)
 {
 	if (driver->use_device_tree)
 		return 1;
-#if 0
-	switch (socinfo_get_msm_cpu()) {
-	case MSM_CPU_8960:
-	case MSM_CPU_8960AB:
-	case MSM_CPU_8064:
-	case MSM_CPU_8064AB:
-	case MSM_CPU_8064AA:
-	case MSM_CPU_8930:
-	case MSM_CPU_8930AA:
-	case MSM_CPU_8930AB:
-	case MSM_CPU_8627:
-	case MSM_CPU_9615:
-	case MSM_CPU_8974:
-		return 1;
-	default:
-		return 0;
-	}
-#endif
 }
 
 /*
@@ -748,7 +689,6 @@ int diag_cmd_get_mobile_id(unsigned char *src_buf, int src_len,
 	rsp.padding[1] = 0;
 	rsp.padding[2] = 0;
 	rsp.family = 0;
-	rsp.chip_id = (uint32_t)socinfo_get_id();
 
 	memcpy(dest_buf, &rsp, sizeof(rsp));
 	write_len += sizeof(rsp);
@@ -975,9 +915,6 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 		driver->apps_rsp_buf[0] = *buf;
 		diag_send_rsp(driver->apps_rsp_buf, 1);
 		msleep(5000);
-		/* call download API */
-		msm_set_restart_mode(RESTART_DLOAD);
-		printk(KERN_CRIT "diag: download mode set, Rebooting SoC..\n");
 		kernel_restart(NULL);
 		/* Not required, represents that command isnt sent to modem */
 		return 0;

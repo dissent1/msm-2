@@ -24,7 +24,9 @@
 #include <linux/uaccess.h>
 #include "diagchar.h"
 #include "diag_memorydevice.h"
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
+#endif
 #include "diag_mux.h"
 #include "diagmem.h"
 #include "diagfwd.h"
