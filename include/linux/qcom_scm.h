@@ -18,16 +18,9 @@ extern int qcom_scm_set_warm_boot_addr(void *entry, const cpumask_t *cpus);
 
 #define QCOM_SCM_HDCP_MAX_REQ_CNT	5
 
-struct qcom_scm_hdcp_req {
-	u32 addr;
-	u32 val;
-};
-
 extern bool qcom_scm_is_available(void);
 
 extern bool qcom_scm_hdcp_available(void);
-extern int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
-		u32 *resp);
 
 #define SCM_SVC_UTIL		0x3
 #define SCM_CMD_SET_REGSAVE	0x2
