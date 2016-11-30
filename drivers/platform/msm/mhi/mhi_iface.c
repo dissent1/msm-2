@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -204,7 +204,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	tasklet_init(&mhi_dev_ctxt->ev_task,
 		     mhi_ctrl_ev_task,
 		     (unsigned long)mhi_dev_ctxt);
-
+	init_completion(&mhi_dev_ctxt->cmd_complete);
 	mhi_dev_ctxt->flags.link_up = 1;
 
 #ifdef CONFIG_MSM_BUS_SCALING
@@ -292,8 +292,8 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	/* setup shadow pm functions */
 	mhi_dev_ctxt->assert_wake = mhi_assert_device_wake;
 	mhi_dev_ctxt->deassert_wake = mhi_deassert_device_wake;
-	mhi_dev_ctxt->runtime_get = mhi_runtime_get;
-	mhi_dev_ctxt->runtime_put = mhi_runtime_put;
+	mhi_dev_ctxt->runtime_get = mhi_master_mode_runtime_get;
+	mhi_dev_ctxt->runtime_put = mhi_master_mode_runtime_put;
 
 	mutex_lock(&mhi_dev_ctxt->pm_lock);
 	write_lock_irq(&mhi_dev_ctxt->pm_xfer_lock);
