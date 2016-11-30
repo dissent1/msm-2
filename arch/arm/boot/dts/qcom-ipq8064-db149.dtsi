@@ -14,6 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/gpio/gpio.h>
+
 / {
 	model = "QCA IPQ8064/DB149";
 	compatible = "qcom,ipq8064-db149", "qcom,ipq8064";
@@ -31,6 +36,14 @@
 	aliases {
 		serial0 = &uart2;
 		mdio-gpio0 = &mdio0;
+		/*
+		 * U-Boot searches for these entries and patches
+		 * 'local-mac-address'
+		 */
+		ethernet0 = &gmac0;
+		ethernet1 = &gmac1;
+		ethernet2 = &gmac2;
+		ethernet3 = &gmac3;
 	};
 
 	chosen {
@@ -298,7 +311,10 @@
 			qcom,load-addr = <0x40800000>;
 
 			qcom,turbo-frequency;
+
+			qcom,capwap-enabled;
 			qcom,crypto-enabled;
+			qcom,dtls-enabled;
 			qcom,ipsec-enabled;
 		};
 
@@ -330,9 +346,6 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
-
-			pinctrl-0 = <&rgmii0_pins>;
-			pinctrl-names = "default";
 		};
 
 		gmac1: ethernet@37200000 {
@@ -354,11 +367,6 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
-
-			fixed-link {
-				speed = <1000>;
-				full-duplex;
-			};
 		};
 
 		gmac2: ethernet@37400000 {
