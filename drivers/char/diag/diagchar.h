@@ -23,7 +23,6 @@
 #include <linux/sched.h>
 #include <linux/ktime.h>
 #include <linux/device.h>
-#include <soc/qcom/smd.h>
 #include <asm/atomic.h>
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 #include "diagfwd_bridge.h"
