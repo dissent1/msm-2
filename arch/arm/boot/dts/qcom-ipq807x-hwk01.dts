@@ -70,6 +70,7 @@
 			cpu0-supply = <&s3>;
 			qcom,acc = <&acc0>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <>;
 
 			L2_0: l2-cache {
 				compatible = "arm,arch-cache";
@@ -89,6 +90,7 @@
 			cpu-supply = <&s3>;
 			qcom,acc = <&acc1>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&cpu_hotplug>;
 		};
 
 		CPU2: cpu@2 {
@@ -103,6 +105,7 @@
 			cpu-supply = <&s3>;
 			qcom,acc = <&acc2>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&cpu_hotplug>;
 		};
 
 		CPU3: cpu@3 {
@@ -117,6 +120,21 @@
 			cpu-supply = <&s3>;
 			qcom,acc = <&acc3>;
 			next-level-cache = <&L2_0>;
+			cpu-idle-states = <&cpu_hotplug>;
+		};
+
+		idle-states {
+			entry-method = "psci";
+
+			cpu_hotplug: cpu-hotplug {
+				compatible = "arm,idle-state";
+				local-timer-stop;
+				entry-latency-us = <100>;
+				exit-latency-us = <700>;
+				min-residency-us = <2000>;
+				arm,psci-suspend-param = <0x0010000>;
+				status = "disabled";
+			};
 		};
 
 	};
