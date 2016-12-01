@@ -34,6 +34,8 @@
 #include "reset.h"
 #include "nss-volt-ipq806x.h"
 
+/* NSS safe parent index which will be used during NSS PLL rate change */
+static int gcc_ipq806x_nss_safe_parent;
 static struct clk_pll pll0 = {
 	.l_reg = 0x30c4,
 	.m_reg = 0x30c8,
@@ -74,6 +76,7 @@ static struct clk_pll pll3 = {
 		.parent_names = (const char *[]){ "pxo" },
 		.num_parents = 1,
 		.ops = &clk_pll_ops,
+		.flags = CLK_IS_CRITICAL,
 	},
 };
 
@@ -3108,55 +3111,52 @@ nss_core_clk_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
 	return ret;
 }
 
-static long nss_core_clk_determine_rate(struct clk_hw *hw, unsigned long rate,
-				 unsigned long *p_rate, struct clk **p)
+static int nss_core_clk_determine_rate(struct clk_hw *hw,
+					struct clk_rate_request *req)
 {
-	return 0;
-#if 0
 	return clk_dyn_rcg_ops.determine_rate(&ubi32_core1_src_clk.clkr.hw,
-						 rate, p_rate, p);
-#endif
+						req);
 }
 
 static unsigned long
 nss_core_clk_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
-	return 0;
-#if 0
 	return clk_dyn_rcg_ops.recalc_rate(&ubi32_core1_src_clk.clkr.hw,
 						 parent_rate);
-#endif
 }
 
 static u8 nss_core_clk_get_parent(struct clk_hw *hw)
 {
-	return 0;
-#if 0
 	return clk_dyn_rcg_ops.get_parent(&ubi32_core1_src_clk.clkr.hw);
-#endif
 }
 
 static int nss_core_clk_set_parent(struct clk_hw *hw, u8 i)
 {
-	return 0;
-#if 0
 	int ret;
+	struct clk_dyn_rcg *rcg;
+	struct freq_tbl f = {  200000000, P_PLL0, 2,  1, 2 };
+
+	/* P_PLL0 is 800 Mhz which needs to be divided for 200 Mhz */
+	if (i == gcc_ipq806x_nss_safe_parent) {
+		rcg = to_clk_dyn_rcg(&ubi32_core1_src_clk.clkr.hw);
+		clk_dyn_configure_bank(rcg, &f);
+
+		rcg = to_clk_dyn_rcg(&ubi32_core2_src_clk.clkr.hw);
+		clk_dyn_configure_bank(rcg, &f);
+
+		return 0;
+	}
 
 	ret = clk_dyn_rcg_ops.set_parent(&ubi32_core1_src_clk.clkr.hw, i);
 	if (ret)
 		return ret;
 
 	return clk_dyn_rcg_ops.set_parent(&ubi32_core2_src_clk.clkr.hw, i);
-#endif
 }
 
-static struct clk *nss_core_clk_get_safe_parent(struct clk_hw *hw)
+static struct clk_hw *nss_core_clk_get_safe_parent(struct clk_hw *hw)
 {
-	return NULL;
-#if 0
-
-	return clk_get_parent_by_index(hw->clk, P_PLL8);
-#endif
+	return clk_hw_get_parent_by_index(hw, gcc_ipq806x_nss_safe_parent);
 }
 
 static const struct clk_ops clk_ops_nss_core = {
@@ -3521,6 +3521,12 @@ static int gcc_ipq806x_probe(struct platform_device *pdev)
 	regmap = dev_get_regmap(dev, NULL);
 	if (!regmap)
 		return -ENODEV;
+
+	gcc_ipq806x_nss_safe_parent = qcom_find_src_index(&nss_core_clk.hw,
+					gcc_pxo_pll8_pll14_pll18_pll0_map,
+					P_PLL0);
+	if (gcc_ipq806x_nss_safe_parent < 0)
+		return gcc_ipq806x_nss_safe_parent;
 
 	/* Setup PLL18 static bits */
 	regmap_update_bits(regmap, 0x31a4, 0xffffffc0, 0x40000400);
