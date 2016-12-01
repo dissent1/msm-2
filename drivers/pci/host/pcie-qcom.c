@@ -210,6 +210,10 @@ struct qcom_pcie {
 
 #define to_qcom_pcie(x)		container_of(x, struct qcom_pcie, pp)
 
+#define MAX_RC_NUM	3
+static struct qcom_pcie *qcom_pcie_dev[MAX_RC_NUM];
+static atomic_t rc_removed;
+
 static inline void
 writel_masked(void __iomem *addr, u32 clear_mask, u32 set_mask)
 {
@@ -1203,6 +1207,79 @@ static const struct qcom_pcie_ops ops_v3 = {
 	.deinit = qcom_pcie_deinit_v3,
 };
 
+int qcom_pcie_rescan(void)
+{
+	int i;
+	struct pcie_port *pp;
+
+	if (!atomic_read(&rc_removed))
+		return 0;
+
+	for (i = 0; i < MAX_RC_NUM; i++) {
+		/* reset and enumerate the pcie devices */
+		if (qcom_pcie_dev[i]) {
+			pr_notice("---> Initializing %d", i);
+			pp = &qcom_pcie_dev[i]->pp;
+			qcom_pcie_host_init(pp);
+			pr_notice(" ... done<---\n");
+		}
+	}
+	atomic_set(&rc_removed, 0);
+
+	return 0;
+}
+
+void qcom_pcie_remove_bus(void)
+{
+	int i;
+
+	if (atomic_read(&rc_removed))
+		return;
+
+	for (i = 0; i < MAX_RC_NUM; i++) {
+		if (qcom_pcie_dev[i]) {
+			pr_notice("---> Removing %d", i);
+			qcom_pcie_dev[i]->ops->deinit(qcom_pcie_dev[i]);
+			pr_notice(" ... done<---\n");
+		}
+	}
+	atomic_set(&rc_removed, 1);
+}
+
+static ssize_t qcom_bus_rescan_store(struct bus_type *bus, const char *buf,
+					size_t count)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	if (val) {
+		pci_lock_rescan_remove();
+		qcom_pcie_rescan();
+		pci_unlock_rescan_remove();
+	}
+	return count;
+}
+static BUS_ATTR(rcrescan, (S_IWUSR|S_IWGRP), NULL, qcom_bus_rescan_store);
+
+static ssize_t qcom_bus_remove_store(struct bus_type *bus, const char *buf,
+					size_t count)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 0, &val) < 0)
+		return -EINVAL;
+
+	if (val) {
+		pci_lock_rescan_remove();
+		qcom_pcie_remove_bus();
+		pci_unlock_rescan_remove();
+	}
+	return count;
+}
+static BUS_ATTR(rcremove, (S_IWUSR|S_IWGRP), NULL, qcom_bus_remove_store);
+
 static int qcom_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1213,6 +1290,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	uint32_t force_gen1 = 0;
 	struct device_node *np = pdev->dev.of_node;
 	u32 is_emulation = 0;
+	static int rc_idx;
 
 	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
 	if (!pcie)
@@ -1285,6 +1363,23 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, pcie);
+
+	if (!rc_idx) {
+		ret = bus_create_file(&pci_bus_type, &bus_attr_rcrescan);
+		if (ret != 0) {
+			dev_err(&pdev->dev,
+				"Failed to create sysfs rcrescan file\n");
+			return ret;
+		}
+
+		ret = bus_create_file(&pci_bus_type, &bus_attr_rcremove);
+		if (ret != 0) {
+			dev_err(&pdev->dev,
+				"Failed to create sysfs rcremove file\n");
+			return ret;
+		}
+	}
+	qcom_pcie_dev[rc_idx++] = pcie;
 
 	return 0;
 }
