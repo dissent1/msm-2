@@ -519,3 +519,28 @@ int __qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
 
 	return ret;
 }
+
+int __qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf)
+{
+	long ret;
+
+	if (cmd_buf)
+		ret = qcom_scm_call(svc_id, cmd_id, &cmd_buf, sizeof(cmd_buf),
+					NULL, 0);
+	else
+		ret = qcom_scm_call(svc_id, cmd_id, NULL, 0, NULL, 0);
+
+	return ret;
+}
+
+int __qcom_scm_sdi(u32 svc_id, u32 cmd_id)
+{
+	long ret;
+	unsigned int clear_info[] = {
+		1 /* Disable wdog debug */, 0 /* SDI enable*/, };
+
+	ret = qcom_scm_call(svc_id, cmd_id, &clear_info, sizeof(clear_info),
+				NULL, 0);
+
+	return ret;
+}
