@@ -1,7 +1,6 @@
 obj-$(CONFIG_COMMON_CLK_QCOM) += clk-qcom.o
 
 clk-qcom-y += common.o
-clk-qcom-y += clk-rpm.o
 clk-qcom-y += clk-regmap.o
 clk-qcom-y += clk-pll.o
 clk-qcom-y += clk-qcapll.o
@@ -33,4 +32,5 @@ obj-$(CONFIG_MSM_MMCC_8960) += mmcc-msm8960.o
 obj-$(CONFIG_MSM_MMCC_8974) += mmcc-msm8974.o
 obj-$(CONFIG_KPSS_XCC) += kpss-xcc.o
 obj-$(CONFIG_QCOM_HFPLL) += hfpll.o
+obj-$(CONFIG_QCOM_RPM_CLK) += clk-rpm.o
 obj-$(CONFIG_KRAITCC) += krait-cc.o
