@@ -326,6 +326,7 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	struct resource	*r;
 	unsigned long rate;
 	int ret;
+	u32 num_cs;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(*sp));
 	if (master == NULL) {
@@ -342,6 +343,7 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	master->bits_per_word_mask = SPI_BPW_RANGE_MASK(1, 32);
 	master->setup = ath79_spi_setup;
 	master->cleanup = ath79_spi_cleanup;
+
 	if (master->dev.of_node == NULL) {
 		pdata = pdev->dev.platform_data;
 		if (!pdata)
@@ -349,8 +351,14 @@ static int ath79_spi_probe(struct platform_device *pdev)
 		master->bus_num = pdata->bus_num;
 		master->num_chipselect = pdata->num_chipselect;
 	} else {
-		sp->is_flash = of_property_read_bool(pdev->dev.of_node,
+		sp->is_flash = of_property_read_bool(master->dev.of_node,
 							"ath79,is-flash");
+
+		if (of_property_read_u32(master->dev.of_node, "num-cs",
+					&num_cs))
+			num_cs = 1;
+		master->num_chipselect = num_cs;
+		master->bus_num = of_alias_get_id(master->dev.of_node, "spi");
 	}
 	sp->bitbang.master = master;
 	sp->bitbang.chipselect = ath79_spi_chipselect;
