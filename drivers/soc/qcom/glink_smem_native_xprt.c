@@ -782,12 +782,13 @@ static bool queue_cmd(struct edge_info *einfo, void *cmd, void *data)
  */
 static bool get_rx_fifo(struct edge_info *einfo)
 {
-	einfo->rx_fifo = qcom_smem_get(einfo->remote_proc_id,
+	void __iomem *rx_fifo = qcom_smem_get(einfo->remote_proc_id,
 				einfo->rx_fifo_number, &einfo->rx_fifo_size);
 
-	if (!einfo->rx_fifo)
+	if (!rx_fifo || IS_ERR(rx_fifo))
 		return false;
 
+	einfo->rx_fifo = rx_fifo;
 	return true;
 }
 
