@@ -88,7 +88,7 @@
 			reg = <0x0 0x4aa00000 0x0 0x00100000>;
 		};
 
-		smem@4ab00000 {
+		smem_region:smem@4ab00000 {
 			no-map;
 			reg = <0x0 0x4ab00000 0x0 0x00100000>;
 		};
@@ -199,6 +199,12 @@
 			compatible = "qcom,tcsr-mutex";
 			syscon = <&tcsr_mutex_block 0 0x80>;
 			#hwlock-cells = <1>;
+		};
+
+		qcom,smem@4AB00000 {
+			compatible = "qcom,smem";
+			memory-region = <&smem_region>;
+			hwlocks = <&tcsr_mutex 0>;
 		};
 	};
 };
