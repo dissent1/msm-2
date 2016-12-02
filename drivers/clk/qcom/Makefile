@@ -12,6 +12,7 @@ clk-qcom-y += clk-regmap-mux.o
 clk-qcom-$(CONFIG_KRAIT_CLOCKS) += clk-krait.o
 clk-qcom-y += clk-hfpll.o
 clk-qcom-y += reset.o
+clk-qcom-y += fab_scaling.o
 clk-qcom-$(CONFIG_QCOM_GDSC) += gdsc.o
 
 obj-$(CONFIG_APQ_GCC_8084) += gcc-apq8084.o
@@ -31,4 +32,5 @@ obj-$(CONFIG_MSM_MMCC_8960) += mmcc-msm8960.o
 obj-$(CONFIG_MSM_MMCC_8974) += mmcc-msm8974.o
 obj-$(CONFIG_KPSS_XCC) += kpss-xcc.o
 obj-$(CONFIG_QCOM_HFPLL) += hfpll.o
+obj-$(CONFIG_QCOM_RPM_CLK) += clk-rpm.o
 obj-$(CONFIG_KRAITCC) += krait-cc.o
