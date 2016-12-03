@@ -350,6 +350,7 @@
 		qcom,tunipip6-enabled;
 		qcom,shaping-enabled;
 		qcom,wlan-dataplane-offload-enabled;
+		qcom,vlan-enabled;
 	};
 
 	ssphy: ssphy@78000 {
