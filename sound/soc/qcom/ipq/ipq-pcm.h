@@ -14,24 +14,24 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _IPQ40XX_PCM_H_
-#define _IPQ40XX_PCM_H_
+#ifndef _IPQ_PCM_H_
+#define _IPQ_PCM_H_
 
 #include <linux/sound.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
 
-#include "ipq4019-mbox.h"
+#include "ipq-mbox.h"
 
-struct ipq4019_pcm_rt_priv {
+struct ipq_pcm_rt_priv {
 	int channel;
 	struct device *dev;
-	struct ipq4019_mbox_desc *last_played;
+	struct ipq_mbox_desc *last_played;
 	unsigned int processed_size;
 	uint32_t period_size;
 	uint32_t curr_pos;
 	int mmap_flag;
 };
 
-#endif /* _IPQ40XX_PCM_H_ */
+#endif /* _IPQ_PCM_H_ */

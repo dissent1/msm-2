@@ -15,8 +15,8 @@
  *
  */
 
-#ifndef IPQ4019_ADSS_H
-#define IPQ4019_ADSS_H
+#ifndef IPQ_ADSS_H
+#define IPQ_ADSS_H
 
 /* ADSS AUDIO Registers */
 
@@ -172,7 +172,7 @@
 
 /* ADSS_AUDIO_PCM_REG Registers */
 
-#define ADSS_AUDIO_PCM_REG_BASE		ADSS_BASE + 0x4000
+#define ADSS_AUDIO_PCM_REG_BASE		(ADSS_BASE + 0x4000)
 
 #define AADSS_PCM_BITMAP_REG		0x0
 
@@ -202,74 +202,74 @@
 #define AADSS_PCM_TX_DATA_16BIT_REG	0x34
 
 /* I2S Parameters */
-#define IPQ4019_I2S_NO_OF_PERIODS	(130)
-#define IPQ4019_I2S_PERIOD_BYTES_MIN	ALIGN(4032, L1_CACHE_BYTES)
-#define IPQ4019_I2S_BUFF_SIZE		(IPQ4019_I2S_PERIOD_BYTES_MIN * \
-						IPQ4019_I2S_NO_OF_PERIODS)
-#define IPQ4019_I2S_CAPTURE_BUFF_SIZE	(IPQ4019_I2S_PERIOD_BYTES_MIN * \
-						IPQ4019_I2S_NO_OF_PERIODS)
+#define IPQ_I2S_NO_OF_PERIODS	(130)
+#define IPQ_I2S_PERIOD_BYTES_MIN	ALIGN(4032, L1_CACHE_BYTES)
+#define IPQ_I2S_BUFF_SIZE		(IPQ_I2S_PERIOD_BYTES_MIN * \
+						IPQ_I2S_NO_OF_PERIODS)
+#define IPQ_I2S_CAPTURE_BUFF_SIZE	(IPQ_I2S_PERIOD_BYTES_MIN * \
+						IPQ_I2S_NO_OF_PERIODS)
 
 /* TDM Parameters */
-#define IPQ4019_TDM_NO_OF_PERIODS	(260)
-#define IPQ4019_TDM_PERIOD_BYTES_MIN	ALIGN(4032, L1_CACHE_BYTES)
-#define IPQ4019_TDM_BUFF_SIZE		(IPQ4019_TDM_PERIOD_BYTES_MIN * \
-						IPQ4019_TDM_NO_OF_PERIODS)
-#define IPQ4019_TDM_CAPTURE_BUFF_SIZE	(IPQ4019_TDM_PERIOD_BYTES_MIN * \
-						IPQ4019_TDM_NO_OF_PERIODS)
+#define IPQ_TDM_NO_OF_PERIODS	(260)
+#define IPQ_TDM_PERIOD_BYTES_MIN	ALIGN(4032, L1_CACHE_BYTES)
+#define IPQ_TDM_BUFF_SIZE		(IPQ_TDM_PERIOD_BYTES_MIN * \
+						IPQ_TDM_NO_OF_PERIODS)
+#define IPQ_TDM_CAPTURE_BUFF_SIZE	(IPQ_TDM_PERIOD_BYTES_MIN * \
+						IPQ_TDM_NO_OF_PERIODS)
 
 /* SPDIF area */
 
 
 /* ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG Registers */
 
-#define ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE	ADSS_BASE + 0x6000
+#define ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE	(ADSS_BASE + 0x6000)
 
-#define AADSS_MBOXSPDIFIN_MBOX_FIFO0_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_FIFO0_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x0)
 
-#define AADSS_MBOXSPDIFIN_MBOX_FIFO_STATUS0_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_FIFO_STATUS0_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x08)
 
-#define AADSS_MBOXSPDIFIN_MBOX_DMA_POLICY_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_DMA_POLICY_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x10)
 
-#define AADSS_MBOXSPDIFIN_MBOX0_DMA_RX_DESCRIPTOR_BASE_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX0_DMA_RX_DESCRIPTOR_BASE_REG \
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x18)
 
-#define AADSS_MBOXSPDIFIN_MBOX0_DMA_RX_CONTROL_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX0_DMA_RX_CONTROL_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x1C)
 
-#define AADSS_MBOXSPDIFIN_MBOX0_DMA_TX_DESCRIPTOR_BASE_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX0_DMA_TX_DESCRIPTOR_BASE_REG \
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x20)
 
-#define AADSS_MBOXSPDIFIN_MBOX0_DMA_TX_CONTROL_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX0_DMA_TX_CONTROL_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x24)
 
-#define AADSS_MBOXSPDIFIN_MBOX_FRAME_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_FRAME_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x38)
 
-#define AADSS_MBOXSPDIFIN_FIFO_TIMEOUT_REG \\
+#define AADSS_MBOXSPDIFIN_FIFO_TIMEOUT_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x40)
 
-#define AADSS_MBOXSPDIFIN_MBOX_INT_STATUS_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_INT_STATUS_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x44)
 
-#define AADSS_MBOXSPDIFIN_MBOX_INT_ENABLE_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_INT_ENABLE_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x4C)
 
-#define AADSS_MBOXSPDIFIN_MBOX_FIFO_RESET_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_FIFO_RESET_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x58)
 
-#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN0_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN0_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x60)
 
-#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN1_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN1_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x64)
 
-#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN0_SIGNALS_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN0_SIGNALS_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x68)
 
-#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN1_SIGNALS_REG \\
+#define AADSS_MBOXSPDIFIN_MBOX_DEBUG_CHAIN1_SIGNALS_REG	\
 	((ADSS_MBOXSPDIFIN_AUDIO_MBOX_REG_BASE) + 0x6C)
 
 /* ADSS_SPDIFIN_AUDIO_SPDIF_BASE Registers */
@@ -359,7 +359,7 @@ enum channels {
 	CH_7_1 = 8
 };
 
-enum ipq4019_samp_freq {
+enum ipq_samp_freq {
 	FREQ_8000 = 8000,
 	FREQ_11025 = 11025,
 	FREQ_16000 = 16000,
@@ -396,37 +396,37 @@ enum bit_width {
 };
 
 /* ADSS APIs */
-extern void ipq4019_glb_audio_mode(int mode, int dir);
-extern void ipq4019_glb_tx_data_port_en(uint32_t enable);
-extern void ipq4019_glb_rx_data_port_en(uint32_t enable);
-extern void ipq4019_glb_tx_framesync_port_en(uint32_t enable);
-extern void ipq4019_glb_rx_framesync_port_en(uint32_t enable);
-extern void ipq4019_glb_clk_enable_oe(uint32_t dir);
+extern void ipq_glb_audio_mode(int mode, int dir);
+extern void ipq_glb_tx_data_port_en(uint32_t enable);
+extern void ipq_glb_rx_data_port_en(uint32_t enable);
+extern void ipq_glb_tx_framesync_port_en(uint32_t enable);
+extern void ipq_glb_rx_framesync_port_en(uint32_t enable);
+extern void ipq_glb_clk_enable_oe(uint32_t dir);
 /* Stereo APIs */
-extern void ipq4019_stereo_config_reset(uint32_t reset, uint32_t stereo_offset);
-extern void ipq4019_stereo_config_mic_reset(uint32_t reset,
+extern void ipq_stereo_config_reset(uint32_t reset, uint32_t stereo_offset);
+extern void ipq_stereo_config_mic_reset(uint32_t reset,
 					uint32_t stereo_offset);
-extern void ipq4019_stereo_config_enable(uint32_t enable,
+extern void ipq_stereo_config_enable(uint32_t enable,
 					uint32_t stereo_offset);
-extern int ipq4019_cfg_bit_width(uint32_t bit_width, uint32_t stereo_offset);
-extern void ipq4019_config_stereo_mode(uint32_t mode, uint32_t stereo_offset);
-extern void ipq4019_config_master(uint32_t enable, uint32_t stereo_offset);
-extern void ipq4019_config_mclk_sel(uint32_t stereo_offset, uint32_t val);
-extern void ipq4019_config_sample_cnt_clear_type(uint32_t stereo_offset);
+extern int ipq_cfg_bit_width(uint32_t bit_width, uint32_t stereo_offset);
+extern void ipq_config_stereo_mode(uint32_t mode, uint32_t stereo_offset);
+extern void ipq_config_master(uint32_t enable, uint32_t stereo_offset);
+extern void ipq_config_mclk_sel(uint32_t stereo_offset, uint32_t val);
+extern void ipq_config_sample_cnt_clear_type(uint32_t stereo_offset);
 
 /* APIs in DAI driver */
-extern int ipq4019_get_mbox_id(struct snd_pcm_substream *substream, int intf);
-extern int ipq4019_get_stereo_id(struct snd_pcm_substream *substream, int intf);
-extern u32 ipq4019_get_act_bit_width(u32 bit_width);
-extern void ipq4019_stereo_spdif_enable(uint32_t enable, uint32_t stereo_id);
-extern void ipq4019_stereo_spdif_pcmswap(uint32_t enable, uint32_t stereo_id);
-extern void ipq4019_spdifin_ctrl_spdif_en(uint32_t enable);
-extern void ipq4019_glb_spdif_out_en(uint32_t enable);
-extern void ipq4019_spdifin_cfg(void);
-extern void ipq4019_glb_tdm_ctrl_ch_num(uint32_t val, uint32_t dir);
-extern void ipq4019_glb_tdm_ctrl_sync_num(uint32_t val, uint32_t dir);
-extern void ipq4019_glb_tdm_ctrl_delay(uint32_t delay, uint32_t dir);
+extern int ipq_get_mbox_id(struct snd_pcm_substream *substream, int intf);
+extern int ipq_get_stereo_id(struct snd_pcm_substream *substream, int intf);
+extern u32 ipq_get_act_bit_width(u32 bit_width);
+extern void ipq_stereo_spdif_enable(uint32_t enable, uint32_t stereo_id);
+extern void ipq_stereo_spdif_pcmswap(uint32_t enable, uint32_t stereo_id);
+extern void ipq_spdifin_ctrl_spdif_en(uint32_t enable);
+extern void ipq_glb_spdif_out_en(uint32_t enable);
+extern void ipq_spdifin_cfg(void);
+extern void ipq_glb_tdm_ctrl_ch_num(uint32_t val, uint32_t dir);
+extern void ipq_glb_tdm_ctrl_sync_num(uint32_t val, uint32_t dir);
+extern void ipq_glb_tdm_ctrl_delay(uint32_t delay, uint32_t dir);
 
-void ipq4019_glb_audio_mode_B1K(void);
+void ipq_glb_audio_mode_B1K(void);
 
 #endif
