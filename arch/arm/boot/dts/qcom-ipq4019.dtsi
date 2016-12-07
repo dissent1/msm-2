@@ -732,6 +732,53 @@
 			status = "disabled";
 		};
 
+		ess-switch@c000000 {
+			compatible = "qcom,ess-switch";
+			reg = <0xc000000 0x80000>; /* 512KB */
+			switch_access_mode = "local bus";
+			resets = <&gcc ESS_RESET>, <&gcc ESS_MAC1_CLK_DIS>, \
+				<&gcc ESS_MAC2_CLK_DIS>, <&gcc ESS_MAC3_CLK_DIS>, \
+				<&gcc ESS_MAC4_CLK_DIS>, <&gcc ESS_MAC5_CLK_DIS>;
+			reset-names = "ess_rst","ess_mac1_clk_dis", \
+				"ess_mac2_clk_dis","ess_mac3_clk_dis", \
+				"ess_mac4_clk_dis", "ess_mac5_clk_dis";
+			clocks = <&gcc GCC_ESS_CLK>;
+			clock-names = "ess_clk";
+			switch_cpu_bmp = <0x1>;  /* cpu port bitmap */
+			switch_lan_bmp = <0x1e>; /* lan port bitmap */
+			switch_wan_bmp = <0x20>; /* wan port bitmap */
+		};
+
+		ess-psgmii@98000 {
+			compatible = "qcom,ess-psgmii";
+			reg = <0x98000 0x800>; /* 2k */
+			psgmii_access_mode = "local bus";
+			resets = <&gcc ESS_PSGMII_ARES>;
+			reset-names = "psgmii_rst";
+		};
+
+		mdio@90000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "qcom,ipq40xx-mdio";
+			reg = <0x90000 0x64>;
+			phy0: ethernet-phy@0 {
+				reg = <0>;
+			};
+			phy1: ethernet-phy@1 {
+				reg = <1>;
+			};
+			phy2: ethernet-phy@2 {
+				reg = <2>;
+			};
+			phy3: ethernet-phy@3 {
+				reg = <3>;
+			};
+			phy4: ethernet-phy@4 {
+				reg = <4>;
+			};
+		};
+
 		nand: qpic-nand@79b0000 {
 			compatible = "qcom,ebi2-nandc-bam", "qcom,msm-nand";
 			reg = <0x79b0000 0x1000>;

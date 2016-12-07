@@ -17,6 +17,13 @@
 /{
 	model = "Qualcomm Technologies, Inc. IPQ40xx/AP-DK06.1-C1";
 	soc {
+		mdio@90000 {
+			status = "ok";
+			pinctrl-0 = <&mdio_pins>;
+			pinctrl-names = "default";
+			phy-reset-gpio = <&tlmm 19 0>;
+			bias-disable;
+		};
 
 		sdhc_1: sdhci@7824000 {
 			status = "disabled";
@@ -46,6 +53,44 @@
 				linux,code = <KEY_RESTART>;
 				gpios = <&tlmm 18 GPIO_ACTIVE_LOW>;
 				linux,input-type = <1>;
+			};
+		};
+
+		ess-switch@c000000 {
+			led_source@0 {
+				led = <0x3>;     /*led number */
+				source = <0x1>;  /*source id 1 */
+				mode = "normal"; /*on,off,blink,normal */
+				speed = "all";   /*10M,100M,1000M,all */
+				freq = "auto";   /*2Hz,4Hz,8Hz,auto*/
+			};
+			led_source@1 {
+				led = <0x4>;     /*led number */
+				source = <0x4>;  /*source id 4 */
+				mode = "normal"; /*on,off,blink,normal */
+				speed = "all";   /*10M,100M,1000M,all */
+				freq = "auto";   /*2Hz,4Hz,8Hz,auto*/
+			};
+			led_source@2 {
+				led = <0x0>;     /*led number */
+				source = <0x7>;  /*source id 7 */
+				mode = "normal"; /*on,off,blink,normal */
+				speed = "all";   /*10M,100M,1000M,all */
+				freq = "auto";   /*2Hz,4Hz,8Hz,auto*/
+			};
+			led_source@3 {
+				led = <0x5>;     /*led number */
+				source = <0xa>;  /*source id 10 */
+				mode = "normal"; /*on,off,blink,normal */
+				speed = "all";   /*10M,100M,1000M,all */
+				freq = "auto";   /*2Hz,4Hz,8Hz,auto*/
+			};
+			led_source@4 {
+				led = <0x6>;     /*led number */
+				source = <0xd>;  /*source id 13 */
+				mode = "normal"; /*on,off,blink,normal */
+				speed = "all";   /*10M,100M,1000M,all */
+				freq = "auto";   /*2Hz,4Hz,8Hz,auto*/
 			};
 		};
 	};

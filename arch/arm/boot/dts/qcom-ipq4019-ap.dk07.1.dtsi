@@ -28,6 +28,19 @@
 
 	soc {
 		pinctrl@0x01000000 {
+			mdio_pins: mdio_pinmux {
+				mux_1 {
+					pins = "gpio6";
+					function = "mdio0";
+					bias-bus-hold;
+				};
+				mux_2 {
+					pins = "gpio7";
+					function = "mdc";
+					bias-bus-hold;
+				};
+			};
+
 			serial_0_pins: serial0_pinmux {
 				mux {
 					pins = "gpio16", "gpio17";
@@ -140,6 +153,14 @@
 
 		};
 
+		mdio@90000 {
+			status = "ok";
+			pinctrl-0 = <&mdio_pins>;
+			pinctrl-names = "default";
+			phy-reset-gpio = <&tlmm 41 0>;
+			bias-disable;
+		};
+
 		serial@78af000 {
 			pinctrl-0 = <&serial_0_pins>;
 			pinctrl-names = "default";
@@ -167,6 +188,13 @@
 		pcie0: pci@40000000 {
 			status = "ok";
 			perst-gpio = <&tlmm 38 0x1>;
+		};
+
+		ess-switch@c000000 {
+			switch_mac_mode = <0x0>; /* mac mode for RGMII RMII */
+			switch_initvlas = <
+				0x0007c 0x54 /* PORT0_STATUS */
+			>;
 		};
 
 		sdhc_1: sdhci@7824000{
