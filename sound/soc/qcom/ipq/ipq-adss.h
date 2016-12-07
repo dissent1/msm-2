@@ -37,13 +37,26 @@
 #define GLB_I2S_RST_CTRL_MBOX0		BIT(0)
 #define GLB_I2S_RST_CTRL_I2S0		BIT(1)
 #define GLB_I2S_RST_CTRL_MBOX3		BIT(2)
-#define GLB_I2S_RESET_VAL		0xF
+#define GLB_I2S_RESET_VAL_4019		0xF
+/* IPQ8074 bit fields ADSS_GLB_I2S_RST_REG */
+#define GLB_I2S_RESET_VAL_8074		0xFF
+#define GLB_I2S_RST_CTRL_I2S3		BIT(3)
+#define GLB_I2S_RST_CTRL_TXMCLK		BIT(4)
+#define GLB_I2S_RST_CTRL_TXBCLK		BIT(5)
+#define GLB_I2S_RST_CTRL_RXMCLK		BIT(6)
+#define GLB_I2S_RST_CTRL_RXBCLK		BIT(7)
 
 #define ADSS_GLB_CLK_I2S_CTRL_REG	0x18
 #define GLB_CLK_I2S_CTRL_TX_BCLK_OE	BIT(28)
 #define GLB_CLK_I2S_CTRL_RX_BCLK_OE	BIT(27)
 #define GLB_CLK_I2S_CTRL_RX_MCLK_OE	BIT(16)
 #define GLB_CLK_I2S_CTRL_TX_MCLK_OE	BIT(17)
+/* IPQ8074 bit fields */
+#define GLB_CLK_I2S_CTRL_I2S3_FS_OE	BIT(15)
+#define GLB_CLK_I2S_CTRL_I2S0_FS_OE	BIT(14)
+#define GLB_CLK_I2S_CTRL_I2S3_RXD_OE	BIT(13)
+#define GLB_CLK_I2S_CTRL_I2S0_TXD_OE	BIT(12)
+
 
 #define ADSS_GLB_TDM_CTRL_REG			0x1C
 #define GLB_TDM_CTRL_TX_CHAN_NUM(x)	(x << 0)
@@ -331,6 +344,10 @@
 #define SNDRV_PCM_FMTBIT_S24_3			SNDRV_PCM_FMTBIT_S24_3LE
 
 /* Enumerations */
+enum ipq_hw_type {
+	IPQ4019,
+	IPQ8074
+};
 
 enum intf {
 	I2S,
@@ -393,6 +410,28 @@ enum bit_width {
 	__BIT_24 = 24,
 	__BIT_32 = 32,
 	__BIT_INVAL = -1
+};
+
+struct ipq_intf_pdata {
+	uint32_t data;
+	uint32_t hw;
+};
+
+/* Structure to hold the Register/bitfield
+ * changes between ipq4019 and ipq8074
+ */
+struct ipq_regs_arr {
+	uint32_t reg;
+	uint32_t mask;
+};
+
+struct ipq_configs {
+	struct ipq_regs_arr txd_oe;
+	struct ipq_regs_arr rxd_oe;
+	struct ipq_regs_arr i2s0_fs_oe;
+	struct ipq_regs_arr i2s3_fs_oe;
+	struct ipq_regs_arr i2s_reset_val;
+	uint32_t spdif_enable;
 };
 
 /* ADSS APIs */

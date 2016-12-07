@@ -25,6 +25,7 @@
 #include <linux/delay.h>
 #include <linux/reset.h>
 #include <linux/spinlock.h>
+#include <linux/of_device.h>
 
 #include "ipq-adss.h"
 
@@ -34,6 +35,55 @@ static struct reset_control *audio_blk_rst;
 static spinlock_t i2s_ctrl_lock;
 static spinlock_t tdm_ctrl_lock;
 static spinlock_t glb_mode_lock;
+
+static struct ipq_configs ipq4019_cfgs = {
+	.txd_oe = {
+		.reg = ADSS_GLB_AUDIO_MODE_REG,
+		.mask = GLB_AUDIO_MODE_I2S0_TXD_OE,
+	},
+	.rxd_oe = {
+		.reg = ADSS_GLB_AUDIO_MODE_REG,
+		.mask = GLB_AUDIO_MODE_I2S3_RXD_OE,
+	},
+	.i2s0_fs_oe = {
+		.reg = ADSS_GLB_AUDIO_MODE_REG,
+		.mask = GLB_AUDIO_MODE_I2S0_FS_OE,
+	},
+	.i2s3_fs_oe = {
+		.reg = ADSS_GLB_AUDIO_MODE_REG,
+		.mask = GLB_AUDIO_MODE_I2S3_FS_OE,
+	},
+	.i2s_reset_val = {
+		.reg = ADSS_GLB_I2S_RST_REG,
+		.mask = GLB_I2S_RESET_VAL_4019,
+	},
+	.spdif_enable = 1,
+};
+
+static struct ipq_configs ipq8074_cfgs = {
+	.txd_oe = {
+		.reg = ADSS_GLB_CLK_I2S_CTRL_REG,
+		.mask = GLB_CLK_I2S_CTRL_I2S0_TXD_OE,
+	},
+	.rxd_oe = {
+		.reg = ADSS_GLB_CLK_I2S_CTRL_REG,
+		.mask = GLB_CLK_I2S_CTRL_I2S3_RXD_OE,
+	},
+	.i2s0_fs_oe = {
+		.reg = ADSS_GLB_CLK_I2S_CTRL_REG,
+		.mask = GLB_CLK_I2S_CTRL_I2S0_FS_OE,
+	},
+	.i2s3_fs_oe = {
+		.reg = ADSS_GLB_CLK_I2S_CTRL_REG,
+		.mask = GLB_CLK_I2S_CTRL_I2S3_FS_OE,
+	},
+	.i2s_reset_val = {
+		.reg = ADSS_GLB_I2S_RST_REG,
+		.mask = GLB_I2S_RESET_VAL_8074,
+	},
+	.spdif_enable = 0,
+};
+static struct ipq_configs *ipq_cfgs;
 
 /* Channel Number Per Frame for Transmitter/Receiver
  * Real value = val + 1
@@ -151,7 +201,8 @@ EXPORT_SYMBOL(ipq_glb_stereo_ch_en);
  */
 static void ipq_glb_i2s_reset(void)
 {
-	writel(GLB_I2S_RESET_VAL, adss_audio_local_base + ADSS_GLB_I2S_RST_REG);
+	writel(ipq_cfgs->i2s_reset_val.mask,
+		adss_audio_local_base + ipq_cfgs->i2s_reset_val.reg);
 	mdelay(5);
 	writel(0x0, adss_audio_local_base + ADSS_GLB_I2S_RST_REG);
 }
@@ -195,13 +246,15 @@ void ipq_glb_tx_data_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
+	uint32_t reg = ipq_cfgs->txd_oe.reg;
+	uint32_t val = ipq_cfgs->txd_oe.mask;
 
 	spin_lock_irqsave(&glb_mode_lock, flags);
-	cfg = readl(adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
-	cfg &= ~GLB_AUDIO_MODE_I2S0_TXD_OE;
+	cfg = readl(adss_audio_local_base + reg);
+	cfg &= ~val;
 	if (enable)
-		cfg |= GLB_AUDIO_MODE_I2S0_TXD_OE;
-	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
+		cfg |= val;
+	writel(cfg, adss_audio_local_base + reg);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
 EXPORT_SYMBOL(ipq_glb_tx_data_port_en);
@@ -213,13 +266,15 @@ void ipq_glb_rx_data_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
+	uint32_t reg = ipq_cfgs->rxd_oe.reg;
+	uint32_t val = ipq_cfgs->rxd_oe.mask;
 
 	spin_lock_irqsave(&glb_mode_lock, flags);
-	cfg = readl(adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
-	cfg &= ~GLB_AUDIO_MODE_I2S3_RXD_OE;
+	cfg = readl(adss_audio_local_base + reg);
+	cfg &= ~val;
 	if (enable)
-		cfg |= GLB_AUDIO_MODE_I2S3_RXD_OE;
-	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
+		cfg |= val;
+	writel(cfg, adss_audio_local_base + reg);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
 EXPORT_SYMBOL(ipq_glb_rx_data_port_en);
@@ -248,13 +303,15 @@ void ipq_glb_tx_framesync_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
+	uint32_t reg = ipq_cfgs->i2s0_fs_oe.reg;
+	uint32_t val = ipq_cfgs->i2s0_fs_oe.mask;
 
 	spin_lock_irqsave(&glb_mode_lock, flags);
-	cfg =  readl(adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
-	cfg &= ~GLB_AUDIO_MODE_I2S0_FS_OE;
+	cfg =  readl(adss_audio_local_base + reg);
+	cfg &= ~val;
 	if (enable)
-		cfg |= GLB_AUDIO_MODE_I2S0_FS_OE;
-	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
+		cfg |= val;
+	writel(cfg, adss_audio_local_base + reg);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
 EXPORT_SYMBOL(ipq_glb_tx_framesync_port_en);
@@ -266,13 +323,15 @@ void ipq_glb_rx_framesync_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
+	uint32_t reg = ipq_cfgs->i2s3_fs_oe.reg;
+	uint32_t val = ipq_cfgs->i2s3_fs_oe.mask;
 
 	spin_lock_irqsave(&glb_mode_lock, flags);
-	cfg =  readl(adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
-	cfg &= ~GLB_AUDIO_MODE_I2S3_FS_OE;
+	cfg =  readl(adss_audio_local_base + reg);
+	cfg &= ~val;
 	if (enable)
-		cfg |= GLB_AUDIO_MODE_I2S3_FS_OE;
-	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
+		cfg |= val;
+	writel(cfg, adss_audio_local_base + reg);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
 EXPORT_SYMBOL(ipq_glb_rx_framesync_port_en);
@@ -341,7 +400,8 @@ void ipq_glb_spdif_out_en(uint32_t enable)
 EXPORT_SYMBOL(ipq_glb_spdif_out_en);
 
 static const struct of_device_id ipq_audio_adss_id_table[] = {
-	{ .compatible = "qca,ipq4019-audio-adss" },
+	{ .compatible = "qca,ipq4019-audio-adss", .data = &ipq4019_cfgs},
+	{ .compatible = "qca,ipq8074-audio-adss", .data = &ipq8074_cfgs},
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_audio_adss_id_table);
@@ -349,16 +409,26 @@ MODULE_DEVICE_TABLE(of, ipq_audio_adss_id_table);
 static int ipq_audio_adss_probe(struct platform_device *pdev)
 {
 	struct resource *res;
+	const struct of_device_id *match;
+
+	match = of_match_device(ipq_audio_adss_id_table, &pdev->dev);
+	if (!match)
+		return -ENODEV;
+
+	ipq_cfgs = (struct ipq_configs *)match->data;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	adss_audio_local_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(adss_audio_local_base))
 		return PTR_ERR(adss_audio_local_base);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	adss_audio_spdifin_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(adss_audio_spdifin_base))
-		return PTR_ERR(adss_audio_spdifin_base);
+	if (ipq_cfgs->spdif_enable == 1) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		adss_audio_spdifin_base =
+				devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(adss_audio_spdifin_base))
+			return PTR_ERR(adss_audio_spdifin_base);
+	}
 
 	audio_blk_rst = devm_reset_control_get(&pdev->dev, "blk_rst");
 	if (IS_ERR(audio_blk_rst))
