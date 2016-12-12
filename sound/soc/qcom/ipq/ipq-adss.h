@@ -198,6 +198,7 @@
 #define PCM_CTRL_PCM_CLK_MODE(x)	(x << 25)
 #define PCM_CTRL_PCM_SLOT_MODE(x)	(x << 24)
 #define PCM_CTRL_PCM_DCLK_MODE(x)	(x << 4)
+#define PCM_CTRL_PCM_PHASE_MASK		0xF
 #define PCM_CTRL_PCM_TX_PHASE(x)	(x << 2)
 #define PCM_CTRL_PCM_RX_PHASE(x)	(x << 0)
 

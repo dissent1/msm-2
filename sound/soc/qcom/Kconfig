@@ -52,6 +52,7 @@ config SND_SOC_IPQ
 	select SND_SOC_IPQ_CODEC
 	select SND_SOC_IPQ_PCM_TDM
 	select SND_SOC_IPQ_PCM_SPDIF
+	select SND_SOC_IPQ_PCM_RAW
 	help
 	Say Y or M to if you want to add support for SoC audio on
 	Qualcomm Atheros IPQ based board.
@@ -85,5 +86,9 @@ config SND_SOC_IPQ_PCM_TDM
 	depends on SND_SOC_IPQ
 
 config SND_SOC_IPQ_PCM_SPDIF
+	tristate
+	depends on SND_SOC_IPQ
+
+config SND_SOC_IPQ_PCM_RAW
 	tristate
 	depends on SND_SOC_IPQ
