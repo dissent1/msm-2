@@ -49,7 +49,7 @@
 
 	soc {
 		pinmux@800000 {
-			pinctrl-0 = <&mdio0_pins
+			pinctrl-0 = <&rgmii2_pins &mdio0_pins
 				     &mdio1_pins
 				     &pcie_2g_pwrdwn_default
 				     &pcie_5g_pwrdwn_default
@@ -150,6 +150,18 @@
 				mux {
 					pins = "gpio2", "gpio66";
 					function = "gpio";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
+			rgmii2_pins: rgmii2_pins {
+				mux {
+					pins = "gpio27", "gpio28", "gpio29",
+						"gpio30", "gpio31", "gpio32",
+					       "gpio51", "gpio52", "gpio59",
+						"gpio60", "gpio61", "gpio62" ;
+					function = "rgmii2";
 					drive-strength = <8>;
 					bias-disable;
 				};
@@ -351,6 +363,7 @@
 		};
 
 		gmac0: ethernet@37000000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37000000 0x200000>;
@@ -368,9 +381,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio1>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
-                gmac1: ethernet@37200000 {
+		gmac1: ethernet@37200000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37200000 0x200000>;
@@ -388,9 +407,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio1>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
-                gmac2: ethernet@37400000 {
+		gmac2: ethernet@37400000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37400000 0x200000>;
@@ -408,9 +433,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio1>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
                 gmac3: ethernet@37600000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37600000 0x200000>;
@@ -428,6 +459,11 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio1>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		crypto1: crypto@38000000 {

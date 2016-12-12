@@ -55,7 +55,9 @@
 
 	soc {
 		pinmux@800000 {
-			pinctrl-0 = <&leds_pins>;
+			pinctrl-0 = <&rgmii2_pins &leds_pins>;
+			pinctrl-names = "default";
+
 			i2c4_pins: i2c4_pinmux {
 				pins = "gpio12", "gpio13";
 				function = "gsbi4";
@@ -111,6 +113,20 @@
 					output-low;
 				};
 			};
+
+			rgmii2_pins: rgmii2_pins {
+				mux {
+					pins = "gpio2", "gpio27", "gpio28",
+						"gpio29", "gpio30", "gpio31",
+						"gpio32", "gpio51", "gpio52",
+						"gpio59", "gpio60", "gpio61",
+						"gpio62","gpio66";
+					function = "rgmii2";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
 		};
 
 		gsbi@16300000 {
@@ -322,6 +338,7 @@
 		};
 
 		gmac0: ethernet@37000000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37000000 0x200000>;
@@ -338,9 +355,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		gmac1: ethernet@37200000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37200000 0x200000>;
@@ -357,9 +380,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		gmac2: ethernet@37400000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37400000 0x200000>;
@@ -376,6 +405,11 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		crypto1: crypto@38000000 {
@@ -420,6 +454,7 @@
                         reset-names = "rst_eng";
 			qcom,ee = <0>;
 		};
+
 	};
 };
 
