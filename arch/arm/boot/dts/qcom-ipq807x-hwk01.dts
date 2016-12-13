@@ -363,9 +363,18 @@
 		status = "ok";
 	};
 
-	usb3: usb3@8A00000 {
-		status = "ok";
-	};
+};
+
+&dwc_1 {
+	dr_mode = "peripheral";
+};
+
+&usb3_0 {
+	status = "ok";
+};
+
+&usb3_1 {
+	status = "ok";
 };
 
 &sdhc_1{
