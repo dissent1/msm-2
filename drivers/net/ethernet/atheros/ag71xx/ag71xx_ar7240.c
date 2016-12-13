@@ -1,5 +1,6 @@
 /*
  *  Driver for the built-in ethernet switch of the Atheros AR7240 SoC
+ *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
  *  Copyright (c) 2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (c) 2010 Felix Fietkau <nbd@openwrt.org>
  *
@@ -192,7 +193,6 @@
 
 #define AR7240_PORT_CPU		0
 #define AR7240_NUM_PORTS	6
-#define AR7240_NUM_PHYS		5
 
 #define AR7240_PHY_ID1		0x004d
 #define AR7240_PHY_ID2		0xd041

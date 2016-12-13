@@ -1,6 +1,7 @@
 /*
  *  Atheros AR71xx built-in ethernet mac driver
  *
+ *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -105,84 +106,25 @@ void ag71xx_mdio_mii_write(struct ag71xx_mdio *am, int addr, int reg, u16 val)
 	ag71xx_mdio_wait_busy(am);
 }
 
-static const u32 ar71xx_mdio_div_table[] = {
-	4, 4, 6, 8, 10, 14, 20, 28,
-};
-
-static const u32 ar7240_mdio_div_table[] = {
-	2, 2, 4, 6, 8, 12, 18, 26, 32, 40, 48, 56, 62, 70, 78, 96,
-};
-
-static const u32 ar933x_mdio_div_table[] = {
-	4, 4, 6, 8, 10, 14, 20, 28, 34, 42, 50, 58, 66, 74, 82, 98,
-};
-
-static int ag71xx_mdio_get_divider(struct ag71xx_mdio *am, u32 *div)
-{
-	unsigned long ref_clock, mdio_clock;
-	const u32 *table;
-	int ndivs;
-	int i;
-
-	ref_clock = am->pdata->ref_clock;
-	mdio_clock = am->pdata->mdio_clock;
-
-	if (!ref_clock || !mdio_clock)
-		return -EINVAL;
-
-	if (am->pdata->is_ar9330 || am->pdata->is_ar934x) {
-		table = ar933x_mdio_div_table;
-		ndivs = ARRAY_SIZE(ar933x_mdio_div_table);
-	} else if (am->pdata->is_ar7240) {
-		table = ar7240_mdio_div_table;
-		ndivs = ARRAY_SIZE(ar7240_mdio_div_table);
-	} else {
-		table = ar71xx_mdio_div_table;
-		ndivs = ARRAY_SIZE(ar71xx_mdio_div_table);
-	}
-
-	for (i = 0; i < ndivs; i++) {
-		unsigned long t;
-
-		t = ref_clock / table[i];
-		if (t <= mdio_clock) {
-			*div = i;
-			return 0;
-		}
-	}
-
-	dev_err(&am->mii_bus->dev, "no divider found for %lu/%lu\n",
-		ref_clock, mdio_clock);
-	return -ENOENT;
-}
-
 static int ag71xx_mdio_reset(struct mii_bus *bus)
 {
 	struct ag71xx_mdio *am = bus->priv;
 	u32 t;
-	int err;
 
-	err = ag71xx_mdio_get_divider(am, &t);
-	if (err) {
-		/* fallback */
-		if (am->pdata->is_ar7240)
-			t = MII_CFG_CLK_DIV_6;
-		else if (am->pdata->builtin_switch && !am->pdata->is_ar934x)
-			t = MII_CFG_CLK_DIV_10;
-		else if (!am->pdata->builtin_switch && am->pdata->is_ar934x)
-			t = MII_CFG_CLK_DIV_58;
-		else
-			t = MII_CFG_CLK_DIV_28;
-	}
+	if (am->pdata->is_ar7240)
+		t = MII_CFG_CLK_DIV_6;
+	else if (am->pdata->builtin_switch && !am->pdata->is_ar934x)
+		t = MII_CFG_CLK_DIV_10;
+	else if (!am->pdata->builtin_switch && am->pdata->is_ar934x)
+		t = MII_CFG_CLK_DIV_58;
+	else
+		t = MII_CFG_CLK_DIV_28;
 
 	ag71xx_mdio_wr(am, AG71XX_REG_MII_CFG, t | MII_CFG_RESET);
 	udelay(100);
 
 	ag71xx_mdio_wr(am, AG71XX_REG_MII_CFG, t);
 	udelay(100);
-
-	if (am->pdata->reset)
-		am->pdata->reset(bus);
 
 	return 0;
 }
@@ -191,7 +133,7 @@ static int ag71xx_mdio_read(struct mii_bus *bus, int addr, int reg)
 {
 	struct ag71xx_mdio *am = bus->priv;
 
-	if (am->pdata->builtin_switch)
+	if ((am->pdata->builtin_switch) && (addr < AR7240_NUM_PHYS))
 		return ar7240sw_phy_read(bus, addr, reg);
 	else
 		return ag71xx_mdio_mii_read(am, addr, reg);
@@ -201,7 +143,7 @@ static int ag71xx_mdio_write(struct mii_bus *bus, int addr, int reg, u16 val)
 {
 	struct ag71xx_mdio *am = bus->priv;
 
-	if (am->pdata->builtin_switch)
+	if ((am->pdata->builtin_switch) && (addr < AR7240_NUM_PHYS))
 		ar7240sw_phy_write(bus, addr, reg, val);
 	else
 		ag71xx_mdio_mii_write(am, addr, reg, val);

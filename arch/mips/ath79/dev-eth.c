@@ -1,6 +1,7 @@
 /*
  *  Atheros AR71xx SoC platform devices
  *
+ *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2010-2011 Jaiganesh Narayanan <jnarayanan@atheros.com>
  *  Copyright (C) 2008-2012 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
@@ -173,7 +174,7 @@ static unsigned long ar934x_get_mdio_ref_clock(void)
 	return ret;
 }
 
-void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
+void ath79_init_mdio_pdata(unsigned int id, u32 phy_mask)
 {
 	struct platform_device *mdio_dev;
 	struct ag71xx_mdio_platform_data *mdio_data;
@@ -183,8 +184,7 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 	    ath79_soc == ATH79_SOC_AR9342 ||
 	    ath79_soc == ATH79_SOC_AR9344 ||
 	    ath79_soc == ATH79_SOC_QCA9556 ||
-	    ath79_soc == ATH79_SOC_QCA9558 ||
-	    ath79_soc == ATH79_SOC_QCA956X)
+	    ath79_soc == ATH79_SOC_QCA9558)
 		max_id = 1;
 	else
 		max_id = 0;
@@ -200,6 +200,7 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 	case ATH79_SOC_AR9331:
 	case ATH79_SOC_QCA9533:
 	case ATH79_SOC_TP9343:
+	case ATH79_SOC_QCA956X:
 		mdio_dev = &ath79_mdio1_device;
 		mdio_data = &ath79_mdio1_data;
 		break;
@@ -209,7 +210,6 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 	case ATH79_SOC_AR9344:
 	case ATH79_SOC_QCA9556:
 	case ATH79_SOC_QCA9558:
-	case ATH79_SOC_QCA956X:
 		if (id == 0) {
 			mdio_dev = &ath79_mdio0_device;
 			mdio_data = &ath79_mdio0_data;
@@ -244,6 +244,7 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 		mdio_data->is_ar9330 = 1;
 		/* fall through */
 	case ATH79_SOC_AR9331:
+	case ATH79_SOC_QCA956X:
 		mdio_data->builtin_switch = 1;
 		break;
 
@@ -268,16 +269,16 @@ void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
 		mdio_data->is_ar934x = 1;
 		break;
 
-	case ATH79_SOC_QCA956X:
-		if (id == 1)
-			mdio_data->builtin_switch = 1;
-		break;
-
 	default:
 		break;
 	}
+}
 
-	platform_device_register(mdio_dev);
+void __init ath79_register_mdio(unsigned int id, u32 phy_mask)
+{
+	ath79_init_mdio_pdata(id, phy_mask);
+	platform_device_register(id ? &ath79_mdio1_device :
+				 &ath79_mdio0_device);
 }
 
 struct ath79_eth_pll_data ath79_eth0_pll_data;
@@ -857,7 +858,7 @@ void __init ath79_setup_qca955x_eth_cfg(u32 mask)
 }
 
 static int ath79_eth_instance __initdata;
-void __init ath79_register_eth(unsigned int id)
+void ath79_init_eth_pdata(unsigned int id)
 {
 	struct platform_device *pdev;
 	struct ag71xx_platform_data *pdata;
@@ -1142,6 +1143,10 @@ void __init ath79_register_eth(unsigned int id)
 					   QCA955X_RESET_GE1_MDIO;
 			/* FIXME */
 			pdata->set_speed = ath79_set_speed_dummy;
+			pdata->switch_data = &ath79_switch_data;
+			/* reset the built-in switch */
+			ath79_device_reset_set(AR934X_RESET_ETH_SWITCH);
+			ath79_device_reset_clear(AR934X_RESET_ETH_SWITCH);
 		}
 
 		pdata->ddr_flush = ath79_ddr_no_flush;
@@ -1158,6 +1163,19 @@ void __init ath79_register_eth(unsigned int id)
 
 	default:
 		BUG();
+	}
+
+	/*
+	 * since some of patchs are applied to this file
+	 * we couldnt use the above switch statement.
+	 * it can be cleaned up later
+	 */
+	if ((id == 0)  && (ath79_soc == ATH79_SOC_QCA956X)) {
+		pdata->is_qca9561 = 1;
+	} else if (ath79_soc == ATH79_SOC_QCA9558) {
+		pdata->is_qca955x = 1;
+	} else {
+		pdata->is_qca9561 = 0;
 	}
 
 	switch (pdata->phy_if_mode) {
@@ -1186,6 +1204,7 @@ void __init ath79_register_eth(unsigned int id)
 		case ATH79_SOC_AR9341:
 		case ATH79_SOC_AR9342:
 		case ATH79_SOC_AR9344:
+		case ATH79_SOC_QCA9558:
 			if (id == 0)
 				pdata->mii_bus_dev = &ath79_mdio0_device.dev;
 			else
@@ -1197,11 +1216,11 @@ void __init ath79_register_eth(unsigned int id)
 		case ATH79_SOC_AR9331:
 		case ATH79_SOC_QCA9533:
 		case ATH79_SOC_TP9343:
+		case ATH79_SOC_QCA956X:
 			pdata->mii_bus_dev = &ath79_mdio1_device.dev;
 			break;
 
 		case ATH79_SOC_QCA9556:
-		case ATH79_SOC_QCA9558:
 			/* don't assign any MDIO device by default */
 			break;
 
@@ -1218,8 +1237,13 @@ void __init ath79_register_eth(unsigned int id)
 	ath79_device_reset_clear(pdata->reset_bit);
 	msleep(100);
 
-	platform_device_register(pdev);
 	ath79_eth_instance++;
+}
+
+void __init ath79_register_eth(unsigned int id)
+{
+	ath79_init_eth_pdata(id);
+	platform_device_register(id ? &ath79_eth1_device : &ath79_eth0_device);
 }
 
 void __init ath79_set_mac_base(unsigned char *mac)

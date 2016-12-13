@@ -1,6 +1,7 @@
 /*
  *  Atheros AP147 reference board support
  *
+ *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2014 Matthias Schiffer <mschiffer@universe-factory.net>
  *  Copyright (C) 2015 Sven Eckelmann <sven@open-mesh.com>
  *
@@ -104,6 +105,7 @@ static void __init ap147_setup(void)
 	ath79_setup_ar933x_phy4_switch(false, false);
 
 	ath79_register_mdio(0, 0x0);
+	ath79_register_mdio(1, 0x0);
 
 	/* WAN */
 	ath79_switch_data.phy4_mii_en = 1;
@@ -116,6 +118,7 @@ static void __init ap147_setup(void)
 
 	/* LAN */
 	ath79_eth1_data.phy_if_mode = PHY_INTERFACE_MODE_GMII;
+	ath79_eth1_data.speed = SPEED_1000;
 	ath79_eth1_data.duplex = DUPLEX_FULL;
 	ath79_switch_data.phy_poll_mask |= BIT(4);
 	ath79_init_mac(ath79_eth1_data.mac_addr, art, 0);
