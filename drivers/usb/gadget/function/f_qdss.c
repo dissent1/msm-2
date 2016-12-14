@@ -13,18 +13,12 @@
  * GNU General Public License for more details
  */
 
-<<<<<<< HEAD
-=======
-#include <linux/init.h>
-#include <linux/module.h>
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/usb/usb_qdss.h>
 #include <linux/usb/msm_hsusb.h>
 #include <linux/usb/cdc.h>
 
-<<<<<<< HEAD
 #include "gadget_chips.h"
 #include "f_qdss.h"
 #include "u_qdss.c"
@@ -49,9 +43,6 @@ static struct qdss_ports {
 	struct grmnet			bam_dmux_port;
 } qdss_ports[NR_QDSS_PORTS];
 
-=======
-#include "f_qdss.h"
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 
 static DEFINE_SPINLOCK(qdss_lock);
 static LIST_HEAD(usb_qdss_ch_list);
@@ -207,13 +198,6 @@ static inline struct f_qdss *func_to_qdss(struct usb_function *f)
 	return container_of(f, struct f_qdss, port.function);
 }
 
-<<<<<<< HEAD
-=======
-static struct usb_qdss_opts *to_fi_usb_qdss_opts(struct usb_function_instance *fi)
-{
-	return container_of(fi, struct usb_qdss_opts, func_inst);
-}
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 /*----------------------------------------------------------------------*/
 
 static void qdss_ctrl_write_complete(struct usb_ep *ep,
@@ -507,7 +491,6 @@ static void usb_qdss_disconnect_work(struct work_struct *work)
 {
 	struct f_qdss *qdss;
 	int status;
-<<<<<<< HEAD
 	unsigned char portno;
 	enum transport_type	dxport;
 	enum transport_type     ctrl_xport;
@@ -571,34 +554,6 @@ static void usb_qdss_disconnect_work(struct work_struct *work)
 	default:
 		pr_err("%s: Un-supported transport: %s\n", __func__,
 				xport_to_str(dxport));
-=======
-
-	qdss = container_of(work, struct f_qdss, disconnect_w);
-	pr_debug("usb_qdss_disconnect_work\n");
-
-	/*
-	 * Uninitialized init data i.e. ep specific operation.
-	 * Notify qdss to cancel all active transfers.
-	 */
-	if (qdss->ch.app_conn) {
-		status = uninit_data(qdss->port.data);
-		if (status)
-			pr_err("%s: uninit_data error\n", __func__);
-
-		if (qdss->ch.notify)
-			qdss->ch.notify(qdss->ch.priv,
-				USB_QDSS_DISCONNECT,
-				NULL,
-				NULL);
-
-		status = set_qdss_data_connection(
-				qdss->gadget,
-				qdss->port.data,
-				qdss->port.data->address,
-				0);
-		if (status)
-			pr_err("qdss_disconnect error");
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	}
 
 	/*
@@ -612,7 +567,6 @@ static void qdss_disable(struct usb_function *f)
 {
 	struct f_qdss	*qdss = func_to_qdss(f);
 	unsigned long flags;
-<<<<<<< HEAD
 	unsigned char portno;
 	enum transport_type dxport;
 
@@ -622,9 +576,6 @@ static void qdss_disable(struct usb_function *f)
 				nr_qdss_ports, portno);
 		return;
 	}
-=======
-
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	pr_debug("qdss_disable\n");
 	spin_lock_irqsave(&qdss->lock, flags);
 	if (!qdss->usb_connected) {
@@ -632,7 +583,6 @@ static void qdss_disable(struct usb_function *f)
 		return;
 	}
 
-<<<<<<< HEAD
 	dxport = qdss_ports[qdss->port_num].data_xport;
 	qdss->usb_connected = 0;
 	switch (dxport) {
@@ -704,20 +654,10 @@ static int qdss_dpl_ipa_connect(int port_num)
 	return 0;
 }
 
-=======
-	qdss->usb_connected = 0;
-	spin_unlock_irqrestore(&qdss->lock, flags);
-	/*cancell all active xfers*/
-	qdss_eps_disable(f);
-	queue_work(qdss->wq, &qdss->disconnect_w);
-}
-
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 static void usb_qdss_connect_work(struct work_struct *work)
 {
 	struct f_qdss *qdss;
 	int status;
-<<<<<<< HEAD
 	unsigned char port_num;
 	enum transport_type	dxport;
 	enum transport_type     ctrl_xport;
@@ -734,11 +674,6 @@ static void usb_qdss_connect_work(struct work_struct *work)
 				nr_qdss_ports, qdss->port_num);
 		return;
 	}
-=======
-
-	qdss = container_of(work, struct f_qdss, connect_w);
-
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	/* If cable is already removed, discard connect_work */
 	if (qdss->usb_connected == 0) {
 		pr_debug("%s: discard connect_work\n", __func__);
@@ -747,7 +682,6 @@ static void usb_qdss_connect_work(struct work_struct *work)
 	}
 
 	pr_debug("usb_qdss_connect_work\n");
-<<<<<<< HEAD
 
 	if (ctrl_xport == USB_GADGET_XPORT_QTI) {
 		status = gqti_ctrl_connect(&qdss->port, DPL_QTI_CTRL_PORT_NO,
@@ -763,11 +697,6 @@ static void usb_qdss_connect_work(struct work_struct *work)
 
 	switch (dxport) {
 	case USB_GADGET_XPORT_BAM2BAM:
-		status = init_data(qdss->port.data);
-		if (status) {
-			pr_err("init_data error");
-			break;
-		}
 		status = set_qdss_data_connection(
 				qdss->cdev->gadget,
 				qdss->port.data,
@@ -782,9 +711,10 @@ static void usb_qdss_connect_work(struct work_struct *work)
 			USB_QDSS_CONNECT,
 			NULL,
 			&qdss->ch);
-		status = send_sps_req(qdss->port.data);
-		if (status) {
-			pr_err("send_sps_req error\n");
+
+		if (usb_ep_queue(qdss->port.data, qdss->endless_req,
+								GFP_ATOMIC)) {
+			pr_err("%s: usb_ep_queue error\n", __func__);
 			break;
 		}
 		break;
@@ -821,25 +751,6 @@ static void usb_qdss_connect_work(struct work_struct *work)
 		pr_err("%s: Un-supported transport: %s\n", __func__,
 				xport_to_str(dxport));
 	}
-=======
-	status = set_qdss_data_connection(
-			qdss->gadget,
-			qdss->port.data,
-			qdss->port.data->address,
-			1);
-	if (status) {
-		pr_err("set_qdss_data_connection error(%d)", status);
-		return;
-	}
-
-	if (qdss->ch.notify)
-		qdss->ch.notify(qdss->ch.priv, USB_QDSS_CONNECT,
-						NULL, &qdss->ch);
-
-	status = usb_ep_queue(qdss->port.data, qdss->endless_req, GFP_ATOMIC);
-	if (status)
-		pr_err("%s: usb_ep_queue error (%d)\n", __func__, status);
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 }
 
 static int qdss_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
@@ -848,17 +759,12 @@ static int qdss_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	struct usb_gadget *gadget = f->config->cdev->gadget;
 	struct usb_qdss_ch *ch = &qdss->ch;
 	int ret = 0;
-<<<<<<< HEAD
 	enum transport_type	dxport;
 
 	dxport = qdss_ports[qdss->port_num].data_xport;
 
 	pr_debug("qdss_set_alt qdss pointer = %p\n", qdss);
 
-=======
-
-	pr_debug("qdss_set_alt qdss pointer = %p\n", qdss);
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	qdss->gadget = gadget;
 
 	if (alt != 0)
@@ -880,7 +786,6 @@ static int qdss_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			goto fail;
 		}
 
-<<<<<<< HEAD
 		if (dxport == USB_GADGET_XPORT_BAM2BAM_IPA ||
 				dxport == USB_GADGET_XPORT_BAM_DMUX) {
 			qdss->usb_connected = 1;
@@ -888,8 +793,6 @@ static int qdss_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			return 0;
 		}
 
-=======
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 		ret = usb_ep_enable(qdss->port.data);
 		if (ret)
 			goto fail;
@@ -939,17 +842,10 @@ static int qdss_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 			pr_debug("qdss_set_alt usb_connected INTF disabled\n");
 		}
 	}
-<<<<<<< HEAD
 	if (qdss->usb_connected && (ch->app_conn ||
 		(dxport == USB_GADGET_XPORT_HSIC))) {
 		queue_work(qdss->wq, &qdss->connect_w);
 	}
-=======
-
-	if (qdss->usb_connected && ch->app_conn)
-		queue_work(qdss->wq, &qdss->connect_w);
-
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	return 0;
 fail:
 	/* Decrement usage count in case of failure */
@@ -960,7 +856,6 @@ fail1:
 	return ret;
 }
 
-<<<<<<< HEAD
 static int qdss_bind_config(struct usb_configuration *c, unsigned char portno)
 {
 	struct f_qdss *qdss;
@@ -1004,23 +899,10 @@ static int qdss_bind_config(struct usb_configuration *c, unsigned char portno)
 
 	list_for_each_entry(ch, &usb_qdss_ch_list, list) {
 		if (!strcmp(name, ch->name)) {
-=======
-static struct f_qdss *alloc_usb_qdss(char *channel_name)
-{
-	struct f_qdss *qdss;
-	int found = 0;
-	struct usb_qdss_ch *ch;
-	unsigned long flags;
-
-	spin_lock_irqsave(&qdss_lock, flags);
-	list_for_each_entry(ch, &usb_qdss_ch_list, list) {
-		if (!strcmp(channel_name, ch->name)) {
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 			found = 1;
 			break;
 		}
 	}
-<<<<<<< HEAD
 	if (!found) {
 		if (!qdss) {
 			spin_unlock_irqrestore(&qdss_lock, flags);
@@ -1057,41 +939,11 @@ static struct f_qdss *alloc_usb_qdss(char *channel_name)
 	qdss->port.function.unbind = qdss_unbind;
 	qdss->port.function.set_alt = qdss_set_alt;
 	qdss->port.function.disable = qdss_disable;
-=======
-
-	if (found) {
-		spin_unlock_irqrestore(&qdss_lock, flags);
-		pr_err("%s: (%s) is already available.\n",
-				__func__, channel_name);
-		return ERR_PTR(-EEXIST);
-	}
-
-	spin_unlock_irqrestore(&qdss_lock, flags);
-	qdss = kzalloc(sizeof(struct f_qdss), GFP_KERNEL);
-	if (!qdss) {
-		pr_err("%s: Unable to allocate qdss device\n", __func__);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	qdss->wq = create_singlethread_workqueue(channel_name);
-	if (!qdss->wq) {
-		kfree(qdss);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	spin_lock_irqsave(&qdss_lock, flags);
-	ch = &qdss->ch;
-	ch->name = channel_name;
-	list_add_tail(&ch->list, &usb_qdss_ch_list);
-	spin_unlock_irqrestore(&qdss_lock, flags);
-
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	spin_lock_init(&qdss->lock);
 	INIT_LIST_HEAD(&qdss->ctrl_read_pool);
 	INIT_LIST_HEAD(&qdss->ctrl_write_pool);
 	INIT_WORK(&qdss->connect_w, usb_qdss_connect_work);
 	INIT_WORK(&qdss->disconnect_w, usb_qdss_disconnect_work);
-<<<<<<< HEAD
 	status = usb_add_function(c, &qdss->port.function);
 	if (status) {
 		pr_err("qdss usb_add_function failed\n");
@@ -1100,10 +952,6 @@ static struct f_qdss *alloc_usb_qdss(char *channel_name)
 	}
 
 	return status;
-=======
-
-	return qdss;
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 }
 
 int usb_qdss_ctrl_read(struct usb_qdss_ch *ch, struct qdss_request *d_req)
@@ -1221,7 +1069,6 @@ struct usb_qdss_ch *usb_qdss_open(const char *name, void *priv,
 	}
 
 	if (!found) {
-<<<<<<< HEAD
 		pr_debug("usb_qdss_open: allocation qdss ctx\n");
 		qdss = kzalloc(sizeof(*qdss), GFP_ATOMIC);
 		if (!qdss) {
@@ -1237,21 +1084,13 @@ struct usb_qdss_ch *usb_qdss_open(const char *name, void *priv,
 		spin_lock_irqsave(&qdss_lock, flags);
 		ch = &qdss->ch;
 		list_add_tail(&ch->list, &usb_qdss_ch_list);
-=======
-		spin_unlock_irqrestore(&qdss_lock, flags);
-		pr_debug("usb_qdss_open failed as %s not found\n", name);
-		return NULL;
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	} else {
 		pr_debug("usb_qdss_open: qdss ctx found\n");
 		qdss = container_of(ch, struct f_qdss, ch);
 		ch->priv_usb = qdss;
 	}
 
-<<<<<<< HEAD
 	ch->name = name;
-=======
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	ch->priv = priv;
 	ch->notify = notify;
 	ch->app_conn = 1;
@@ -1268,11 +1107,7 @@ EXPORT_SYMBOL(usb_qdss_open);
 void usb_qdss_close(struct usb_qdss_ch *ch)
 {
 	struct f_qdss *qdss = ch->priv_usb;
-<<<<<<< HEAD
 	struct usb_gadget *gadget = qdss->cdev->gadget;
-=======
-	struct usb_gadget *gadget = qdss->gadget;
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	unsigned long flags;
 	int status;
 
@@ -1324,7 +1159,6 @@ static void qdss_cleanup(void)
 	}
 }
 
-<<<<<<< HEAD
 static int qdss_setup(void)
 {
 	return 0;
@@ -1490,171 +1324,3 @@ static int qdss_gport_setup(void)
 
 	return 0;
 }
-=======
-static void qdss_free_func(struct usb_function *f)
-{
-	/* Do nothing as usb_qdss_alloc() doesn't alloc anything. */
-}
-
-static inline struct usb_qdss_opts *to_f_qdss_opts(struct config_item *item)
-{
-	return container_of(to_config_group(item), struct usb_qdss_opts,
-			func_inst.group);
-}
-
-static void qdss_attr_release(struct config_item *item)
-{
-	struct usb_qdss_opts *opts = to_f_qdss_opts(item);
-
-	usb_put_function_instance(&opts->func_inst);
-}
-
-static struct configfs_item_operations qdss_item_ops = {
-	.release	= qdss_attr_release,
-};
-
-static ssize_t qdss_enable_debug_inface_show(struct config_item *item,
-			char *page)
-{
-	return snprintf(page, PAGE_SIZE, "%s\n",
-		(to_f_qdss_opts(item)->usb_qdss->debug_inface_enabled == 1) ?
-		"Enabled" : "Disabled");
-}
-
-static ssize_t qdss_enable_debug_inface_store(struct config_item *item,
-			const char *page, size_t len)
-{
-	struct f_qdss *qdss = to_f_qdss_opts(item)->usb_qdss;
-	unsigned long flags;
-	u8 stats;
-
-	if (page == NULL) {
-		pr_err("Invalid buffer");
-		return len;
-	}
-
-	if (kstrtou8(page, 0, &stats) != 0 && (stats != 0 || stats != 1)) {
-		pr_err("(%u)Wrong value. enter 0 to disable or 1 to enable.\n",
-			stats);
-		return len;
-	}
-
-	spin_lock_irqsave(&qdss->lock, flags);
-	qdss->debug_inface_enabled = (stats == 1 ? "true" : "false");
-	spin_unlock_irqrestore(&qdss->lock, flags);
-	return len;
-}
-
-CONFIGFS_ATTR(qdss_, enable_debug_inface);
-static struct configfs_attribute *qdss_attrs[] = {
-	&qdss_attr_enable_debug_inface,
-	NULL,
-};
-
-static struct config_item_type qdss_func_type = {
-	.ct_item_ops	= &qdss_item_ops,
-	.ct_attrs	= qdss_attrs,
-	.ct_owner	= THIS_MODULE,
-};
-
-static void usb_qdss_free_inst(struct usb_function_instance *fi)
-{
-	struct usb_qdss_opts *opts;
-
-	opts = container_of(fi, struct usb_qdss_opts, func_inst);
-	kfree(opts->usb_qdss);
-	kfree(opts);
-}
-
-static int usb_qdss_set_inst_name(struct usb_function_instance *f, const char *name)
-{
-	struct usb_qdss_opts *opts =
-		container_of(f, struct usb_qdss_opts, func_inst);
-	char *ptr;
-	size_t name_len;
-	struct f_qdss *usb_qdss;
-
-	/* get channel_name as expected input qdss.<channel_name> */
-	name_len = strlen(name) + 1;
-	if (name_len > 15)
-		return -ENAMETOOLONG;
-
-	/* get channel name */
-	ptr = kstrndup(name, name_len, GFP_KERNEL);
-	if (!ptr) {
-		pr_err("error:%ld\n", PTR_ERR(ptr));
-		return -ENOMEM;
-	}
-
-	opts->channel_name = ptr;
-	pr_debug("qdss: channel_name:%s\n", opts->channel_name);
-
-	usb_qdss = alloc_usb_qdss(opts->channel_name);
-	if (IS_ERR(usb_qdss)) {
-		pr_err("Failed to create usb_qdss port(%s)\n", opts->channel_name);
-		return -ENOMEM;
-	}
-
-	opts->usb_qdss = usb_qdss;
-	return 0;
-}
-
-static struct usb_function_instance *qdss_alloc_inst(void)
-{
-	struct usb_qdss_opts *opts;
-
-	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
-	if (!opts)
-		return ERR_PTR(-ENOMEM);
-
-	opts->func_inst.free_func_inst = usb_qdss_free_inst;
-	opts->func_inst.set_inst_name = usb_qdss_set_inst_name;
-
-	config_group_init_type_name(&opts->func_inst.group, "",
-				    &qdss_func_type);
-	return &opts->func_inst;
-}
-
-static struct usb_function *qdss_alloc(struct usb_function_instance *fi)
-{
-	struct usb_qdss_opts *opts = to_fi_usb_qdss_opts(fi);
-	struct f_qdss *usb_qdss = opts->usb_qdss;
-
-	usb_qdss->port.function.name = "usb_qdss";
-	usb_qdss->port.function.fs_descriptors = qdss_hs_desc;
-	usb_qdss->port.function.hs_descriptors = qdss_hs_desc;
-	usb_qdss->port.function.strings = qdss_strings;
-	usb_qdss->port.function.bind = qdss_bind;
-	usb_qdss->port.function.unbind = qdss_unbind;
-	usb_qdss->port.function.set_alt = qdss_set_alt;
-	usb_qdss->port.function.disable = qdss_disable;
-	usb_qdss->port.function.setup = NULL;
-	usb_qdss->port.function.free_func = qdss_free_func;
-
-	return &usb_qdss->port.function;
-}
-
-DECLARE_USB_FUNCTION_INIT(qdss, qdss_alloc_inst, qdss_alloc);
-static int __init usb_qdss_init(void)
-{
-	int ret;
-
-	INIT_LIST_HEAD(&usb_qdss_ch_list);
-	ret = usb_function_register(&qdssusb_func);
-	if (ret) {
-		pr_err("%s: failed to register diag %d\n", __func__, ret);
-		return ret;
-	}
-	return ret;
-}
-
-static void __exit usb_qdss_exit(void)
-{
-	usb_function_unregister(&qdssusb_func);
-	qdss_cleanup();
-}
-
-module_init(usb_qdss_init);
-module_exit(usb_qdss_exit);
-MODULE_DESCRIPTION("USB QDSS Function Driver");
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
