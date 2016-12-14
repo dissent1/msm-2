@@ -41,11 +41,6 @@ static int tcsr_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
-	if (!of_property_read_u32(node, "ipq,usb-ctrl-select", &val)) {
-		dev_err(&pdev->dev, "setting usb port select = %d\n", val);
-		writel(val, base + TCSR_USB_PORT_SEL);
-	}
-
 	if (!of_property_read_u32(node, "ipq,usb-hsphy-mode-select", &val)) {
 		dev_info(&pdev->dev, "setting usb hs phy mode select = %x\n",
 				val);
