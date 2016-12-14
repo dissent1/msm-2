@@ -163,7 +163,7 @@
 			qcom,ee = <0>;
 		};
 
-		serial@78af000 {
+		serial_0: serial@78af000 {
 			compatible = "qcom,msm-uartdm-v1.4", "qcom,msm-uartdm";
 			reg = <0x78af000 0x200>;
 			interrupts = <0x0 0x6b 0x0>;
@@ -173,7 +173,7 @@
 			clock-names = "core", "iface";
 		};
 
-		serial@78B2000 {
+		serial_1: serial@78B2000 {
 			compatible = "qcom,msm-uartdm-v1.4", "qcom,msm-uartdm";
 			reg = <0x78B2000 0x200>;
 			interrupts = <0x0 307 0x0>;
@@ -201,7 +201,7 @@
 			status = "disabled";
 		};
 
-		q6v5_wcss@CD00000 {
+		q6v5_wcss: q6v5_wcss@CD00000 {
 			compatible = "qca,q6v5-wcss-rproc";
 			firmware = "IPQ8074/M8074QCAHKAWPLQ00010_WLANFW.elf";
 			reg = <0xCD00000 0x4040>;

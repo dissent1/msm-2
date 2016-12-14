@@ -165,17 +165,6 @@
 };
 
 &soc {
-
-	tlmm: pinctrl@1000000 {
-		hsuart_pins: hsuart_pins {
-			mux {
-				pins = "gpio50", "gpio51", "gpio52", "gpio53";
-				function = "blsp3_uart";
-				bias-disable;
-			};
-		};
-	};
-
 	acc0:clock-controller@b188000 {
 		compatible = "qcom,arm-cortex-acc";
 		reg = <0x0b188000 0x1000>;
@@ -194,40 +183,6 @@
 	acc3:clock-controller@b1b8000 {
 		compatible = "qcom,arm-cortex-acc";
 		reg = <0x0b1b8000 0x1000>;
-	};
-
-	q6v5_wcss@CD00000 {
-		qca,emulation = <1>;
-	};
-
-	spi_0: spi@78b5000 { /* BLSP1 QUP1 */
-		#pinctrl-0 = <&spi_0_pins>;
-		#pinctrl-names = "default";
-		status = "ok";
-
-		m25p80@0 {
-			#address-cells = <1>;
-			#size-cells = <1>;
-			reg = <0>;
-			compatible = "n25q128a11";
-			linux,modalias = "m25p80", "n25q128a11";
-			spi-max-frequency = <24000000>;
-			use-default-sizes;
-		};
-	};
-
-	serial@78B2000 {
-		pinctrl-0 = <&hsuart_pins>;
-		pinctrl-names = "default";
-		status = "ok";
-	};
-
-	qpic_bam: dma@7984000{
-		status = "ok";
-	};
-
-	nand: qpic-nand@79b0000 {
-		status = "ok";
 	};
 
 	dp1 {
@@ -365,6 +320,50 @@
 
 };
 
+&tlmm {
+	hsuart_pins: hsuart_pins {
+		mux {
+			pins = "gpio50", "gpio51", "gpio52", "gpio53";
+			function = "blsp3_uart";
+			bias-disable;
+		};
+	};
+};
+
+&q6v5_wcss {
+	qca,emulation = <1>;
+};
+
+&spi_0 { /* BLSP1 QUP1 */
+	#pinctrl-0 = <&spi_0_pins>;
+	#pinctrl-names = "default";
+	status = "ok";
+
+	m25p80@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0>;
+		compatible = "n25q128a11";
+		linux,modalias = "m25p80", "n25q128a11";
+		spi-max-frequency = <24000000>;
+		use-default-sizes;
+	};
+};
+
+&serial_1 {
+	pinctrl-0 = <&hsuart_pins>;
+	pinctrl-names = "default";
+	status = "ok";
+};
+
+&qpic_bam {
+	status = "ok";
+};
+
+&nand {
+	status = "ok";
+};
+
 &dwc_1 {
 	dr_mode = "peripheral";
 };
@@ -377,7 +376,7 @@
 	status = "ok";
 };
 
-&sdhc_1{
+&sdhc_1 {
 	qcom,clk-rates = <400000 25000000 50000000 100000000 \
 			 192000000 384000000>;
 	qcom,bus-speed-mode = "DDR_1p8v";
@@ -385,7 +384,7 @@
 	status = "ok";
 };
 
-&sdhc_2{
+&sdhc_2 {
 	qcom,clk-rates = <400000 25000000 50000000 100000000 \
 			 192000000 384000000>;
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
