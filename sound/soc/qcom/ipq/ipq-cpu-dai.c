@@ -30,8 +30,8 @@
 #include <linux/clk-provider.h>
 #include <linux/clk.h>
 
-#include "ipq4019-mbox.h"
-#include "ipq4019-adss.h"
+#include "ipq-mbox.h"
+#include "ipq-adss.h"
 
 struct dai_priv_st {
 	int stereo_tx;
@@ -53,7 +53,7 @@ static struct clk *audio_spdif_div2;
 static struct clk *audio_spdifinfast_src;
 
 /* Get Stereo channel ID based on I2S intf and direction */
-int ipq4019_get_stereo_id(struct snd_pcm_substream *substream, int intf)
+int ipq_get_stereo_id(struct snd_pcm_substream *substream, int intf)
 {
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
@@ -63,10 +63,10 @@ int ipq4019_get_stereo_id(struct snd_pcm_substream *substream, int intf)
 	}
 	return -EINVAL;
 }
-EXPORT_SYMBOL(ipq4019_get_stereo_id);
+EXPORT_SYMBOL(ipq_get_stereo_id);
 
 /* Get MBOX channel ID based on I2S/TDM/SPDIF intf and direction */
-int ipq4019_get_mbox_id(struct snd_pcm_substream *substream, int intf)
+int ipq_get_mbox_id(struct snd_pcm_substream *substream, int intf)
 {
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
@@ -76,9 +76,9 @@ int ipq4019_get_mbox_id(struct snd_pcm_substream *substream, int intf)
 	}
 	return -EINVAL;
 }
-EXPORT_SYMBOL(ipq4019_get_mbox_id);
+EXPORT_SYMBOL(ipq_get_mbox_id);
 
-u32 ipq4019_get_act_bit_width(u32 bit_width)
+u32 ipq_get_act_bit_width(u32 bit_width)
 {
 	switch (bit_width) {
 	case SNDRV_PCM_FORMAT_S8:
@@ -107,9 +107,9 @@ u32 ipq4019_get_act_bit_width(u32 bit_width)
 	}
 	return __BIT_INVAL;
 }
-EXPORT_SYMBOL(ipq4019_get_act_bit_width);
+EXPORT_SYMBOL(ipq_get_act_bit_width);
 
-static int ipq4019_audio_clk_get(struct clk **clk, struct device *dev,
+static int ipq_audio_clk_get(struct clk **clk, struct device *dev,
 					const char *id)
 {
 	*clk = devm_clk_get(dev, id);
@@ -121,7 +121,7 @@ static int ipq4019_audio_clk_get(struct clk **clk, struct device *dev,
 	return 0;
 }
 
-static int ipq4019_audio_clk_set(struct clk *clk, struct device *dev,
+static int ipq_audio_clk_set(struct clk *clk, struct device *dev,
 					u32 val)
 {
 	int ret;
@@ -143,13 +143,13 @@ static int ipq4019_audio_clk_set(struct clk *clk, struct device *dev,
 	return 0;
 }
 
-static void ipq4019_audio_clk_disable(struct clk **clk, struct device *dev)
+static void ipq_audio_clk_disable(struct clk **clk, struct device *dev)
 {
 	if (__clk_is_enabled(*clk))
 		clk_disable_unprepare(*clk);
 }
 
-static int ipq4019_audio_startup(struct snd_pcm_substream *substream,
+static int ipq_audio_startup(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
 	u32 intf = dai->driver->id;
@@ -160,16 +160,16 @@ static int ipq4019_audio_startup(struct snd_pcm_substream *substream,
 		if (dai_priv[intf].tx_enabled != ENABLE)
 			return -EFAULT;
 
-		ipq4019_glb_tx_data_port_en(ENABLE);
-		ipq4019_glb_tx_framesync_port_en(ENABLE);
+		ipq_glb_tx_data_port_en(ENABLE);
+		ipq_glb_tx_framesync_port_en(ENABLE);
 		break;
 	case SNDRV_PCM_STREAM_CAPTURE:
 		/* Check if the direction is enabled */
 		if (dai_priv[intf].rx_enabled != ENABLE)
 			return -EFAULT;
 
-		ipq4019_glb_rx_data_port_en(ENABLE);
-		ipq4019_glb_rx_framesync_port_en(ENABLE);
+		ipq_glb_rx_data_port_en(ENABLE);
+		ipq_glb_rx_framesync_port_en(ENABLE);
 		break;
 	default:
 		return -EINVAL;
@@ -177,27 +177,27 @@ static int ipq4019_audio_startup(struct snd_pcm_substream *substream,
 
 	if (intf == I2S || intf == I2S1 || intf == I2S2) {
 		/* Select I2S mode */
-		ipq4019_glb_audio_mode(I2S, substream->stream);
+		ipq_glb_audio_mode(I2S, substream->stream);
 	} else if (intf == TDM) {
 		/* Select TDM mode */
-		ipq4019_glb_audio_mode(TDM, substream->stream);
+		ipq_glb_audio_mode(TDM, substream->stream);
 
 		/* Set TDM Ctrl register */
-		ipq4019_glb_tdm_ctrl_sync_num(TDM_SYNC_NUM, substream->stream);
-		ipq4019_glb_tdm_ctrl_delay(TDM_DELAY, substream->stream);
+		ipq_glb_tdm_ctrl_sync_num(TDM_SYNC_NUM, substream->stream);
+		ipq_glb_tdm_ctrl_delay(TDM_DELAY, substream->stream);
 	}
 
 	return 0;
 }
 
-static int ipq4019_audio_hw_params(struct snd_pcm_substream *substream,
+static int ipq_audio_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params,
 					struct snd_soc_dai *dai)
 {
 	u32 bit_width, channels, rate;
 	u32 intf = dai->driver->id;
-	u32 stereo_id = ipq4019_get_stereo_id(substream, intf);
-	u32 mbox_id = ipq4019_get_mbox_id(substream, intf);
+	u32 stereo_id = ipq_get_stereo_id(substream, intf);
+	u32 mbox_id = ipq_get_mbox_id(substream, intf);
 	u32 bit_act;
 	int ret;
 	u32 mclk, bclk;
@@ -207,62 +207,62 @@ static int ipq4019_audio_hw_params(struct snd_pcm_substream *substream,
 	channels = params_channels(params);
 	rate = params_rate(params);
 
-	bit_act = ipq4019_get_act_bit_width(bit_width);
+	bit_act = ipq_get_act_bit_width(bit_width);
 
 	if (intf == TDM) {
 		/* Set TDM number of channels */
-		ipq4019_glb_tdm_ctrl_ch_num((channels-1), substream->stream);
+		ipq_glb_tdm_ctrl_ch_num((channels-1), substream->stream);
 		mclk = bclk = rate * bit_act * channels;
 	} else {
 		bclk = rate * bit_act * channels;
 		mclk = bclk * MCLK_MULTI;
 	}
 
-	ipq4019_glb_clk_enable_oe(substream->stream);
+	ipq_glb_clk_enable_oe(substream->stream);
 
-	ipq4019_config_master(ENABLE, stereo_id);
+	ipq_config_master(ENABLE, stereo_id);
 
-	ret = ipq4019_cfg_bit_width(bit_width, stereo_id);
+	ret = ipq_cfg_bit_width(bit_width, stereo_id);
 	if (ret) {
 		pr_err("BitWidth %d not supported ret: %d\n", bit_width, ret);
 		return ret;
 	}
 
-	ipq4019_stereo_config_enable(DISABLE, stereo_id);
+	ipq_stereo_config_enable(DISABLE, stereo_id);
 
-	ipq4019_stereo_config_reset(ENABLE, stereo_id);
-	ipq4019_stereo_config_mic_reset(ENABLE, stereo_id);
+	ipq_stereo_config_reset(ENABLE, stereo_id);
+	ipq_stereo_config_mic_reset(ENABLE, stereo_id);
 
 	mdelay(5);
 
-	ret = ipq4019_mbox_fifo_reset(mbox_id);
+	ret = ipq_mbox_fifo_reset(mbox_id);
 	if (ret) {
 		pr_err("%s: ret: %d Error in dma fifo reset\n",
 					__func__, ret);
 		return ret;
 	}
 
-	ipq4019_stereo_config_reset(DISABLE, stereo_id);
-	ipq4019_stereo_config_mic_reset(DISABLE, stereo_id);
-	ipq4019_stereo_config_enable(ENABLE, stereo_id);
+	ipq_stereo_config_reset(DISABLE, stereo_id);
+	ipq_stereo_config_mic_reset(DISABLE, stereo_id);
+	ipq_stereo_config_enable(ENABLE, stereo_id);
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		ret = ipq4019_audio_clk_set(audio_tx_mclk, dev, mclk);
+		ret = ipq_audio_clk_set(audio_tx_mclk, dev, mclk);
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_set(audio_tx_bclk, dev, bclk);
+		ret = ipq_audio_clk_set(audio_tx_bclk, dev, bclk);
 		if (ret)
 			return ret;
 		break;
 
 	case SNDRV_PCM_STREAM_CAPTURE:
-		ret = ipq4019_audio_clk_set(audio_rx_mclk, dev, mclk);
+		ret = ipq_audio_clk_set(audio_rx_mclk, dev, mclk);
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_set(audio_rx_bclk, dev, bclk);
+		ret = ipq_audio_clk_set(audio_rx_bclk, dev, bclk);
 		if (ret)
 			return ret;
 		break;
@@ -271,7 +271,7 @@ static int ipq4019_audio_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static void ipq4019_audio_shutdown(struct snd_pcm_substream *substream,
+static void ipq_audio_shutdown(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
 	u32 intf = dai->driver->id;
@@ -279,41 +279,41 @@ static void ipq4019_audio_shutdown(struct snd_pcm_substream *substream,
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		ipq4019_glb_tx_data_port_en(DISABLE);
-		ipq4019_glb_tx_framesync_port_en(DISABLE);
+		ipq_glb_tx_data_port_en(DISABLE);
+		ipq_glb_tx_framesync_port_en(DISABLE);
 
 		/* Disable the clocks */
-		ipq4019_audio_clk_disable(&audio_tx_bclk, dev);
-		ipq4019_audio_clk_disable(&audio_tx_mclk, dev);
+		ipq_audio_clk_disable(&audio_tx_bclk, dev);
+		ipq_audio_clk_disable(&audio_tx_mclk, dev);
 		break;
 	case SNDRV_PCM_STREAM_CAPTURE:
-		ipq4019_glb_rx_data_port_en(DISABLE);
-		ipq4019_glb_rx_framesync_port_en(DISABLE);
+		ipq_glb_rx_data_port_en(DISABLE);
+		ipq_glb_rx_framesync_port_en(DISABLE);
 
 		/* Disable the clocks */
-		ipq4019_audio_clk_disable(&audio_rx_bclk, dev);
-		ipq4019_audio_clk_disable(&audio_rx_mclk, dev);
+		ipq_audio_clk_disable(&audio_rx_bclk, dev);
+		ipq_audio_clk_disable(&audio_rx_mclk, dev);
 		break;
 	}
 
 	/* Disable the I2S Stereo block */
-	ipq4019_stereo_config_enable(DISABLE,
-			ipq4019_get_stereo_id(substream, intf));
+	ipq_stereo_config_enable(DISABLE,
+			ipq_get_stereo_id(substream, intf));
 }
 
-static struct snd_soc_dai_ops ipq4019_audio_ops = {
-	.startup	= ipq4019_audio_startup,
-	.hw_params	= ipq4019_audio_hw_params,
-	.shutdown	= ipq4019_audio_shutdown,
+static struct snd_soc_dai_ops ipq_audio_ops = {
+	.startup	= ipq_audio_startup,
+	.hw_params	= ipq_audio_hw_params,
+	.shutdown	= ipq_audio_shutdown,
 };
 
-static int ipq4019_spdif_hw_params(struct snd_pcm_substream *substream,
+static int ipq_spdif_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params,
 					struct snd_soc_dai *dai)
 {
 	uint32_t bit_width, channels, rate, bit_act;
 	int ret;
-	uint32_t stereo_id = ipq4019_get_stereo_id(substream, SPDIF);
+	uint32_t stereo_id = ipq_get_stereo_id(substream, SPDIF);
 	uint32_t mclk, bclk;
 	struct device *dev = &(dai_priv[SPDIF].pdev->dev);
 	uint32_t spdif_bclk;
@@ -322,7 +322,7 @@ static int ipq4019_spdif_hw_params(struct snd_pcm_substream *substream,
 	bit_width = params_format(params);
 	channels = params_channels(params);
 	rate = params_rate(params);
-	bit_act = ipq4019_get_act_bit_width(bit_width);
+	bit_act = ipq_get_act_bit_width(bit_width);
 
 	bclk = rate * bit_act * channels;
 	mclk = bclk * MCLK_MULTI;
@@ -333,31 +333,31 @@ static int ipq4019_spdif_hw_params(struct snd_pcm_substream *substream,
 
 	if (substream->stream == PLAYBACK) {
 		/* Set the clocks */
-		ret = ipq4019_audio_clk_set(audio_tx_mclk, dev, mclk);
+		ret = ipq_audio_clk_set(audio_tx_mclk, dev, mclk);
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_set(audio_tx_bclk, dev, bclk);
+		ret = ipq_audio_clk_set(audio_tx_bclk, dev, bclk);
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_set(audio_spdif_src, dev,
+		ret = ipq_audio_clk_set(audio_spdif_src, dev,
 						spdif_mclk);
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_set(audio_spdif_div2, dev,
+		ret = ipq_audio_clk_set(audio_spdif_div2, dev,
 						spdif_bclk);
 		if (ret)
 			return ret;
 
-		ipq4019_glb_clk_enable_oe(substream->stream);
+		ipq_glb_clk_enable_oe(substream->stream);
 
 		/* Set MASTER mode */
-		ipq4019_config_master(ENABLE, stereo_id);
+		ipq_config_master(ENABLE, stereo_id);
 
 		/* Configure bit width */
-		ret = ipq4019_cfg_bit_width(bit_width, stereo_id);
+		ret = ipq_cfg_bit_width(bit_width, stereo_id);
 		if (ret) {
 			pr_err("%s: BitWidth %d not supported\n",
 				__func__, bit_width);
@@ -366,7 +366,7 @@ static int ipq4019_spdif_hw_params(struct snd_pcm_substream *substream,
 
 	} else if (substream->stream == CAPTURE) {
 		/* Set the clocks */
-		ret = ipq4019_audio_clk_set(audio_spdifinfast_src, dev,
+		ret = ipq_audio_clk_set(audio_spdifinfast_src, dev,
 						AUDIO_SPDIFINFAST);
 		if (ret)
 			return ret;
@@ -375,14 +375,14 @@ static int ipq4019_spdif_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static int ipq4019_spdif_prepare(struct snd_pcm_substream *substream,
+static int ipq_spdif_prepare(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
 	dev_dbg(dai->dev, "%s:%d\n", __func__, __LINE__);
 	return 0;
 }
 
-static int ipq4019_spdif_startup(struct snd_pcm_substream *substream,
+static int ipq_spdif_startup(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
 	int ret = 0;
@@ -392,21 +392,21 @@ static int ipq4019_spdif_startup(struct snd_pcm_substream *substream,
 		if (dai_priv[SPDIF].tx_enabled != ENABLE)
 			goto error;
 
-		ipq4019_glb_tx_data_port_en(ENABLE);
-		ipq4019_glb_tx_framesync_port_en(ENABLE);
-		ipq4019_glb_spdif_out_en(ENABLE);
+		ipq_glb_tx_data_port_en(ENABLE);
+		ipq_glb_tx_framesync_port_en(ENABLE);
+		ipq_glb_spdif_out_en(ENABLE);
 		/* Select I2S/TDM */
-		ipq4019_glb_audio_mode(I2S, substream->stream);
+		ipq_glb_audio_mode(I2S, substream->stream);
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		/* Check if the direction is enabled */
 		if (dai_priv[SPDIF].rx_enabled != ENABLE)
 			goto error;
-		ipq4019_spdifin_ctrl_spdif_en(DISABLE);
+		ipq_spdifin_ctrl_spdif_en(DISABLE);
 
-		ipq4019_glb_rx_data_port_en(ENABLE);
-		ipq4019_glb_rx_framesync_port_en(ENABLE);
-		ipq4019_glb_audio_mode(I2S, substream->stream);
-		ipq4019_spdifin_cfg();
+		ipq_glb_rx_data_port_en(ENABLE);
+		ipq_glb_rx_framesync_port_en(ENABLE);
+		ipq_glb_audio_mode(I2S, substream->stream);
+		ipq_spdifin_cfg();
 	}
 
 	return ret;
@@ -415,45 +415,45 @@ error:
 	return -EFAULT;
 }
 
-static void ipq4019_spdif_shutdown(struct snd_pcm_substream *substream,
+static void ipq_spdif_shutdown(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
 	struct device *dev = &(dai_priv[SPDIF].pdev->dev);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		ipq4019_glb_tx_data_port_en(DISABLE);
-		ipq4019_glb_tx_framesync_port_en(DISABLE);
+		ipq_glb_tx_data_port_en(DISABLE);
+		ipq_glb_tx_framesync_port_en(DISABLE);
 
 		/* Disable the clocks */
-		ipq4019_audio_clk_disable(&audio_tx_bclk, dev);
-		ipq4019_audio_clk_disable(&audio_tx_mclk, dev);
-		ipq4019_audio_clk_disable(&audio_spdif_src, dev);
-		ipq4019_audio_clk_disable(&audio_spdif_div2, dev);
+		ipq_audio_clk_disable(&audio_tx_bclk, dev);
+		ipq_audio_clk_disable(&audio_tx_mclk, dev);
+		ipq_audio_clk_disable(&audio_spdif_src, dev);
+		ipq_audio_clk_disable(&audio_spdif_div2, dev);
 
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		ipq4019_glb_rx_data_port_en(DISABLE);
-		ipq4019_glb_rx_framesync_port_en(DISABLE);
+		ipq_glb_rx_data_port_en(DISABLE);
+		ipq_glb_rx_framesync_port_en(DISABLE);
 
 		/* Disable the clocks */
-		ipq4019_audio_clk_disable(&audio_spdifinfast_src, dev);
+		ipq_audio_clk_disable(&audio_spdifinfast_src, dev);
 	}
 }
 
-static int ipq4019_spdif_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+static int ipq_spdif_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	dev_dbg(dai->dev, "%s:%d\n", __func__, __LINE__);
 	return 0;
 }
 
-static struct snd_soc_dai_ops ipq4019_spdif_ops = {
-	.startup	= ipq4019_spdif_startup,
-	.prepare	= ipq4019_spdif_prepare,
-	.hw_params	= ipq4019_spdif_hw_params,
-	.shutdown	= ipq4019_spdif_shutdown,
-	.set_fmt	= ipq4019_spdif_set_fmt,
+static struct snd_soc_dai_ops ipq_spdif_ops = {
+	.startup	= ipq_spdif_startup,
+	.prepare	= ipq_spdif_prepare,
+	.hw_params	= ipq_spdif_hw_params,
+	.shutdown	= ipq_spdif_shutdown,
+	.set_fmt	= ipq_spdif_set_fmt,
 };
 
-static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
+static struct snd_soc_dai_driver ipq_cpu_dais[] = {
 	{
 		.playback = {
 			.rates		= RATE_16000_96000,
@@ -473,7 +473,7 @@ static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 			.rate_min	= FREQ_16000,
 			.rate_max	= FREQ_96000,
 		},
-		.ops = &ipq4019_audio_ops,
+		.ops = &ipq_audio_ops,
 		.id = I2S,
 		.name = "qca-i2s-dai"
 	},
@@ -496,7 +496,7 @@ static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 			.rate_min	= FREQ_16000,
 			.rate_max	= FREQ_96000,
 		},
-		.ops = &ipq4019_audio_ops,
+		.ops = &ipq_audio_ops,
 		.id = TDM,
 		.name = "qca-tdm-dai"
 	},
@@ -510,7 +510,7 @@ static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 			.rate_min	= FREQ_16000,
 			.rate_max	= FREQ_96000,
 		},
-		.ops = &ipq4019_audio_ops,
+		.ops = &ipq_audio_ops,
 		.id = I2S1,
 		.name = "qca-i2s1-dai"
 	},
@@ -524,7 +524,7 @@ static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 			.rate_min	= FREQ_16000,
 			.rate_max	= FREQ_96000,
 		},
-		.ops = &ipq4019_audio_ops,
+		.ops = &ipq_audio_ops,
 		.id = I2S2,
 		.name = "qca-i2s2-dai"
 	},
@@ -547,17 +547,17 @@ static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 			.rate_min       = FREQ_16000,
 			.rate_max       = FREQ_96000,
 		},
-		.ops = &ipq4019_spdif_ops,
+		.ops = &ipq_spdif_ops,
 		.id = SPDIF,
 		.name = "qca-spdif-dai"
 	},
 };
 
-static const struct snd_soc_component_driver ipq4019_i2s_component = {
+static const struct snd_soc_component_driver ipq_i2s_component = {
 	.name           = "qca-cpu-dai",
 };
 
-static const struct of_device_id ipq4019_cpu_dai_id_table[] = {
+static const struct of_device_id ipq_cpu_dai_id_table[] = {
 	{ .compatible = "qca,ipq4019-i2s", .data = (void *)I2S },
 	{ .compatible = "qca,ipq4019-tdm", .data = (void *)TDM},
 	{ .compatible = "qca,ipq4019-spdif", .data = (void *)SPDIF},
@@ -565,16 +565,16 @@ static const struct of_device_id ipq4019_cpu_dai_id_table[] = {
 	{ .compatible = "qca,ipq4019-i2s2", .data = (void *)I2S2},
 	{},
 };
-MODULE_DEVICE_TABLE(of, ipq4019_cpu_dai_id_table);
+MODULE_DEVICE_TABLE(of, ipq_cpu_dai_id_table);
 
-static int ipq4019_dai_probe(struct platform_device *pdev)
+static int ipq_dai_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	struct device_node *np = pdev->dev.of_node;
 	int ret;
 	int intf;
 
-	match = of_match_device(ipq4019_cpu_dai_id_table, &pdev->dev);
+	match = of_match_device(ipq_cpu_dai_id_table, &pdev->dev);
 	if (!match)
 		return -ENODEV;
 
@@ -627,17 +627,17 @@ static int ipq4019_dai_probe(struct platform_device *pdev)
 	}
 
 	if (intf == SPDIF) {
-		ret = ipq4019_audio_clk_get(&audio_spdif_src, &pdev->dev,
+		ret = ipq_audio_clk_get(&audio_spdif_src, &pdev->dev,
 						"audio_spdif_src");
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_get(&audio_spdif_div2, &pdev->dev,
+		ret = ipq_audio_clk_get(&audio_spdif_div2, &pdev->dev,
 						"audio_spdif_div2");
 		if (ret)
 			return ret;
 
-		ret = ipq4019_audio_clk_get(&audio_spdifinfast_src, &pdev->dev,
+		ret = ipq_audio_clk_get(&audio_spdifinfast_src, &pdev->dev,
 						"audio_spdifinfast_src");
 		if (ret)
 			return ret;
@@ -656,8 +656,8 @@ static int ipq4019_dai_probe(struct platform_device *pdev)
 	}
 
 	dai_priv[intf].pdev = pdev;
-	ret = snd_soc_register_component(&pdev->dev, &ipq4019_i2s_component,
-			 ipq4019_cpu_dais, ARRAY_SIZE(ipq4019_cpu_dais));
+	ret = snd_soc_register_component(&pdev->dev, &ipq_i2s_component,
+			 ipq_cpu_dais, ARRAY_SIZE(ipq_cpu_dais));
 	if (ret)
 		dev_err(&pdev->dev,
 			"ret: %d error registering soc dais\n", ret);
@@ -665,23 +665,23 @@ static int ipq4019_dai_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int ipq4019_dai_remove(struct platform_device *pdev)
+static int ipq_dai_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
 
-static struct platform_driver ipq4019_dai_driver = {
-	.probe = ipq4019_dai_probe,
-	.remove = ipq4019_dai_remove,
+static struct platform_driver ipq_dai_driver = {
+	.probe = ipq_dai_probe,
+	.remove = ipq_dai_remove,
 	.driver = {
 		.name = "qca-cpu-dai",
-		.of_match_table = ipq4019_cpu_dai_id_table,
+		.of_match_table = ipq_cpu_dai_id_table,
 	},
 };
 
-module_platform_driver(ipq4019_dai_driver);
+module_platform_driver(ipq_dai_driver);
 
 MODULE_ALIAS("platform:qca-cpu-dai");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("IPQ4019 CPU DAI DRIVER");
+MODULE_DESCRIPTION("IPQ CPU DAI DRIVER");

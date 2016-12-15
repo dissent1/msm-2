@@ -26,7 +26,7 @@
 #include <linux/reset.h>
 #include <linux/spinlock.h>
 
-#include "ipq4019-adss.h"
+#include "ipq-adss.h"
 
 static void __iomem *adss_audio_local_base;
 void __iomem *adss_audio_spdifin_base;
@@ -38,7 +38,7 @@ static spinlock_t glb_mode_lock;
 /* Channel Number Per Frame for Transmitter/Receiver
  * Real value = val + 1
  */
-void ipq4019_glb_tdm_ctrl_ch_num(uint32_t val, uint32_t dir)
+void ipq_glb_tdm_ctrl_ch_num(uint32_t val, uint32_t dir)
 {
 	uint32_t cfg;
 	unsigned long flags;
@@ -56,10 +56,10 @@ void ipq4019_glb_tdm_ctrl_ch_num(uint32_t val, uint32_t dir)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_TDM_CTRL_REG);
 	spin_unlock_irqrestore(&tdm_ctrl_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_tdm_ctrl_ch_num);
+EXPORT_SYMBOL(ipq_glb_tdm_ctrl_ch_num);
 
 /* FSYNC Hi Duration for Transmitter/Receiver */
-void ipq4019_glb_tdm_ctrl_sync_num(uint32_t val, uint32_t dir)
+void ipq_glb_tdm_ctrl_sync_num(uint32_t val, uint32_t dir)
 {
 	uint32_t cfg;
 	unsigned long flags;
@@ -77,10 +77,10 @@ void ipq4019_glb_tdm_ctrl_sync_num(uint32_t val, uint32_t dir)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_TDM_CTRL_REG);
 	spin_unlock_irqrestore(&tdm_ctrl_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_tdm_ctrl_sync_num);
+EXPORT_SYMBOL(ipq_glb_tdm_ctrl_sync_num);
 
 /* Serial Data Delay for transmitter/receiver */
-void ipq4019_glb_tdm_ctrl_delay(uint32_t delay, uint32_t dir)
+void ipq_glb_tdm_ctrl_delay(uint32_t delay, uint32_t dir)
 {
 	uint32_t cfg;
 	unsigned long flags;
@@ -100,10 +100,10 @@ void ipq4019_glb_tdm_ctrl_delay(uint32_t delay, uint32_t dir)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_TDM_CTRL_REG);
 	spin_unlock_irqrestore(&tdm_ctrl_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_tdm_ctrl_delay);
+EXPORT_SYMBOL(ipq_glb_tdm_ctrl_delay);
 
 /* I2S Interface Enable */
-static void ipq4019_glb_i2s_interface_en(int enable)
+static void ipq_glb_i2s_interface_en(int enable)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -121,10 +121,10 @@ static void ipq4019_glb_i2s_interface_en(int enable)
 	 */
 	mdelay(5);
 }
-EXPORT_SYMBOL(ipq4019_glb_i2s_interface_en);
+EXPORT_SYMBOL(ipq_glb_i2s_interface_en);
 
 /* Enable Stereo0/Stereo1/Stereo2 channel */
-void ipq4019_glb_stereo_ch_en(int enable, int stereo_ch)
+void ipq_glb_stereo_ch_en(int enable, int stereo_ch)
 {
 	uint32_t cfg;
 	unsigned long flags;
@@ -144,12 +144,12 @@ void ipq4019_glb_stereo_ch_en(int enable, int stereo_ch)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_CHIP_CTRL_I2S_REG);
 	spin_unlock_irqrestore(&i2s_ctrl_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_stereo_ch_en);
+EXPORT_SYMBOL(ipq_glb_stereo_ch_en);
 
 /*
  * I2S Module Reset
  */
-static void ipq4019_glb_i2s_reset(void)
+static void ipq_glb_i2s_reset(void)
 {
 	writel(GLB_I2S_RESET_VAL, adss_audio_local_base + ADSS_GLB_I2S_RST_REG);
 	mdelay(5);
@@ -159,7 +159,7 @@ static void ipq4019_glb_i2s_reset(void)
 /*
  * Enable I2S/TDM and Playback/Capture Audio Mode
  */
-void ipq4019_glb_audio_mode(int mode, int dir)
+void ipq_glb_audio_mode(int mode, int dir)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -182,7 +182,7 @@ void ipq4019_glb_audio_mode(int mode, int dir)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_audio_mode);
+EXPORT_SYMBOL(ipq_glb_audio_mode);
 
 /*
  * I2S0 TX Data Port Enable
@@ -191,7 +191,7 @@ EXPORT_SYMBOL(ipq4019_glb_audio_mode);
  * Check if bits 6:4 configures only
  * I2S0 or other channels as well
  */
-void ipq4019_glb_tx_data_port_en(u32 enable)
+void ipq_glb_tx_data_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -204,12 +204,12 @@ void ipq4019_glb_tx_data_port_en(u32 enable)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_tx_data_port_en);
+EXPORT_SYMBOL(ipq_glb_tx_data_port_en);
 
 /*
  * I2S3 RX Data Port Enable
  */
-void ipq4019_glb_rx_data_port_en(u32 enable)
+void ipq_glb_rx_data_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -222,12 +222,12 @@ void ipq4019_glb_rx_data_port_en(u32 enable)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_rx_data_port_en);
+EXPORT_SYMBOL(ipq_glb_rx_data_port_en);
 
 /*
  * Cross 1K Boundary
  */
-void ipq4019_glb_audio_mode_B1K(void)
+void ipq_glb_audio_mode_B1K(void)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -239,12 +239,12 @@ void ipq4019_glb_audio_mode_B1K(void)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_audio_mode_B1K);
+EXPORT_SYMBOL(ipq_glb_audio_mode_B1K);
 
 /*
  * Frame Sync Port Enable for I2S0 TX
  */
-void ipq4019_glb_tx_framesync_port_en(u32 enable)
+void ipq_glb_tx_framesync_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -257,12 +257,12 @@ void ipq4019_glb_tx_framesync_port_en(u32 enable)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_tx_framesync_port_en);
+EXPORT_SYMBOL(ipq_glb_tx_framesync_port_en);
 
 /*
  * Frame Sync Port Enable for I2S3 RX
  */
-void ipq4019_glb_rx_framesync_port_en(u32 enable)
+void ipq_glb_rx_framesync_port_en(u32 enable)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -275,9 +275,9 @@ void ipq4019_glb_rx_framesync_port_en(u32 enable)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 	spin_unlock_irqrestore(&glb_mode_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_rx_framesync_port_en);
+EXPORT_SYMBOL(ipq_glb_rx_framesync_port_en);
 
-void ipq4019_glb_clk_enable_oe(u32 dir)
+void ipq_glb_clk_enable_oe(u32 dir)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -295,9 +295,9 @@ void ipq4019_glb_clk_enable_oe(u32 dir)
 	writel(cfg, adss_audio_local_base + ADSS_GLB_CLK_I2S_CTRL_REG);
 	spin_unlock_irqrestore(&i2s_ctrl_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_glb_clk_enable_oe);
+EXPORT_SYMBOL(ipq_glb_clk_enable_oe);
 
-void ipq4019_spdifin_ctrl_spdif_en(uint32_t enable)
+void ipq_spdifin_ctrl_spdif_en(uint32_t enable)
 {
 	uint32_t reg_val;
 
@@ -311,9 +311,9 @@ void ipq4019_spdifin_ctrl_spdif_en(uint32_t enable)
 	writel(reg_val, adss_audio_spdifin_base + ADSS_SPDIFIN_SPDIF_CTRL_REG);
 
 }
-EXPORT_SYMBOL(ipq4019_spdifin_ctrl_spdif_en);
+EXPORT_SYMBOL(ipq_spdifin_ctrl_spdif_en);
 
-void ipq4019_spdifin_cfg(void)
+void ipq_spdifin_cfg(void)
 {
 	uint32_t reg_val;
 
@@ -326,9 +326,9 @@ void ipq4019_spdifin_cfg(void)
 			| SPDIF_CTRL_FIFO_ENABLE);
 	writel(reg_val, adss_audio_spdifin_base + ADSS_SPDIFIN_SPDIF_CTRL_REG);
 }
-EXPORT_SYMBOL(ipq4019_spdifin_cfg);
+EXPORT_SYMBOL(ipq_spdifin_cfg);
 
-void ipq4019_glb_spdif_out_en(uint32_t enable)
+void ipq_glb_spdif_out_en(uint32_t enable)
 {
 	int32_t cfg;
 
@@ -338,15 +338,15 @@ void ipq4019_glb_spdif_out_en(uint32_t enable)
 		cfg |= GLB_AUDIO_MODE_SPDIF_OUT_OE;
 	writel(cfg, adss_audio_local_base + ADSS_GLB_AUDIO_MODE_REG);
 }
-EXPORT_SYMBOL(ipq4019_glb_spdif_out_en);
+EXPORT_SYMBOL(ipq_glb_spdif_out_en);
 
-static const struct of_device_id ipq4019_audio_adss_id_table[] = {
+static const struct of_device_id ipq_audio_adss_id_table[] = {
 	{ .compatible = "qca,ipq4019-audio-adss" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, ipq4019_audio_adss_id_table);
+MODULE_DEVICE_TABLE(of, ipq_audio_adss_id_table);
 
-static int ipq4019_audio_adss_probe(struct platform_device *pdev)
+static int ipq_audio_adss_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 
@@ -376,32 +376,32 @@ static int ipq4019_audio_adss_probe(struct platform_device *pdev)
 	 * reset by hardware by default, it is not
 	 * required to be done in software explicitly.
 	 */
-	ipq4019_glb_i2s_reset();
+	ipq_glb_i2s_reset();
 
-	ipq4019_glb_i2s_interface_en(ENABLE);
+	ipq_glb_i2s_interface_en(ENABLE);
 
-	ipq4019_glb_audio_mode_B1K();
+	ipq_glb_audio_mode_B1K();
 
 	return 0;
 }
 
-static int ipq4019_audio_adss_remove(struct platform_device *pdev)
+static int ipq_audio_adss_remove(struct platform_device *pdev)
 {
-	ipq4019_glb_i2s_interface_en(DISABLE);
+	ipq_glb_i2s_interface_en(DISABLE);
 	return 0;
 }
 
-static struct platform_driver ipq4019_audio_adss_driver = {
-	.probe = ipq4019_audio_adss_probe,
-	.remove = ipq4019_audio_adss_remove,
+static struct platform_driver ipq_audio_adss_driver = {
+	.probe = ipq_audio_adss_probe,
+	.remove = ipq_audio_adss_remove,
 	.driver = {
-		.name = "ipq4019-adss",
-		.of_match_table = ipq4019_audio_adss_id_table,
+		.name = "ipq-adss",
+		.of_match_table = ipq_audio_adss_id_table,
 	},
 };
 
-module_platform_driver(ipq4019_audio_adss_driver);
+module_platform_driver(ipq_audio_adss_driver);
 
-MODULE_ALIAS("platform:ipq4019-adss");
+MODULE_ALIAS("platform:ipq-adss");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("IPQ4019 Audio subsytem driver");
+MODULE_DESCRIPTION("IPQ Audio subsytem driver");

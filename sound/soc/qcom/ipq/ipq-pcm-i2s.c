@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,10 +33,10 @@
 #include <sound/control.h>
 #include <sound/pcm_params.h>
 
-#include "ipq4019-pcm.h"
-#include "ipq4019-adss.h"
+#include "ipq-adss.h"
+#include "ipq-pcm.h"
 
-static struct snd_pcm_hardware ipq4019_pcm_hardware_playback = {
+static struct snd_pcm_hardware ipq_pcm_hardware_playback = {
 	.info			=	SNDRV_PCM_INFO_MMAP |
 					SNDRV_PCM_INFO_BLOCK_TRANSFER |
 					SNDRV_PCM_INFO_MMAP_VALID |
@@ -49,16 +49,16 @@ static struct snd_pcm_hardware ipq4019_pcm_hardware_playback = {
 	.rate_min		=	FREQ_16000,
 	.rate_max		=	FREQ_96000,
 	.channels_min		=	CH_STEREO,
-	.channels_max		=	CH_7_1,
-	.buffer_bytes_max	=	IPQ4019_TDM_BUFF_SIZE,
-	.period_bytes_max	=	IPQ4019_TDM_BUFF_SIZE / 2,
-	.period_bytes_min	=	IPQ4019_TDM_PERIOD_BYTES_MIN,
-	.periods_min		=	IPQ4019_TDM_NO_OF_PERIODS,
-	.periods_max		=	IPQ4019_TDM_NO_OF_PERIODS,
+	.channels_max		=	CH_STEREO,
+	.buffer_bytes_max	=	IPQ_I2S_BUFF_SIZE,
+	.period_bytes_max	=	IPQ_I2S_BUFF_SIZE / 2,
+	.period_bytes_min	=	IPQ_I2S_PERIOD_BYTES_MIN,
+	.periods_min		=	IPQ_I2S_NO_OF_PERIODS,
+	.periods_max		=	IPQ_I2S_NO_OF_PERIODS,
 	.fifo_size		=	0,
 };
 
-static struct snd_pcm_hardware ipq4019_pcm_hardware_capture = {
+static struct snd_pcm_hardware ipq_pcm_hardware_capture = {
 	.info			=	SNDRV_PCM_INFO_MMAP |
 					SNDRV_PCM_INFO_BLOCK_TRANSFER |
 					SNDRV_PCM_INFO_MMAP_VALID |
@@ -69,19 +69,19 @@ static struct snd_pcm_hardware ipq4019_pcm_hardware_capture = {
 	.rate_min		=	FREQ_16000,
 	.rate_max		=	FREQ_96000,
 	.channels_min		=	CH_STEREO,
-	.channels_max		=	CH_7_1,
-	.buffer_bytes_max	=	IPQ4019_TDM_BUFF_SIZE,
-	.period_bytes_max	=	IPQ4019_TDM_BUFF_SIZE / 2,
-	.period_bytes_min	=	IPQ4019_TDM_PERIOD_BYTES_MIN,
-	.periods_min		=	IPQ4019_TDM_NO_OF_PERIODS,
-	.periods_max		=	IPQ4019_TDM_NO_OF_PERIODS,
+	.channels_max		=	CH_STEREO,
+	.buffer_bytes_max	=	IPQ_I2S_BUFF_SIZE,
+	.period_bytes_max	=	IPQ_I2S_BUFF_SIZE / 2,
+	.period_bytes_min	=	IPQ_I2S_PERIOD_BYTES_MIN,
+	.periods_min		=	IPQ_I2S_NO_OF_PERIODS,
+	.periods_max		=	IPQ_I2S_NO_OF_PERIODS,
 	.fifo_size		=	0,
 };
 
-static size_t ip4019_dma_buffer_size(struct snd_pcm_hardware *pcm_hw)
+static size_t ipq_dma_buffer_size(struct snd_pcm_hardware *pcm_hw)
 {
 	return (pcm_hw->buffer_bytes_max +
-		(pcm_hw->periods_min * sizeof(struct ipq4019_mbox_desc)));
+		(pcm_hw->periods_min * sizeof(struct ipq_mbox_desc)));
 }
 
 static struct device *ss2dev(struct snd_pcm_substream *substream)
@@ -97,14 +97,14 @@ static struct device *ss2dev(struct snd_pcm_substream *substream)
  *
  * Hence ensure that the entire allocated region falls in a 256MB region.
  */
-static int ipq4019_mbox_buf_is_aligned(void *c_ptr, ssize_t size)
+static int ipq_mbox_buf_is_aligned(void *c_ptr, ssize_t size)
 {
 	u32 ptr = (u32)c_ptr;
 
 	return (ptr & 0xF0000000) == ((ptr + size - 1) & 0xF0000000);
 }
 
-static int ipq4019_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
+static int ipq_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 						int stream)
 {
 	struct snd_pcm_substream *substream = pcm->streams[stream].substream;
@@ -116,10 +116,10 @@ static int ipq4019_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		pcm_hw = &ipq4019_pcm_hardware_playback;
+		pcm_hw = &ipq_pcm_hardware_playback;
 		break;
 	case SNDRV_PCM_STREAM_CAPTURE:
-		pcm_hw = &ipq4019_pcm_hardware_capture;
+		pcm_hw = &ipq_pcm_hardware_capture;
 		break;
 	default:
 		dev_err(ss2dev(substream), "Invalid stream: %d\n",
@@ -127,7 +127,7 @@ static int ipq4019_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		return -EINVAL;
 	}
 
-	size = ip4019_dma_buffer_size(pcm_hw);
+	size = ipq_dma_buffer_size(pcm_hw);
 	buf->dev.type = SNDRV_DMA_TYPE_DEV;
 	buf->dev.dev = pcm->card->dev;
 	buf->private_data = NULL;
@@ -161,7 +161,7 @@ static int ipq4019_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 		return -ENOMEM;
 	}
 
-	if (!ipq4019_mbox_buf_is_aligned(area, size)) {
+	if (!ipq_mbox_buf_is_aligned(area, size)) {
 		dev_info(ss2dev(substream),
 			 "First allocation %p not within 256M region\n", area);
 
@@ -188,7 +188,7 @@ static int ipq4019_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
 	return 0;
 }
 
-static void ipq4019_pcm_free_dma_buffer(struct snd_pcm *pcm, int stream)
+static void ipq_pcm_free_dma_buffer(struct snd_pcm *pcm, int stream)
 {
 	struct snd_pcm_substream *substream;
 	struct snd_pcm_hardware *pcm_hw = NULL;
@@ -200,56 +200,61 @@ static void ipq4019_pcm_free_dma_buffer(struct snd_pcm *pcm, int stream)
 
 	switch (stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		pcm_hw = &ipq4019_pcm_hardware_playback;
+		pcm_hw = &ipq_pcm_hardware_playback;
 		break;
 	case SNDRV_PCM_STREAM_CAPTURE:
-		pcm_hw = &ipq4019_pcm_hardware_capture;
+		pcm_hw = &ipq_pcm_hardware_capture;
 		break;
+	default:
+		dev_err(ss2dev(substream), "Invalid stream: %d\n",
+							substream->stream);
+		return;
 	}
 
-	size = ip4019_dma_buffer_size(pcm_hw);
+	size = ipq_dma_buffer_size(pcm_hw);
 
 	dma_free_coherent(pcm->card->dev, size, buf->area, buf->addr);
 
 	buf->addr = 0;
 	buf->area = NULL;
+
 }
 
-static irqreturn_t ipq4019_pcm_irq(int intrsrc, void *data)
+static irqreturn_t ipq_pcm_irq(int intrsrc, void *data)
 {
 	struct snd_pcm_substream *substream = data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv =
-		(struct ipq4019_pcm_rt_priv *)runtime->private_data;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
 
-	pcm_rtpriv->curr_pos =
-		ipq4019_mbox_get_played_offset(pcm_rtpriv->channel);
+	if (pcm_rtpriv->mmap_flag)
+		pcm_rtpriv->curr_pos =
+			ipq_mbox_get_played_offset_set_own(
+						pcm_rtpriv->channel);
+	else
+		pcm_rtpriv->curr_pos =
+			ipq_mbox_get_played_offset(pcm_rtpriv->channel);
 
 	snd_pcm_period_elapsed(substream);
 
 	return IRQ_HANDLED;
 }
 
-static snd_pcm_uframes_t ipq4019_pcm_tdm_pointer(
+static snd_pcm_uframes_t ipq_pcm_i2s_pointer(
 				struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv;
-	snd_pcm_uframes_t ret;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
 
-	pcm_rtpriv = runtime->private_data;
-
-	ret = bytes_to_frames(runtime, pcm_rtpriv->curr_pos);
-	return ret;
+	return bytes_to_frames(runtime, pcm_rtpriv->curr_pos);
 }
 
-static int ipq4019_pcm_tdm_copy(struct snd_pcm_substream *substream, int chan,
+static int ipq_pcm_i2s_copy(struct snd_pcm_substream *substream, int chan,
 				snd_pcm_uframes_t hwoff, void __user *ubuf,
 				snd_pcm_uframes_t frames)
 {
 	struct snd_dma_buffer *buf = &substream->dma_buffer;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
 	char *hwbuf;
 	u32 offset, size;
 
@@ -266,104 +271,94 @@ static int ipq4019_pcm_tdm_copy(struct snd_pcm_substream *substream, int chan,
 			return -EFAULT;
 	}
 
-	ipq4019_mbox_desc_own(pcm_rtpriv->channel, offset / size, 1);
+	ipq_mbox_desc_own(pcm_rtpriv->channel, offset / size, 1);
 
-	ipq4019_mbox_dma_resume(pcm_rtpriv->channel);
+	ipq_mbox_dma_resume(pcm_rtpriv->channel);
 
 	return 0;
 }
 
-static int ipq4019_pcm_tdm_mmap(struct snd_pcm_substream *substream,
+static int ipq_pcm_i2s_mmap(struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
+
+	pcm_rtpriv->mmap_flag = 1;
 
 	return dma_mmap_coherent(substream->pcm->card->dev, vma,
 		runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
 }
 
-static int ipq4019_pcm_hw_free(struct snd_pcm_substream *substream)
+static int ipq_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	return 0;
 }
 
 
-static int ipq4019_pcm_tdm_prepare(struct snd_pcm_substream *substream)
+static int ipq_pcm_i2s_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
+	u32 ret;
 
-	uint32_t ret;
-
-	pcm_rtpriv = runtime->private_data;
-	ret = ipq4019_mbox_dma_prepare(pcm_rtpriv->channel);
+	ret = ipq_mbox_dma_prepare(pcm_rtpriv->channel);
 	if (ret) {
-		pr_err("%s: %d: Error in dma prepare : channel : %d\n",
-				__func__, __LINE__, pcm_rtpriv->channel);
-		ipq4019_mbox_dma_release(pcm_rtpriv->channel);
+		dev_err(ss2dev(substream),
+			"Error in dma prepare: channel: %d ret: %d\n",
+			pcm_rtpriv->channel, ret);
 		return ret;
 	}
 
-	/* Set the ownership bits */
-	ipq4019_mbox_get_elapsed_size(pcm_rtpriv->channel);
+	/* Set the ownership bits only if mmap is used */
+	if (pcm_rtpriv->mmap_flag == 1)
+		ipq_mbox_get_elapsed_size(pcm_rtpriv->channel);
 
 	pcm_rtpriv->last_played = NULL;
 
-	return ret;
+	return 0;
 }
 
-static int ipq4019_pcm_tdm_close(struct snd_pcm_substream *substream)
+static int ipq_pcm_i2s_close(struct snd_pcm_substream *substream)
 {
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv;
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *dai = rtd->cpu_dai;
-	u32 intf = dai->driver->id;
-	uint32_t ret;
+	struct ipq_pcm_rt_priv *pcm_rtpriv =
+				substream->runtime->private_data;
+	u32 ret;
 
-	ipq4019_stereo_config_enable(DISABLE,
-				ipq4019_get_stereo_id(substream, intf));
+	pcm_rtpriv->mmap_flag = 0;
 
-	pcm_rtpriv = substream->runtime->private_data;
-	if (!pcm_rtpriv)
-		return -EINVAL;
-
-	ret = ipq4019_mbox_dma_release(pcm_rtpriv->channel);
-	if (ret) {
-		pr_err("%s: %d: Error in dma release\n",
-					__func__, __LINE__);
-	}
+	ret = ipq_mbox_dma_release(pcm_rtpriv->channel);
+	if (ret)
+		dev_err(ss2dev(substream),
+			"Error in dma release. ret: %d\n", ret);
 
 	kfree(pcm_rtpriv);
 
 	return 0;
 }
 
-static int ipq4019_pcm_tdm_trigger(struct snd_pcm_substream *substream, int cmd)
+static int ipq_pcm_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	int ret;
-	u32 desc_duration;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv =
-				substream->runtime->private_data;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
+	u32 desc_duration;
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
-
-		ret = ipq4019_mbox_dma_start(pcm_rtpriv->channel);
+		ret = ipq_mbox_dma_start(pcm_rtpriv->channel);
 		if (ret) {
-			pr_err("%s: %d: Error in dma start\n",
-				__func__, __LINE__);
-			ipq4019_mbox_dma_release(pcm_rtpriv->channel);
+			dev_err(ss2dev(substream),
+				"Error in dma start. ret: %d\n", ret);
 		}
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = ipq4019_mbox_dma_resume(pcm_rtpriv->channel);
+		ret = ipq_mbox_dma_resume(pcm_rtpriv->channel);
 		if (ret) {
-			pr_err("%s: %d: Error in dma resume\n",
-				__func__, __LINE__);
-			ipq4019_mbox_dma_release(pcm_rtpriv->channel);
+			dev_err(ss2dev(substream),
+				"Error in dma resume. ret: %d\n", ret);
 		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -389,11 +384,16 @@ static int ipq4019_pcm_tdm_trigger(struct snd_pcm_substream *substream, int cmd)
 				 DIV_ROUND_UP(runtime->sample_bits, 8) *
 				 runtime->channels);
 
-		ret = ipq4019_mbox_dma_stop(pcm_rtpriv->channel, desc_duration);
+		dev_dbg(ss2dev(substream),
+			"period_size:%u rate:%u sample_bits:%u channels:%u desc_delay:%u\n",
+			frames_to_bytes(runtime, runtime->period_size),
+			runtime->rate, runtime->sample_bits, runtime->channels,
+			desc_duration);
+
+		ret = ipq_mbox_dma_stop(pcm_rtpriv->channel, desc_duration);
 		if (ret) {
-			pr_err("%s: %d: Error in dma stop\n",
-				__func__, __LINE__);
-			ipq4019_mbox_dma_release(pcm_rtpriv->channel);
+			dev_err(ss2dev(substream),
+				"Error in dma stop. ret: %d\n", ret);
 		}
 		break;
 	default:
@@ -403,27 +403,23 @@ static int ipq4019_pcm_tdm_trigger(struct snd_pcm_substream *substream, int cmd)
 	return ret;
 }
 
-static int ipq4019_pcm_tdm_hw_params(struct snd_pcm_substream *substream,
+static int ipq_pcm_i2s_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *hw_params)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv;
+	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
 	int ret;
 	unsigned int period_size, sample_size, sample_rate, frames, channels;
 
-	pr_debug("%s %d\n", __func__, __LINE__);
-
-	pcm_rtpriv = runtime->private_data;
-
-	ret = ipq4019_mbox_form_ring(pcm_rtpriv->channel,
+	ret = ipq_mbox_form_ring(pcm_rtpriv->channel,
 			substream->dma_buffer.addr,
 			substream->dma_buffer.area,
 			params_period_bytes(hw_params),
 			params_buffer_bytes(hw_params),
 			(substream->stream == SNDRV_PCM_STREAM_CAPTURE));
 	if (ret) {
-		pr_err("%s: %d: Error dma form ring\n", __func__, __LINE__);
-		ipq4019_mbox_dma_release(pcm_rtpriv->channel);
+		dev_dbg(ss2dev(substream),
+			"Error dma form ring ret: %d\n", ret);
 		return ret;
 	}
 
@@ -438,94 +434,100 @@ static int ipq4019_pcm_tdm_hw_params(struct snd_pcm_substream *substream,
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
 	runtime->dma_bytes = params_buffer_bytes(hw_params);
-	return ret;
+	return 0;
 }
 
-static int ipq4019_pcm_tdm_open(struct snd_pcm_substream *substream)
+static int ipq_pcm_i2s_open(struct snd_pcm_substream *substream)
 {
 	int ret;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct ipq4019_pcm_rt_priv *pcm_rtpriv;
+	struct ipq_pcm_rt_priv *pcm_rtpriv;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *dai = rtd->cpu_dai;
+	u32 intf = dai->driver->id;
 
-	pr_debug("%s %d\n", __func__, __LINE__);
-
-	pcm_rtpriv = kmalloc(sizeof(struct ipq4019_pcm_rt_priv), GFP_KERNEL);
-
+	pcm_rtpriv = kmalloc(sizeof(struct ipq_pcm_rt_priv), GFP_KERNEL);
 	if (!pcm_rtpriv)
 		return -ENOMEM;
 
-	snd_printd("%s: 0x%xB allocated at 0x%08x\n",
+	dev_dbg(ss2dev(substream), "%s: 0x%xB allocated at 0x%08x\n",
 			__func__, sizeof(*pcm_rtpriv), (u32) pcm_rtpriv);
 	pcm_rtpriv->last_played = NULL;
 	pcm_rtpriv->dev = substream->pcm->card->dev;
-	pcm_rtpriv->channel = ipq4019_get_mbox_id(substream, TDM);
+	pcm_rtpriv->channel = ipq_get_mbox_id(substream, intf);
 	pcm_rtpriv->curr_pos = 0;
 	pcm_rtpriv->mmap_flag = 0;
 	substream->runtime->private_data = pcm_rtpriv;
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	switch (substream->stream) {
+	case SNDRV_PCM_STREAM_PLAYBACK:
 		runtime->dma_bytes =
-			ipq4019_pcm_hardware_playback.buffer_bytes_max;
+			ipq_pcm_hardware_playback.buffer_bytes_max;
 		snd_soc_set_runtime_hwparams(substream,
-				&ipq4019_pcm_hardware_playback);
-	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+				&ipq_pcm_hardware_playback);
+		break;
+	case SNDRV_PCM_STREAM_CAPTURE:
 		runtime->dma_bytes =
-				ipq4019_pcm_hardware_capture.buffer_bytes_max;
+				ipq_pcm_hardware_capture.buffer_bytes_max;
 		snd_soc_set_runtime_hwparams(substream,
-					&ipq4019_pcm_hardware_capture);
-
-	} else {
-		pr_err("%s: Invalid stream\n", __func__);
+					&ipq_pcm_hardware_capture);
+		break;
+	default:
+		dev_err(ss2dev(substream), "Invalid stream: %d\n",
+			substream->stream);
 		ret = -EINVAL;
 		goto error;
 	}
-	ret = ipq4019_mbox_dma_init(pcm_rtpriv->dev,
-		pcm_rtpriv->channel, ipq4019_pcm_irq, substream);
+
+	ret = ipq_mbox_dma_init(pcm_rtpriv->dev,
+		pcm_rtpriv->channel, ipq_pcm_irq, substream);
 	if (ret) {
-		pr_err("%s: %d: Error initializing dma\n",
-					__func__, __LINE__);
+		dev_err(ss2dev(substream),
+			"Error initializing dma. ret: %d\n", ret);
 		goto error;
 	}
 
 	ret = snd_pcm_hw_constraint_integer(runtime,
 			SNDRV_PCM_HW_PARAM_PERIODS);
 	if (ret < 0) {
-		pr_err("%s: snd_pcm_hw_constraint_integer failed\n", __func__);
-		ipq4019_mbox_dma_release(pcm_rtpriv->channel);
-		goto error;
+		dev_err(ss2dev(substream),
+			"snd_pcm_hw_constraint_integer failed ret: %d\n",
+			ret);
+		goto error_hw_const;
 	}
 
 	return 0;
+error_hw_const:
+	ipq_mbox_dma_deinit(pcm_rtpriv->channel);
 error:
 	kfree(pcm_rtpriv);
 	return ret;
 }
 
-static struct snd_pcm_ops ipq4019_asoc_pcm_tdm_ops = {
-	.open		= ipq4019_pcm_tdm_open,
-	.hw_params	= ipq4019_pcm_tdm_hw_params,
-	.hw_free	= ipq4019_pcm_hw_free,
-	.trigger	= ipq4019_pcm_tdm_trigger,
+static struct snd_pcm_ops ipq_asoc_pcm_i2s_ops = {
+	.open		= ipq_pcm_i2s_open,
+	.hw_params	= ipq_pcm_i2s_hw_params,
+	.hw_free	= ipq_pcm_hw_free,
+	.trigger	= ipq_pcm_i2s_trigger,
 	.ioctl		= snd_pcm_lib_ioctl,
-	.close		= ipq4019_pcm_tdm_close,
-	.prepare	= ipq4019_pcm_tdm_prepare,
-	.mmap		= ipq4019_pcm_tdm_mmap,
-	.pointer	= ipq4019_pcm_tdm_pointer,
-	.copy		= ipq4019_pcm_tdm_copy,
+	.close		= ipq_pcm_i2s_close,
+	.prepare	= ipq_pcm_i2s_prepare,
+	.mmap		= ipq_pcm_i2s_mmap,
+	.pointer	= ipq_pcm_i2s_pointer,
+	.copy		= ipq_pcm_i2s_copy,
 };
 
-static void ipq4019_asoc_pcm_tdm_free(struct snd_pcm *pcm)
+static void ipq_asoc_pcm_i2s_free(struct snd_pcm *pcm)
 {
-	ipq4019_pcm_free_dma_buffer(pcm, SNDRV_PCM_STREAM_PLAYBACK);
-	ipq4019_pcm_free_dma_buffer(pcm, SNDRV_PCM_STREAM_CAPTURE);
+	ipq_pcm_free_dma_buffer(pcm, SNDRV_PCM_STREAM_PLAYBACK);
+	ipq_pcm_free_dma_buffer(pcm, SNDRV_PCM_STREAM_CAPTURE);
 }
 
-static int ipq4019_asoc_pcm_tdm_new(struct snd_soc_pcm_runtime *prtd)
+static int ipq_asoc_pcm_i2s_new(struct snd_soc_pcm_runtime *prtd)
 {
 	struct snd_card *card = prtd->card->snd_card;
 	struct snd_pcm *pcm = prtd->pcm;
-
-	int ret = 0;
+	int ret = 0, pback = 0;
 
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
@@ -534,24 +536,27 @@ static int ipq4019_asoc_pcm_tdm_new(struct snd_soc_pcm_runtime *prtd)
 		card->dev->dma_mask = &card->dev->coherent_dma_mask;
 
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
-		ret = ipq4019_pcm_preallocate_dma_buffer(pcm,
+		ret = ipq_pcm_preallocate_dma_buffer(pcm,
 				SNDRV_PCM_STREAM_PLAYBACK);
-
 		if (ret) {
-			pr_err("%s: %d: Error allocating dma buf\n",
-						__func__, __LINE__);
+			dev_err(card->dev,
+				"Error allocating playback dma. ret: %d\n",
+									ret);
 			return -ENOMEM;
 		}
+		pback = 1;
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
-		ret = ipq4019_pcm_preallocate_dma_buffer(pcm,
+		ret = ipq_pcm_preallocate_dma_buffer(pcm,
 				SNDRV_PCM_STREAM_CAPTURE);
 		if (ret) {
-			pr_err("%s: %d: Error allocating dma buf\n",
-						__func__, __LINE__);
-			ipq4019_pcm_free_dma_buffer(pcm,
-					SNDRV_PCM_STREAM_PLAYBACK);
+			dev_err(card->dev,
+				"Error allocating capture dma buf. ret: %d\n",
+									ret);
+			if (pback)
+				ipq_pcm_free_dma_buffer(pcm,
+						SNDRV_PCM_STREAM_PLAYBACK);
 			return -ENOMEM;
 		}
 	}
@@ -559,51 +564,50 @@ static int ipq4019_asoc_pcm_tdm_new(struct snd_soc_pcm_runtime *prtd)
 	return ret;
 }
 
-static struct snd_soc_platform_driver ipq4019_asoc_pcm_tdm_platform = {
-	.ops		= &ipq4019_asoc_pcm_tdm_ops,
-	.pcm_new	= ipq4019_asoc_pcm_tdm_new,
-	.pcm_free	= ipq4019_asoc_pcm_tdm_free,
+static struct snd_soc_platform_driver ipq_asoc_pcm_i2s_platform = {
+	.ops		= &ipq_asoc_pcm_i2s_ops,
+	.pcm_new	= ipq_asoc_pcm_i2s_new,
+	.pcm_free	= ipq_asoc_pcm_i2s_free,
 };
 
-static const struct of_device_id ipq4019_pcm_tdm_id_table[] = {
-	{ .compatible = "qca,ipq4019-pcm-tdm" },
+static const struct of_device_id ipq_pcm_i2s_id_table[] = {
+	{ .compatible = "qca,ipq4019-pcm-i2s" },
+	{ .compatible = "qca,ipq4019-pcm-i2s1" },
+	{ .compatible = "qca,ipq4019-pcm-i2s2" },
 	{ /* Sentinel */ },
 };
-MODULE_DEVICE_TABLE(of, ipq4019_pcm_tdm_id_table);
+MODULE_DEVICE_TABLE(of, ipq_pcm_i2s_id_table);
 
-static int ipq4019_pcm_tdm_driver_probe(struct platform_device *pdev)
+static int ipq_pcm_i2s_driver_probe(struct platform_device *pdev)
 {
 	int ret;
 
-	pr_debug("%s %d\n", __func__, __LINE__);
 	ret = snd_soc_register_platform(&pdev->dev,
-			&ipq4019_asoc_pcm_tdm_platform);
+			&ipq_asoc_pcm_i2s_platform);
 	if (ret)
-		dev_err(&pdev->dev, "%s: Failed to register tdm pcm device\n",
-								__func__);
+		dev_err(&pdev->dev,
+			"Failed to register i2s pcm device ret: %d\n", ret);
 	return ret;
 }
 
-static int ipq4019_pcm_tdm_driver_remove(struct platform_device *pdev)
+static int ipq_pcm_i2s_driver_remove(struct platform_device *pdev)
 {
-	pr_debug("%s %d\n", __func__, __LINE__);
 	snd_soc_unregister_platform(&pdev->dev);
-
 	return 0;
 }
 
-static struct platform_driver ipq4019_pcm_tdm_driver = {
-	.probe = ipq4019_pcm_tdm_driver_probe,
-	.remove = ipq4019_pcm_tdm_driver_remove,
+static struct platform_driver ipq_pcm_i2s_driver = {
+	.probe = ipq_pcm_i2s_driver_probe,
+	.remove = ipq_pcm_i2s_driver_remove,
 	.driver = {
-		.name = "qca-pcm-tdm",
+		.name = "qca-pcm-i2s",
 		.owner = THIS_MODULE,
-		.of_match_table = ipq4019_pcm_tdm_id_table,
+		.of_match_table = ipq_pcm_i2s_id_table,
 	},
 };
 
-module_platform_driver(ipq4019_pcm_tdm_driver);
+module_platform_driver(ipq_pcm_i2s_driver);
 
-MODULE_ALIAS("platform:qca-pcm-tdm");
+MODULE_ALIAS("platform:qca-pcm-i2s");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("IPQ4019 PCM TDM Platform Driver");
+MODULE_DESCRIPTION("IPQ PCM I2S Platform Driver");

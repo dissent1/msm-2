@@ -30,9 +30,9 @@
 #include <sound/jack.h>
 #include <linux/io.h>
 
-static struct snd_soc_dai_link ipq4019_snd_dai[] = {
+static struct snd_soc_dai_link ipq_snd_dai[] = {
 	{
-		.name		= "IPQ4019 Media1",
+		.name		= "IPQ Media1",
 		.stream_name	= "I2S",
 		/* CPU DAI Name */
 		.cpu_dai_name	= "qca-i2s-dai",
@@ -47,7 +47,7 @@ static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 				SND_SOC_DAIFMT_CBS_CFS),
 	},
 	{
-		.name		= "IPQ4019 Media2",
+		.name		= "IPQ Media2",
 		.stream_name	= "TDM",
 		.cpu_dai_name	= "qca-tdm-dai",
 		.platform_name	= "7709000.qca-pcm-tdm",
@@ -55,7 +55,7 @@ static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 		.codec_name	= "qca_codec.0-0012",
 	},
 	{
-		.name		= "IPQ4019 Media3",
+		.name		= "IPQ Media3",
 		.stream_name	= "I2S1",
 		.cpu_dai_name	= "qca-i2s1-dai",
 		.platform_name	= "770b000.qca-pcm-i2s1",
@@ -63,7 +63,7 @@ static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 		.codec_name	= "qca_codec.0-0012",
 	},
 	{
-		.name		= "IPQ4019 Media4",
+		.name		= "IPQ Media4",
 		.stream_name	= "I2S2",
 		.cpu_dai_name	= "qca-i2s2-dai",
 		.platform_name	= "770d000.qca-pcm-i2s2",
@@ -71,7 +71,7 @@ static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 		.codec_name	= "qca_codec.0-0012",
 	},
 	{
-		.name           = "IPQ4019 Media5",
+		.name           = "IPQ Media5",
 		.stream_name    = "SPDIF",
 		.cpu_dai_name	= "qca-spdif-dai",
 		.platform_name  = "7707000.qca-pcm-spdif",
@@ -81,18 +81,18 @@ static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 };
 
 static struct snd_soc_card snd_soc_card_qca = {
-	.name		= "ipq4019_snd_card",
-	.dai_link	= ipq4019_snd_dai,
-	.num_links	= ARRAY_SIZE(ipq4019_snd_dai),
+	.name		= "ipq_snd_card",
+	.dai_link	= ipq_snd_dai,
+	.num_links	= ARRAY_SIZE(ipq_snd_dai),
 };
 
-static const struct of_device_id ipq4019_audio_id_table[] = {
+static const struct of_device_id ipq_audio_id_table[] = {
 	{ .compatible = "qca,ipq4019-audio" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, ipq4019_audio_id_table);
+MODULE_DEVICE_TABLE(of, ipq_audio_id_table);
 
-static int ipq4019_audio_probe(struct platform_device *pdev)
+static int ipq_audio_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct snd_soc_card *card = &snd_soc_card_qca;
@@ -106,16 +106,16 @@ static int ipq4019_audio_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static struct platform_driver ipq4019_audio_driver = {
+static struct platform_driver ipq_audio_driver = {
 	.driver = {
-		.name = "ipq4019_audio",
-		.of_match_table = ipq4019_audio_id_table,
+		.name = "ipq_audio",
+		.of_match_table = ipq_audio_id_table,
 	},
-	.probe = ipq4019_audio_probe,
+	.probe = ipq_audio_probe,
 };
 
-module_platform_driver(ipq4019_audio_driver);
+module_platform_driver(ipq_audio_driver);
 
-MODULE_ALIAS("platform:ipq4019_audio");
+MODULE_ALIAS("platform:ipq_audio");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("ALSA SoC IPQ4019 Machine Driver");
+MODULE_DESCRIPTION("ALSA SoC IPQ Machine Driver");

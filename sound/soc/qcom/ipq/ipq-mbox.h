@@ -14,10 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _IPQ4019_MBOX_H_
-#define _IPQ4019_MBOX_H_
+#ifndef _IPQ_MBOX_H_
+#define _IPQ_MBOX_H_
 
-#include "ipq4019-adss.h"
+#include "ipq-adss.h"
 
 #define ADSS_MBOX_INVALID_PCM			(0xFFFFFFFF)
 #define ADSS_MBOX_REG_BASE			(0x7700000 + 0x6000)
@@ -63,7 +63,7 @@ enum {
 	ADSS_MBOX_NR_CHANNELS = 5,
 };
 
-struct ipq4019_mbox_desc {
+struct ipq_mbox_desc {
 	unsigned int	length	: 12,	/* bit 11-00 */
 			size	: 12,	/* bit 23-12 */
 			vuc	: 1,	/* bit 24 */
@@ -81,9 +81,9 @@ struct ipq4019_mbox_desc {
 
 #define MBOX_DMA_MASK		DMA_BIT_MASK(28)
 
-struct ipq4019_mbox_rt_dir_priv {
+struct ipq_mbox_rt_dir_priv {
 	/* Desc array in virtual space */
-	struct ipq4019_mbox_desc *dma_virt_head;
+	struct ipq_mbox_desc *dma_virt_head;
 
 	/* Desc array for DMA */
 	dma_addr_t dma_phys_head;
@@ -99,48 +99,48 @@ struct ipq4019_mbox_rt_dir_priv {
 	u32 read;
 };
 
-struct ipq4019_mbox_rt_priv {
+struct ipq_mbox_rt_priv {
 	int irq_no;
 	void __iomem *mbox_reg_base;
-	struct ipq4019_mbox_rt_dir_priv dir_priv[2];
+	struct ipq_mbox_rt_dir_priv dir_priv[2];
 	int mbox_started;
 };
 
 /* Replaces struct ath_i2s_softc */
-struct ipq4019_pcm_pltfm_priv {
+struct ipq_pcm_pltfm_priv {
 	struct snd_pcm_substream *playback;
 	struct snd_pcm_substream *capture;
 };
 
-int ipq4019_mbox_fifo_reset(int channel_id);
-int ipq4019_mbox_dma_start(int channel_id);
-int ipq4019_mbox_dma_stop(int channel_id, u32 delay_in_ms);
-int ipq4019_mbox_dma_reset_swap(int channel_id);
-int ipq4019_mbox_dma_swap(int channel_id, snd_pcm_format_t format);
-int ipq4019_mbox_dma_prepare(int channel_id);
-int ipq4019_mbox_dma_resume(int channel_id);
-int ipq4019_mbox_form_ring(int channel_id, dma_addr_t baseaddr, u8 *base,
+int ipq_mbox_fifo_reset(int channel_id);
+int ipq_mbox_dma_start(int channel_id);
+int ipq_mbox_dma_stop(int channel_id, u32 delay_in_ms);
+int ipq_mbox_dma_reset_swap(int channel_id);
+int ipq_mbox_dma_swap(int channel_id, snd_pcm_format_t format);
+int ipq_mbox_dma_prepare(int channel_id);
+int ipq_mbox_dma_resume(int channel_id);
+int ipq_mbox_form_ring(int channel_id, dma_addr_t baseaddr, u8 *base,
 				int period_bytes, int bufsize, int own_bit);
-int ipq4019_mbox_dma_release(int channel);
-int ipq4019_mbox_dma_init(struct device *dev, int channel_id,
+int ipq_mbox_dma_release(int channel);
+int ipq_mbox_dma_init(struct device *dev, int channel_id,
 	irq_handler_t callback, void *private_data);
-void ipq4019_mbox_vuc_setup(int channel_id);
-u32 ipq4019_mbox_get_played_offset(u32 channel_id);
-int ipq4019_mbox_dma_deinit(u32 channel_id);
-void ipq4019_mbox_desc_own(u32 channel_id, int desc_no, int own);
-struct ipq4019_mbox_desc *ipq4019_mbox_get_last_played(unsigned int channel_id);
-uint32_t ipq4019_mbox_get_elapsed_size(uint32_t channel_id);
-void ipq4019_mbox_vuc_setup(int channel_id);
-uint32_t ipq4019_mbox_get_played_offset_set_own(u32 channel_id);
+void ipq_mbox_vuc_setup(int channel_id);
+u32 ipq_mbox_get_played_offset(u32 channel_id);
+int ipq_mbox_dma_deinit(u32 channel_id);
+void ipq_mbox_desc_own(u32 channel_id, int desc_no, int own);
+struct ipq_mbox_desc *ipq_mbox_get_last_played(unsigned int channel_id);
+uint32_t ipq_mbox_get_elapsed_size(uint32_t channel_id);
+void ipq_mbox_vuc_setup(int channel_id);
+uint32_t ipq_mbox_get_played_offset_set_own(u32 channel_id);
 
-static inline u32 ipq4019_convert_id_to_channel(u32 id)
+static inline u32 ipq_convert_id_to_channel(u32 id)
 {
 	return (id / 2);
 }
 
-static inline u32 ipq4019_convert_id_to_dir(u32 id)
+static inline u32 ipq_convert_id_to_dir(u32 id)
 {
 	return (id % 2);
 }
 
-#endif /* _IPQ40XX_MBOX_H_ */
+#endif /* _IPQ_MBOX_H_ */

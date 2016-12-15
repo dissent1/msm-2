@@ -41,49 +41,49 @@ config SND_SOC_APQ8016_SBC
           APQ8016 SOC-based systems.
           Say Y if you want to use audio devices on MI2S.
 
-config SND_SOC_IPQ4019
-	tristate "Soc Audio support for IPQ4019 platforms"
+config SND_SOC_IPQ
+	tristate "Soc Audio support for IPQ platforms"
 	depends on SND_SOC_QCOM && HAS_DMA
-	select SND_SOC_IPQ4019_ADSS
-	select SND_SOC_IPQ4019_CPU_DAI
-	select SND_SOC_IPQ4019_STEREO
-	select SND_SOC_IPQ4019_MBOX
-	select SND_SOC_IPQ4019_PCM_I2S
-	select SND_SOC_IPQ4019_CODEC
-	select SND_SOC_IPQ4019_PCM_TDM
-	select SND_SOC_IPQ4019_PCM_SPDIF
+	select SND_SOC_IPQ_ADSS
+	select SND_SOC_IPQ_CPU_DAI
+	select SND_SOC_IPQ_STEREO
+	select SND_SOC_IPQ_MBOX
+	select SND_SOC_IPQ_PCM_I2S
+	select SND_SOC_IPQ_CODEC
+	select SND_SOC_IPQ_PCM_TDM
+	select SND_SOC_IPQ_PCM_SPDIF
 	help
 	Say Y or M to if you want to add support for SoC audio on
-	Qualcomm Atheros IPQ4019 based board.
+	Qualcomm Atheros IPQ based board.
 
-config SND_SOC_IPQ4019_ADSS
+config SND_SOC_IPQ_ADSS
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_CPU_DAI
+config SND_SOC_IPQ_CPU_DAI
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_STEREO
+config SND_SOC_IPQ_STEREO
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_MBOX
+config SND_SOC_IPQ_MBOX
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_PCM_I2S
+config SND_SOC_IPQ_PCM_I2S
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_CODEC
+config SND_SOC_IPQ_CODEC
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_PCM_TDM
+config SND_SOC_IPQ_PCM_TDM
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ
 
-config SND_SOC_IPQ4019_PCM_SPDIF
+config SND_SOC_IPQ_PCM_SPDIF
 	tristate
-	depends on SND_SOC_IPQ4019
+	depends on SND_SOC_IPQ

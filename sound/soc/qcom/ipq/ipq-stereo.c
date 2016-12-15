@@ -27,7 +27,7 @@
 #include <linux/delay.h>
 #include <linux/spinlock.h>
 
-#include "ipq4019-adss.h"
+#include "ipq-adss.h"
 
 struct stereo_priv_data {
 	void __iomem *stereo_base;
@@ -40,7 +40,7 @@ static struct stereo_priv_data stereo_priv[MAX_STEREO_ENTRIES];
  *
  * Stereo buffers and I2S state reset
  */
-void ipq4019_stereo_config_reset(u32 reset, u32 stereo_id)
+void ipq_stereo_config_reset(u32 reset, u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -55,12 +55,12 @@ void ipq4019_stereo_config_reset(u32 reset, u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_stereo_config_reset);
+EXPORT_SYMBOL(ipq_stereo_config_reset);
 
 /*
  * MIC buffers reset
  */
-void ipq4019_stereo_config_mic_reset(u32 reset, u32 stereo_id)
+void ipq_stereo_config_mic_reset(u32 reset, u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -75,12 +75,12 @@ void ipq4019_stereo_config_mic_reset(u32 reset, u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_stereo_config_mic_reset);
+EXPORT_SYMBOL(ipq_stereo_config_mic_reset);
 
 /*
  * Enable the I2S Stereo block for operation
  */
-void ipq4019_stereo_config_enable(u32 enable, u32 stereo_id)
+void ipq_stereo_config_enable(u32 enable, u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -95,12 +95,12 @@ void ipq4019_stereo_config_enable(u32 enable, u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_stereo_config_enable);
+EXPORT_SYMBOL(ipq_stereo_config_enable);
 
 /*
  * Enable the SPDIF Stereo block for operation
  */
-void ipq4019_stereo_spdif_enable(uint32_t enable, uint32_t stereo_id)
+void ipq_stereo_spdif_enable(uint32_t enable, uint32_t stereo_id)
 {
 	uint32_t cfg;
 
@@ -112,12 +112,12 @@ void ipq4019_stereo_spdif_enable(uint32_t enable, uint32_t stereo_id)
 	writel(cfg, stereo_priv[stereo_id].stereo_base
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 }
-EXPORT_SYMBOL(ipq4019_stereo_spdif_enable);
+EXPORT_SYMBOL(ipq_stereo_spdif_enable);
 
 /*
  * Enable/disable the swap within PCM sample
  */
-void ipq4019_stereo_spdif_pcmswap(uint32_t enable, uint32_t stereo_id)
+void ipq_stereo_spdif_pcmswap(uint32_t enable, uint32_t stereo_id)
 {
 	uint32_t cfg;
 
@@ -131,7 +131,7 @@ void ipq4019_stereo_spdif_pcmswap(uint32_t enable, uint32_t stereo_id)
 	writel(cfg, stereo_priv[stereo_id].stereo_base
 		+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 }
-EXPORT_SYMBOL(ipq4019_stereo_spdif_pcmswap);
+EXPORT_SYMBOL(ipq_stereo_spdif_pcmswap);
 
 /* Configure
  * Data word size : Word size loaded into the PCM
@@ -140,7 +140,7 @@ EXPORT_SYMBOL(ipq4019_stereo_spdif_pcmswap);
  *			When set to 32 bit words the PCM data
  *			will be left justified in the I2S word.
  */
-int ipq4019_cfg_bit_width(u32 bit_width, u32 stereo_id)
+int ipq_cfg_bit_width(u32 bit_width, u32 stereo_id)
 {
 	u32 cfg, mask = 0;
 	unsigned long flags;
@@ -181,12 +181,12 @@ int ipq4019_cfg_bit_width(u32 bit_width, u32 stereo_id)
 
 	return 0;
 }
-EXPORT_SYMBOL(ipq4019_cfg_bit_width);
+EXPORT_SYMBOL(ipq_cfg_bit_width);
 
 /*
  * Configure stereo/mono mode
  */
-void ipq4019_config_stereo_mode(u32 mode, u32 stereo_id)
+void ipq_config_stereo_mode(u32 mode, u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -201,12 +201,12 @@ void ipq4019_config_stereo_mode(u32 mode, u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_config_stereo_mode);
+EXPORT_SYMBOL(ipq_config_stereo_mode);
 
 /*
  * Configure master mode
  */
-void ipq4019_config_master(u32 enable, u32 stereo_id)
+void ipq_config_master(u32 enable, u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -221,14 +221,14 @@ void ipq4019_config_master(u32 enable, u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_config_master);
+EXPORT_SYMBOL(ipq_config_master);
 
 /* Selects the raw clock source between
  * divided audio clock and input master clock
  * Val 0: Raw master clock is divided audio PLL clock
  * Val 1: Raw master clock is MCLK IN
  */
-void ipq4019_config_mclk_sel(u32 stereo_id, u32 val)
+void ipq_config_mclk_sel(u32 stereo_id, u32 val)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -243,12 +243,12 @@ void ipq4019_config_mclk_sel(u32 stereo_id, u32 val)
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 
 }
-EXPORT_SYMBOL(ipq4019_config_mclk_sel);
+EXPORT_SYMBOL(ipq_config_mclk_sel);
 
 /*
  * Strategy to clear the sample counter TX and RX registers
  */
-void ipq4019_config_sample_cnt_clear_type(u32 stereo_id)
+void ipq_config_sample_cnt_clear_type(u32 stereo_id)
 {
 	u32 cfg;
 	unsigned long flags;
@@ -266,15 +266,15 @@ void ipq4019_config_sample_cnt_clear_type(u32 stereo_id)
 			+ ADSS_STEREOn_STEREO0_CONFIG_REG);
 	spin_unlock_irqrestore(&stereo_priv[stereo_id].stereo_lock, flags);
 }
-EXPORT_SYMBOL(ipq4019_config_sample_cnt_clear_type);
+EXPORT_SYMBOL(ipq_config_sample_cnt_clear_type);
 
-static const struct of_device_id ipq4019_audio_stereo_id_table[] = {
+static const struct of_device_id ipq_audio_stereo_id_table[] = {
 	{ .compatible = "qca,ipq4019-stereo" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, ipq4019_audio_stereo_id_table);
+MODULE_DEVICE_TABLE(of, ipq_audio_stereo_id_table);
 
-static int ipq4019_audio_stereo_probe(struct platform_device *pdev)
+static int ipq_audio_stereo_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct stereo_priv_data *spd;
@@ -298,16 +298,16 @@ static int ipq4019_audio_stereo_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver ipq4019_audio_stereo_driver = {
-	.probe = ipq4019_audio_stereo_probe,
+static struct platform_driver ipq_audio_stereo_driver = {
+	.probe = ipq_audio_stereo_probe,
 	.driver = {
-		.name = "ipq4019-stereo",
-		.of_match_table = ipq4019_audio_stereo_id_table,
+		.name = "ipq-stereo",
+		.of_match_table = ipq_audio_stereo_id_table,
 	},
 };
 
-module_platform_driver(ipq4019_audio_stereo_driver);
+module_platform_driver(ipq_audio_stereo_driver);
 
-MODULE_ALIAS("platform:ipq4019-stereo");
+MODULE_ALIAS("platform:ipq-stereo");
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("IPQ4019 AUDIO Stereo driver");
+MODULE_DESCRIPTION("IPQ AUDIO Stereo driver");
