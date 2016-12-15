@@ -115,6 +115,14 @@
 
 #define PCIE20_LNK_CONTROL2_LINK_STATUS2        0xA0
 
+#define __set(v, a, b)	(((v) << (b)) & GENMASK(a, b))
+#define __mask(a, b)	(((1 << ((a) + 1)) - 1) & ~((1 << (b)) - 1))
+#define PCIE20_DEV_CAS			0x78
+#define PCIE20_MRRS_MASK		__mask(14, 12)
+#define PCIE20_MRRS(x)			__set(x, 14, 12)
+#define PCIE20_MPS_MASK			__mask(7, 5)
+#define PCIE20_MPS(x)			__set(x, 7, 5)
+
 struct qcom_pcie_resources_v0 {
 	struct clk *iface_clk;
 	struct clk *core_clk;
@@ -1397,6 +1405,35 @@ static int qcom_pcie_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+static void qcom_pcie_fixup_final(struct pci_dev *dev)
+{
+	int cap, err;
+	u16 ctl, reg_val;
+
+	cap = pci_pcie_cap(dev);
+	if (!cap)
+		return;
+
+	err = pci_read_config_word(dev, cap + PCI_EXP_DEVCTL, &ctl);
+
+	if (err)
+		return;
+
+	reg_val = ctl;
+
+	if (((reg_val & PCIE20_MRRS_MASK) >> 12) > 1)
+		reg_val = (reg_val & ~(PCIE20_MRRS_MASK)) | PCIE20_MRRS(0x1);
+
+	if (((ctl & PCIE20_MPS_MASK) >> 5) > 1)
+		reg_val = (reg_val & ~(PCIE20_MPS_MASK)) | PCIE20_MPS(0x1);
+
+	err = pci_write_config_word(dev, cap + PCI_EXP_DEVCTL, reg_val);
+
+	if (err)
+		pr_err("pcie config write failed %d\n", err);
+}
+DECLARE_PCI_FIXUP_FINAL(PCI_ANY_ID, PCI_ANY_ID, qcom_pcie_fixup_final);
 
 static const struct of_device_id qcom_pcie_match[] = {
 	{ .compatible = "qcom,pcie-ipq8064", .data = &ops_v0 },
