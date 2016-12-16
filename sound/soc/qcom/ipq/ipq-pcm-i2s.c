@@ -574,6 +574,7 @@ static const struct of_device_id ipq_pcm_i2s_id_table[] = {
 	{ .compatible = "qca,ipq4019-pcm-i2s" },
 	{ .compatible = "qca,ipq4019-pcm-i2s1" },
 	{ .compatible = "qca,ipq4019-pcm-i2s2" },
+	{ .compatible = "qca,ipq8074-pcm-i2s" },
 	{ /* Sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, ipq_pcm_i2s_id_table);

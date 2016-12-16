@@ -270,6 +270,7 @@ EXPORT_SYMBOL(ipq_config_sample_cnt_clear_type);
 
 static const struct of_device_id ipq_audio_stereo_id_table[] = {
 	{ .compatible = "qca,ipq4019-stereo" },
+	{ .compatible = "qca,ipq8074-stereo" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_audio_stereo_id_table);
