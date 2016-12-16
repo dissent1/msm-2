@@ -41,6 +41,7 @@ struct dai_priv_st {
 	int tx_enabled;
 	int rx_enabled;
 	struct platform_device *pdev;
+	enum ipq_hw_type ipq_hw;
 };
 static struct dai_priv_st dai_priv[MAX_INTF];
 
@@ -117,7 +118,6 @@ static int ipq_audio_clk_get(struct clk **clk, struct device *dev,
 		dev_err(dev, "%s: Error in %s\n", __func__, id);
 		return PTR_ERR(*clk);
 	}
-
 	return 0;
 }
 
@@ -139,7 +139,6 @@ static int ipq_audio_clk_set(struct clk *clk, struct device *dev,
 					__clk_get_name(clk));
 		return ret;
 	}
-
 	return 0;
 }
 
@@ -341,13 +340,11 @@ static int ipq_spdif_hw_params(struct snd_pcm_substream *substream,
 		if (ret)
 			return ret;
 
-		ret = ipq_audio_clk_set(audio_spdif_src, dev,
-						spdif_mclk);
+		ret = ipq_audio_clk_set(audio_spdif_src, dev, spdif_mclk);
 		if (ret)
 			return ret;
 
-		ret = ipq_audio_clk_set(audio_spdif_div2, dev,
-						spdif_bclk);
+		ret = ipq_audio_clk_set(audio_spdif_div2, dev, spdif_bclk);
 		if (ret)
 			return ret;
 
@@ -429,7 +426,6 @@ static void ipq_spdif_shutdown(struct snd_pcm_substream *substream,
 		ipq_audio_clk_disable(&audio_tx_mclk, dev);
 		ipq_audio_clk_disable(&audio_spdif_src, dev);
 		ipq_audio_clk_disable(&audio_spdif_div2, dev);
-
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		ipq_glb_rx_data_port_en(DISABLE);
 		ipq_glb_rx_framesync_port_en(DISABLE);
@@ -453,7 +449,7 @@ static struct snd_soc_dai_ops ipq_spdif_ops = {
 	.set_fmt	= ipq_spdif_set_fmt,
 };
 
-static struct snd_soc_dai_driver ipq_cpu_dais[] = {
+static struct snd_soc_dai_driver ipq4019_cpu_dais[] = {
 	{
 		.playback = {
 			.rates		= RATE_16000_96000,
@@ -553,16 +549,102 @@ static struct snd_soc_dai_driver ipq_cpu_dais[] = {
 	},
 };
 
+static struct snd_soc_dai_driver ipq8074_cpu_dais[] = {
+	{
+		.playback = {
+			.rates		= RATE_16000_96000,
+			.formats	= SNDRV_PCM_FMTBIT_S16 |
+					SNDRV_PCM_FMTBIT_S32,
+			.channels_min	= CH_STEREO,
+			.channels_max	= CH_STEREO,
+			.rate_min	= FREQ_16000,
+			.rate_max	= FREQ_96000,
+		},
+		.capture = {
+			.rates		= RATE_16000_96000,
+			.formats	= SNDRV_PCM_FMTBIT_S16 |
+					SNDRV_PCM_FMTBIT_S32,
+			.channels_min	= CH_STEREO,
+			.channels_max	= CH_STEREO,
+			.rate_min	= FREQ_16000,
+			.rate_max	= FREQ_96000,
+		},
+		.ops = &ipq_audio_ops,
+		.id = I2S,
+		.name = "qca-i2s-dai"
+	},
+	{
+		.playback = {
+			.rates		= RATE_16000_96000,
+			.formats	= SNDRV_PCM_FMTBIT_S16 |
+					SNDRV_PCM_FMTBIT_S32,
+			.channels_min	= CH_STEREO,
+			.channels_max	= CH_7_1,
+			.rate_min	= FREQ_16000,
+			.rate_max	= FREQ_96000,
+		},
+		.capture = {
+			.rates		= RATE_16000_96000,
+			.formats	= SNDRV_PCM_FMTBIT_S16 |
+					SNDRV_PCM_FMTBIT_S32,
+			.channels_min	= CH_STEREO,
+			.channels_max	= CH_7_1,
+			.rate_min	= FREQ_16000,
+			.rate_max	= FREQ_96000,
+		},
+		.ops = &ipq_audio_ops,
+		.id = TDM,
+		.name = "qca-tdm-dai"
+	},
+};
+
 static const struct snd_soc_component_driver ipq_i2s_component = {
 	.name           = "qca-cpu-dai",
 };
 
+struct ipq_intf_pdata ipq4019_i2s_pdata = {
+	.data = I2S,
+	.hw = IPQ4019,
+};
+
+struct ipq_intf_pdata ipq4019_tdm_pdata = {
+	.data = TDM,
+	.hw = IPQ4019,
+};
+
+struct ipq_intf_pdata ipq4019_spdif_pdata = {
+	.data = SPDIF,
+	.hw = IPQ4019,
+};
+
+struct ipq_intf_pdata ipq4019_i2s1_pdata = {
+	.data = I2S1,
+	.hw = IPQ4019,
+};
+
+struct ipq_intf_pdata ipq4019_i2s2_pdata = {
+	.data = I2S2,
+	.hw = IPQ4019,
+};
+
+struct ipq_intf_pdata ipq8074_i2s_pdata = {
+	.data = I2S,
+	.hw = IPQ8074,
+};
+
+struct ipq_intf_pdata ipq8074_tdm_pdata = {
+	.data = TDM,
+	.hw = IPQ8074,
+};
+
 static const struct of_device_id ipq_cpu_dai_id_table[] = {
-	{ .compatible = "qca,ipq4019-i2s", .data = (void *)I2S },
-	{ .compatible = "qca,ipq4019-tdm", .data = (void *)TDM},
-	{ .compatible = "qca,ipq4019-spdif", .data = (void *)SPDIF},
-	{ .compatible = "qca,ipq4019-i2s1", .data = (void *)I2S1},
-	{ .compatible = "qca,ipq4019-i2s2", .data = (void *)I2S2},
+	{ .compatible = "qca,ipq4019-i2s", .data = &ipq4019_i2s_pdata },
+	{ .compatible = "qca,ipq4019-tdm", .data = &ipq4019_tdm_pdata },
+	{ .compatible = "qca,ipq4019-spdif", .data = &ipq4019_spdif_pdata },
+	{ .compatible = "qca,ipq4019-i2s1", .data = &ipq4019_i2s1_pdata },
+	{ .compatible = "qca,ipq4019-i2s2", .data = &ipq4019_i2s2_pdata },
+	{ .compatible = "qca,ipq8074-i2s", .data = &ipq8074_i2s_pdata },
+	{ .compatible = "qca,ipq8074-tdm", .data = &ipq8074_tdm_pdata },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_cpu_dai_id_table);
@@ -571,6 +653,7 @@ static int ipq_dai_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	struct device_node *np = pdev->dev.of_node;
+	struct ipq_intf_pdata *pdata = NULL;
 	int ret;
 	int intf;
 
@@ -578,7 +661,9 @@ static int ipq_dai_probe(struct platform_device *pdev)
 	if (!match)
 		return -ENODEV;
 
-	intf = (u32)match->data;
+	pdata = (struct ipq_intf_pdata *)match->data;
+	intf = pdata->data;
+	dai_priv[intf].ipq_hw = pdata->hw;
 
 	/* TX is enabled only when both DMA and Stereo TX channel
 	 * is specified in the DTSi
@@ -637,12 +722,13 @@ static int ipq_dai_probe(struct platform_device *pdev)
 		if (ret)
 			return ret;
 
-		ret = ipq_audio_clk_get(&audio_spdifinfast_src, &pdev->dev,
-						"audio_spdifinfast_src");
+		ret = ipq_audio_clk_get(&audio_spdifinfast_src,
+				 &pdev->dev, "audio_spdifinfast_src");
 		if (ret)
 			return ret;
 	} else {
-		audio_rx_mclk = devm_clk_get(&pdev->dev, "audio_rx_mclk");
+		audio_rx_mclk = devm_clk_get(&pdev->dev,
+						"audio_rx_mclk");
 		if (IS_ERR(audio_rx_mclk)) {
 			dev_err(&pdev->dev, "Could not get rx_mclk\n");
 			return PTR_ERR(audio_rx_mclk);
@@ -656,8 +742,13 @@ static int ipq_dai_probe(struct platform_device *pdev)
 	}
 
 	dai_priv[intf].pdev = pdev;
-	ret = snd_soc_register_component(&pdev->dev, &ipq_i2s_component,
-			 ipq_cpu_dais, ARRAY_SIZE(ipq_cpu_dais));
+
+	if (dai_priv[intf].ipq_hw == IPQ4019)
+		ret = snd_soc_register_component(&pdev->dev, &ipq_i2s_component,
+			 ipq4019_cpu_dais, ARRAY_SIZE(ipq4019_cpu_dais));
+	else
+		ret = snd_soc_register_component(&pdev->dev, &ipq_i2s_component,
+			 ipq8074_cpu_dais, ARRAY_SIZE(ipq8074_cpu_dais));
 	if (ret)
 		dev_err(&pdev->dev,
 			"ret: %d error registering soc dais\n", ret);

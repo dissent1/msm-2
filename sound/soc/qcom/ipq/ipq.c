@@ -29,18 +29,15 @@
 #include <sound/pcm.h>
 #include <sound/jack.h>
 #include <linux/io.h>
+#include "ipq-adss.h"
 
-static struct snd_soc_dai_link ipq_snd_dai[] = {
+static struct snd_soc_dai_link ipq4019_snd_dai[] = {
 	{
 		.name		= "IPQ Media1",
 		.stream_name	= "I2S",
-		/* CPU DAI Name */
 		.cpu_dai_name	= "qca-i2s-dai",
-		/* Platform Driver Name */
 		.platform_name	= "7709000.qca-pcm-i2s",
-		/* Codec DAI Name */
 		.codec_dai_name	= "qca-i2s-codec-dai",
-		/*Codec Driver Name */
 		.codec_name	= "qca_codec.0-0012",
 		.dai_fmt = (SND_SOC_DAIFMT_I2S |
 				SND_SOC_DAIFMT_NB_NF |
@@ -80,14 +77,43 @@ static struct snd_soc_dai_link ipq_snd_dai[] = {
 	},
 };
 
-static struct snd_soc_card snd_soc_card_qca = {
-	.name		= "ipq_snd_card",
-	.dai_link	= ipq_snd_dai,
-	.num_links	= ARRAY_SIZE(ipq_snd_dai),
+static struct snd_soc_dai_link ipq8074_snd_dai[] = {
+	{
+		.name		= "IPQ Media1",
+		.stream_name	= "I2S",
+		.cpu_dai_name	= "qca-i2s-dai",
+		.platform_name	= "7709000.qca-pcm-i2s",
+		.codec_dai_name	= "qca-i2s-codec-dai",
+		.codec_name	= "qca_codec.1-0012",
+		.dai_fmt = (SND_SOC_DAIFMT_I2S |
+				SND_SOC_DAIFMT_NB_NF |
+				SND_SOC_DAIFMT_CBS_CFS),
+	},
+	{
+		.name		= "IPQ Media2",
+		.stream_name	= "TDM",
+		.cpu_dai_name	= "qca-tdm-dai",
+		.platform_name	= "7709000.qca-pcm-tdm",
+		.codec_dai_name	= "qca-tdm-codec-dai",
+		.codec_name	= "qca_codec.1-0012",
+	},
+};
+
+static struct snd_soc_card snd_soc_card_ipq4019 = {
+	.name		= "ipq4019_snd_card",
+	.dai_link	= ipq4019_snd_dai,
+	.num_links	= ARRAY_SIZE(ipq4019_snd_dai),
+};
+
+static struct snd_soc_card snd_soc_card_ipq8074 = {
+	.name		= "ipq8074_snd_card",
+	.dai_link	= ipq8074_snd_dai,
+	.num_links	= ARRAY_SIZE(ipq8074_snd_dai),
 };
 
 static const struct of_device_id ipq_audio_id_table[] = {
-	{ .compatible = "qca,ipq4019-audio" },
+	{ .compatible = "qca,ipq4019-audio", .data = &snd_soc_card_ipq4019 },
+	{ .compatible = "qca,ipq8074-audio", .data = &snd_soc_card_ipq8074 },
 	{},
 };
 MODULE_DEVICE_TABLE(of, ipq_audio_id_table);
@@ -95,7 +121,14 @@ MODULE_DEVICE_TABLE(of, ipq_audio_id_table);
 static int ipq_audio_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct snd_soc_card *card = &snd_soc_card_qca;
+	const struct of_device_id *match;
+	struct snd_soc_card *card;
+
+	match = of_match_device(ipq_audio_id_table, &pdev->dev);
+	if (!match)
+		return -ENODEV;
+
+	card = (struct snd_soc_card *)match->data;
 
 	card->dev = &pdev->dev;
 

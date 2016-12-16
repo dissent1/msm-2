@@ -32,6 +32,7 @@
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
+#include <linux/of_device.h>
 
 #include "ipq-adss.h"
 #include "ipq-codec.h"
@@ -230,7 +231,7 @@ static int ipq_codec_audio_hw_params(struct snd_pcm_substream *substream,
 	if (dai->active > 1) {
 		if (ipq_compare_hw_params(&curr_params)) {
 			/* Playback and capture settings do not match */
-			pr_err("\nPlayback and capture settings do not match\n");
+			pr_err("\nPlayback & capture settings do not match\n");
 			return -EINVAL;
 		}
 		/* Settings match, codec settings are already done*/
@@ -287,7 +288,7 @@ static struct snd_soc_dai_ops ipq_codec_audio_ops = {
 	.shutdown	= ipq_codec_audio_shutdown,
 };
 
-static struct snd_soc_dai_driver ipq_codec_dais[] = {
+static struct snd_soc_dai_driver ipq4019_codec_dais[] = {
 	{
 		.name = "qca-i2s-codec-dai",
 		.playback = {
@@ -373,6 +374,51 @@ static struct snd_soc_dai_driver ipq_codec_dais[] = {
 	},
 };
 
+static struct snd_soc_dai_driver ipq8074_codec_dais[] = {
+	{
+		.name = "qca-i2s-codec-dai",
+		.playback = {
+			.stream_name = "qca-i2s-playback",
+			.channels_min = CH_STEREO,
+			.channels_max = CH_STEREO,
+			.rates = RATE_16000_96000,
+			.formats = SNDRV_PCM_FMTBIT_S16 |
+				SNDRV_PCM_FMTBIT_S32,
+		},
+		.capture = {
+			.stream_name = "qca-i2s-capture",
+			.channels_min = CH_STEREO,
+			.channels_max = CH_STEREO,
+			.rates = RATE_16000_96000,
+			.formats = SNDRV_PCM_FMTBIT_S16 |
+				SNDRV_PCM_FMTBIT_S32,
+		},
+		.ops = &ipq_codec_audio_ops,
+		.id = I2S,
+	},
+	{
+		.name = "qca-tdm-codec-dai",
+		.playback = {
+			.stream_name = "qca-tdm-playback",
+			.channels_min = CH_STEREO,
+			.channels_max = CH_7_1,
+			.rates = RATE_16000_96000,
+			.formats = SNDRV_PCM_FMTBIT_S16 |
+				SNDRV_PCM_FMTBIT_S32,
+		},
+		.capture = {
+			.stream_name = "qca-tdm-capture",
+			.channels_min = CH_STEREO,
+			.channels_max = CH_7_1,
+			.rates = RATE_16000_96000,
+			.formats = SNDRV_PCM_FMTBIT_S16 |
+				SNDRV_PCM_FMTBIT_S32,
+		},
+		.ops = &ipq_codec_audio_ops,
+		.id = TDM,
+	},
+};
+
 static int ipq_info(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_info *uinfo)
 {
@@ -415,16 +461,26 @@ static const struct snd_soc_codec_driver ipq_codec = {
 	.reg_cache_default = akd4613_reg,
 };
 
-static const struct of_device_id ipq_codec_id_table[] = {
-	{ .compatible = "qca,ipq4019-codec" },
+static const struct of_device_id ipq_codec_of_match[] = {
+	{ .compatible = "qca,ipq4019-codec", .data = (void *)IPQ4019  },
+	{ .compatible = "qca,ipq8074-codec", .data = (void *)IPQ8074  },
 	{ /* Sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, ipq_codec_id_table);
+MODULE_DEVICE_TABLE(of, ipq_codec_of_match);
 
 static int ipq_codec_i2c_probe(struct i2c_client *i2c,
 					const struct i2c_device_id *id)
 {
+	struct device *dev = &i2c->dev;
 	int ret;
+	const struct of_device_id *match;
+	enum ipq_hw_type ipq_hw;
+
+	match = of_match_device(ipq_codec_of_match, dev);
+	if (!match)
+		return -ENODEV;
+
+	ipq_hw = (enum ipq_hw_type)match->data;
 
 	akd4613_regmap = devm_regmap_init_i2c(i2c, &akd4613_regmap_config);
 
@@ -437,9 +493,15 @@ static int ipq_codec_i2c_probe(struct i2c_client *i2c,
 
 	dev_info(&i2c->dev, "i2c regmap done\n");
 
-	ret = snd_soc_register_codec(&i2c->dev,
-			&ipq_codec, ipq_codec_dais,
-			ARRAY_SIZE(ipq_codec_dais));
+	if (ipq_hw == IPQ4019)
+		ret = snd_soc_register_codec(&i2c->dev,
+				&ipq_codec, ipq4019_codec_dais,
+				ARRAY_SIZE(ipq4019_codec_dais));
+	else
+		ret = snd_soc_register_codec(&i2c->dev,
+				&ipq_codec, ipq8074_codec_dais,
+				ARRAY_SIZE(ipq8074_codec_dais));
+
 	if (ret < 0)
 		dev_err(&i2c->dev, "snd_soc_register_codec failed (%d)\n", ret);
 
@@ -451,11 +513,6 @@ static int ipq_codec_i2c_remove(struct i2c_client *client)
 	snd_soc_unregister_codec(&client->dev);
 	return 0;
 }
-
-static const struct of_device_id ipq_codec_of_match[] = {
-	{ .compatible = "qca,ipq4019-codec" },
-	{},
-};
 
 static const struct i2c_device_id ipq_codec_i2c_id[] = {
 	{ "qca_codec", 0 },
