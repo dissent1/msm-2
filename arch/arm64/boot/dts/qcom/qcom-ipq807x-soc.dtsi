@@ -155,6 +155,13 @@
 			#reset-cells = <1>;
 		};
 
+		apss_clk: qcom,apss_clk@b111000 {
+			compatible = "qcom,apss-ipq807x";
+			reg = <0xb111000 0x6000>;
+			#clock-cells = <0x1>;
+			#reset-cells = <1>;
+		};
+
 		blsp_bam: dma@7884000 {
 			compatible = "qcom,bam-v1.7.0";
 			reg = <0x07884000 0x2b000>;
@@ -202,12 +209,6 @@
 			dmas = <&blsp_bam 12>, <&blsp_bam 13>;
 			dma-names = "tx", "rx";
 			status = "disabled";
-		};
-
-		sleep_clk: sleep_clk {
-			compatible = "fixed-clock";
-			clock-frequency = <32768>;
-			#clock-cells = <0>;
 		};
 
 		watchdog@b017000 {
@@ -1128,6 +1129,92 @@
 		pcm_lb: pcm_lb@0 {
 			compatible = "qca,ipq8074-pcm-lb";
 			status = "disabled";
+		};
+	};
+
+	clocks {
+		sleep_clk: sleep_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <32000>;
+			#clock-cells = <0>;
+		};
+
+		xo: xo {
+			compatible = "fixed-clock";
+			clock-frequency = <19200000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy0_gcc_rx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy0_gcc_tx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy1_gcc_rx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy1_gcc_tx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy2_gcc_rx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		uniphy2_gcc_tx_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <312500000>;
+			#clock-cells = <0>;
+		};
+
+		bias_pll_cc_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <600000000>;
+			#clock-cells = <0>;
+		};
+
+		bias_pll_nss_noc_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <416500000>;
+			#clock-cells = <0>;
+		};
+
+		pcie20_phy0_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
+		};
+
+		pcie20_phy1_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
+		};
+
+		usb3phy_0_cc_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
+		};
+
+		usb3phy_1_cc_pipe_clk {
+			compatible = "fixed-clock";
+			clock-frequency = <125000000>;
+			#clock-cells = <0>;
 		};
 	};
 };
