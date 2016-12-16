@@ -59,8 +59,8 @@
  * Even though 40 bits are present, use only 32 for ease of calculation.
  */
 #define ALPHA_REG_BITWIDTH	40
+#define ALPHA_REG_16BIT_WIDTH	16
 #define ALPHA_BITWIDTH		32
-#define ALPHA_16BIT_MASK	0xffff
 
 #define PLL_MODE_REG(pll)	(pll->offset + PLL_MODE)
 #define PLL_L_REG(pll)		(pll->offset + PLL_L_VAL + pll->l_offset)
@@ -319,13 +319,16 @@ static void clk_alpha_pll_disable(struct clk_hw *hw)
 	regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll), mask, 0);
 }
 
-static unsigned long alpha_pll_calc_rate(u64 prate, u32 l, u32 a)
+static unsigned long
+alpha_pll_calc_rate(u64 prate, u32 l, u32 a, u32 alpha_width)
 {
-	return (prate * l) + ((prate * a) >> ALPHA_BITWIDTH);
+	return (prate * l) + ((prate * a) >>
+		(alpha_width > ALPHA_BITWIDTH ? ALPHA_BITWIDTH : alpha_width));
 }
 
 static unsigned long
-alpha_pll_round_rate(unsigned long rate, unsigned long prate, u32 *l, u64 *a)
+alpha_pll_round_rate(unsigned long rate, unsigned long prate, u32 *l, u64 *a,
+			u32 alpha_width)
 {
 	u64 remainder;
 	u64 quotient;
@@ -340,14 +343,17 @@ alpha_pll_round_rate(unsigned long rate, unsigned long prate, u32 *l, u64 *a)
 	}
 
 	/* Upper ALPHA_BITWIDTH bits of Alpha */
-	quotient = remainder << ALPHA_BITWIDTH;
+	quotient = remainder <<
+			(alpha_width > ALPHA_BITWIDTH ?
+			 ALPHA_BITWIDTH : alpha_width);
+
 	remainder = do_div(quotient, prate);
 
 	if (remainder)
 		quotient++;
 
 	*a = quotient;
-	return alpha_pll_calc_rate(prate, *l, *a);
+	return alpha_pll_calc_rate(prate, *l, *a, alpha_width);
 }
 
 static const struct pll_vco *
@@ -366,26 +372,28 @@ alpha_pll_find_vco(const struct clk_alpha_pll *pll, unsigned long rate)
 static unsigned long
 clk_alpha_pll_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 {
-	u32 l, low, high, ctl;
+	u32 l, low, high, ctl, alpha_width;
 	u64 a = 0, prate = parent_rate;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 
 	regmap_read(pll->clkr.regmap, PLL_L_REG(pll), &l);
+	alpha_width = pll->flags & SUPPORTS_16BIT_ALPHA ?
+				ALPHA_REG_16BIT_WIDTH : ALPHA_REG_BITWIDTH;
 
 	regmap_read(pll->clkr.regmap, PLL_USER_CTL_REG(pll), &ctl);
 	if (ctl & PLL_ALPHA_EN) {
 		regmap_read(pll->clkr.regmap, PLL_ALPHA_REG(pll), &low);
-		if (pll->flags & SUPPORTS_16BIT_ALPHA) {
-			a = low & ALPHA_16BIT_MASK;
-		} else {
+		if (alpha_width > ALPHA_BITWIDTH) {
 			regmap_read(pll->clkr.regmap, PLL_ALPHA_U_REG(pll),
 				    &high);
-			a = (u64)high << 32 | low;
-			a >>= ALPHA_REG_BITWIDTH - ALPHA_BITWIDTH;
+			a = (u64)high << ALPHA_BITWIDTH | low;
+			a >>= alpha_width - ALPHA_BITWIDTH;
+		} else {
+			a = low;
 		}
 	}
 
-	return alpha_pll_calc_rate(prate, l, a);
+	return alpha_pll_calc_rate(prate, l, a, alpha_width);
 }
 
 static int clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -393,10 +401,12 @@ static int clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	const struct pll_vco *vco;
-	u32 l;
+	u32 l, alpha_width;
 	u64 a;
 
-	rate = alpha_pll_round_rate(rate, prate, &l, &a);
+	alpha_width = pll->flags & SUPPORTS_16BIT_ALPHA ?
+				ALPHA_REG_16BIT_WIDTH : ALPHA_REG_BITWIDTH;
+	rate = alpha_pll_round_rate(rate, prate, &l, &a, alpha_width);
 	vco = alpha_pll_find_vco(pll, rate);
 	if (!vco) {
 		pr_err("alpha pll not in a valid vco range\n");
@@ -405,13 +415,15 @@ static int clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	regmap_write(pll->clkr.regmap, PLL_L_REG(pll), l);
 
-	if (pll->flags & SUPPORTS_16BIT_ALPHA) {
-		regmap_write(pll->clkr.regmap, PLL_ALPHA_REG(pll),
-			     a & ALPHA_16BIT_MASK);
-	} else {
-		a <<= (ALPHA_REG_BITWIDTH - ALPHA_BITWIDTH);
-		regmap_write(pll->clkr.regmap, PLL_ALPHA_U_REG(pll), a >> 32);
+	if (alpha_width > ALPHA_BITWIDTH) {
+		a <<= (alpha_width - ALPHA_BITWIDTH);
+		regmap_update_bits(pll->clkr.regmap, PLL_ALPHA_U_REG(pll),
+				   GENMASK(0, alpha_width - ALPHA_BITWIDTH - 1),
+				   a >> ALPHA_BITWIDTH);
 	}
+
+	regmap_update_bits(pll->clkr.regmap, PLL_ALPHA_REG(pll),
+			   GENMASK(0, alpha_width - 1), a);
 
 	regmap_update_bits(pll->clkr.regmap, PLL_USER_CTL_REG(pll),
 			   PLL_VCO_MASK << PLL_VCO_SHIFT,
@@ -427,11 +439,14 @@ static long clk_alpha_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 				     unsigned long *prate)
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 l;
+	u32 l, alpha_width;
 	u64 a;
 	unsigned long min_freq, max_freq;
 
-	rate = alpha_pll_round_rate(rate, *prate, &l, &a);
+	alpha_width = pll->flags & SUPPORTS_16BIT_ALPHA ?
+				ALPHA_REG_16BIT_WIDTH : ALPHA_REG_BITWIDTH;
+
+	rate = alpha_pll_round_rate(rate, *prate, &l, &a, alpha_width);
 	if (alpha_pll_find_vco(pll, rate))
 		return rate;
 
