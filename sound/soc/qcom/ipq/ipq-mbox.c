@@ -20,6 +20,7 @@
 #include <linux/mm.h>
 #include <linux/delay.h>
 #include <sound/soc.h>
+#include <linux/of_device.h>
 
 #include "ipq-mbox.h"
 
@@ -30,7 +31,35 @@ enum {
 	CHN_STATUS_DISABLE = 0xFF,
 };
 
+static struct ipq_mbox_pdata {
+	uint32_t ipq_desc_size;
+	enum ipq_hw_type ipq_hw;
+	uint32_t ipq_mbox_mask;
+} ipq_mbox_info;
+
 static struct ipq_mbox_rt_priv *mbox_rtime[ADSS_MBOX_NR_CHANNELS];
+
+static inline uint32_t ipq_get_desc_size(void)
+{
+	struct ipq_mbox_desc *desc;
+
+	if (ipq_mbox_info.ipq_hw == IPQ4019)
+		ipq_mbox_info.ipq_desc_size = (sizeof(desc[0]));
+	else
+		ipq_mbox_info.ipq_desc_size =
+			(sizeof(desc[0]) - sizeof(desc[0].vuc_dword));
+
+	return ipq_mbox_info.ipq_desc_size;
+}
+
+#define ipq_increment_desc(ptr, n) ipq_increment_desc_ptr((void *)ptr, n)
+
+inline struct ipq_mbox_desc *ipq_increment_desc_ptr(void *desc_ptr,
+							int no_of_desc)
+{
+	return (struct ipq_mbox_desc *)((uint8_t *)desc_ptr +
+				(ipq_mbox_info.ipq_desc_size * no_of_desc));
+}
 
 struct ipq_mbox_desc
 	*ipq_mbox_get_last_played(unsigned int channel_id)
@@ -48,7 +77,9 @@ struct ipq_mbox_desc
 
 	ndescs = mbox_rtime[index]->dir_priv[dir].ndescs;
 	/* Point to the last desc */
-	prev = &mbox_rtime[index]->dir_priv[dir].dma_virt_head[ndescs - 1];
+	prev =
+	ipq_increment_desc(mbox_rtime[index]->dir_priv[dir].dma_virt_head,
+							(ndescs - 1));
 
 	/* Point to the first desc */
 	desc = &mbox_rtime[index]->dir_priv[dir].dma_virt_head[0];
@@ -57,7 +88,7 @@ struct ipq_mbox_desc
 		if (desc->OWN == 1 && prev->OWN == 0)
 			return desc;
 		prev = desc;
-		desc += 1;
+		desc = ipq_increment_desc(desc, 1);
 	}
 
 	/* If we didn't find the last played buffer, return NULL */
@@ -86,7 +117,7 @@ uint32_t ipq_mbox_get_elapsed_size(uint32_t channel_id)
 			desc->ei = 1;
 			size_played += desc->size;
 		}
-		desc += 1;
+		desc = ipq_increment_desc(desc, 1);
 	}
 
 	return size_played;
@@ -99,9 +130,9 @@ static struct ipq_mbox_desc *get_next(
 {
 	struct ipq_mbox_desc *end;
 
-	end = rtdir->dma_virt_head + rtdir->ndescs;
+	end = ipq_increment_desc(rtdir->dma_virt_head, rtdir->ndescs);
 
-	desc++;
+	desc = ipq_increment_desc(desc, 1);
 
 	if (desc >= end)
 		desc = rtdir->dma_virt_head;
@@ -122,7 +153,7 @@ void ipq_mbox_desc_own(u32 channel_id, int desc_no, int own)
 	rtdir = &mbox_rtime[chan]->dir_priv[dir];
 
 	desc = rtdir->dma_virt_head;
-	desc += desc_no;
+	desc = ipq_increment_desc(desc, desc_no);
 
 	rtdir->write = desc_no;
 
@@ -145,9 +176,9 @@ u32 ipq_mbox_get_played_offset(u32 channel_id)
 	rtdir = &mbox_rtime[chan]->dir_priv[dir];
 
 	desc = rtdir->dma_virt_head;
-	write = &rtdir->dma_virt_head[rtdir->write];
+	write = ipq_increment_desc(desc, rtdir->write);
 
-	desc += rtdir->read;
+	desc = ipq_increment_desc(desc, rtdir->read);
 
 	for (i = 0; i < rtdir->ndescs; i++) {
 		if (desc->OWN == 0) {
@@ -181,7 +212,7 @@ uint32_t ipq_mbox_get_played_offset_set_own(u32 channel_id)
 	last_played = NULL;
 
 	/* Point to the last desc */
-	prev = &rtdir->dma_virt_head[rtdir->ndescs - 1];
+	prev = ipq_increment_desc(rtdir->dma_virt_head, (rtdir->ndescs - 1));
 	desc_own = prev->OWN;
 
 	/* point to first desc */
@@ -199,7 +230,7 @@ uint32_t ipq_mbox_get_played_offset_set_own(u32 channel_id)
 			prev->ei = 1;
 		}
 		prev = desc;
-		desc += 1;
+		desc = ipq_increment_desc(desc, 1);
 	}
 	if (last_played) {
 		desc = &rtdir->dma_virt_head[0];
@@ -475,7 +506,7 @@ int ipq_mbox_dma_prepare(int channel_id)
 
 		val |= ADSS_MBOX_DMA_POLICY_SRAM_AC(phys_addr);
 		writel(val, mbox_reg + ADSS_MBOXn_MBOX_DMA_POLICY_REG);
-		writel(phys_addr & MBOX_DMA_MASK,
+		writel((phys_addr & ipq_mbox_info.ipq_mbox_mask),
 			mbox_reg + ADSS_MBOXn_MBOXn_DMA_RX_DESCRIPTOR_BASE_REG);
 		ipq_mbox_intr_en(mbox_reg, MBOX_INT_ENABLE_RX_DMA_COMPLETE);
 	} else {
@@ -484,8 +515,8 @@ int ipq_mbox_dma_prepare(int channel_id)
 			ADSS_MBOX_DMA_POLICY_TX_FIFO_THRESHOLD(6);
 		val |= ADSS_MBOX_DMA_POLICY_SRAM_AC(phys_addr);
 		writel(val, mbox_reg + ADSS_MBOXn_MBOX_DMA_POLICY_REG);
-		writel(phys_addr & MBOX_DMA_MASK,
-			mbox_reg + ADSS_MBOXn_MBOXn_DMA_TX_DESCRIPTOR_BASE_REG);
+		writel((phys_addr & ipq_mbox_info.ipq_mbox_mask),
+		mbox_reg + ADSS_MBOXn_MBOXn_DMA_TX_DESCRIPTOR_BASE_REG);
 		ipq_mbox_intr_en(mbox_reg, MBOX_INT_ENABLE_TX_DMA_COMPLETE);
 	}
 
@@ -565,11 +596,12 @@ int ipq_mbox_form_ring(int channel_id, dma_addr_t baseaddr, u8 *area,
 
 	baseaddr_const = baseaddr;
 
-	for (i = 0; i < ndescs; i++, desc++) {
+	for (i = 0; i < ndescs; i++) {
 		desc->OWN = own_bit;
 		desc->ei = 1;
-		desc->BufPtr = baseaddr & MBOX_DMA_MASK;
-		desc->NextPtr = (unsigned long)&_desc_p[(i + 1) % ndescs];
+		desc->BufPtr = (baseaddr & ipq_mbox_info.ipq_mbox_mask);
+		desc->NextPtr = (unsigned long)ipq_increment_desc(_desc_p,
+							((i + 1) % ndescs));
 		desc->size = period_bytes;
 		desc->length = desc->size;
 		baseaddr += ALIGN(period_bytes, L1_CACHE_BYTES);
@@ -581,6 +613,7 @@ int ipq_mbox_form_ring(int channel_id, dma_addr_t baseaddr, u8 *area,
 
 			baseaddr = baseaddr_const;
 		}
+		desc = ipq_increment_desc(desc, 1);
 	}
 
 	return 0;
@@ -629,7 +662,7 @@ static void irq_proc_status(struct ipq_mbox_rt_dir_priv *priv, int irq,
 
 static irqreturn_t ipq_mbox_dma_irq(int irq, void *dev_id)
 {
-	unsigned int status, mask = 0;
+	unsigned int status, mask = 0, ack;
 	struct ipq_mbox_rt_priv *curr_rtime = dev_id;
 	void __iomem *mbox_reg = curr_rtime->mbox_reg_base;
 	struct ipq_mbox_rt_dir_priv *p = &curr_rtime->dir_priv[PLAYBACK];
@@ -651,8 +684,8 @@ static irqreturn_t ipq_mbox_dma_irq(int irq, void *dev_id)
 					MBOX_INT_STATUS_TX_FIFO_OVERFLOW);
 
 	if (mask) {
-		writel(status & ~mask,
-				mbox_reg + ADSS_MBOXn_MBOX_INT_STATUS_REG);
+		ack = IPQ_MBOX_IRQ_ACK(status, mask, ipq_mbox_info.ipq_hw);
+		writel(ack, mbox_reg + ADSS_MBOXn_MBOX_INT_STATUS_REG);
 		return IRQ_HANDLED;
 	}
 
@@ -706,10 +739,17 @@ int ipq_mbox_dma_init(struct device *dev, int channel_id,
 	mbox_cb->dai_priv = private_data;
 	mbox_cb->callback = callback;
 	mbox_cb->dev = dev;
+	ipq_get_desc_size();
 
 	return 0;
 }
 EXPORT_SYMBOL(ipq_mbox_dma_init);
+
+static const struct of_device_id ipq_mbox_table[] = {
+	{ .compatible = "qca,ipq4019-mbox", .data = (void *)IPQ4019 },
+	{ .compatible = "qca,ipq8074-mbox", .data = (void *)IPQ8074 },
+	{},
+};
 
 static int ipq_mbox_probe(struct platform_device *pdev)
 {
@@ -721,6 +761,13 @@ static int ipq_mbox_probe(struct platform_device *pdev)
 	void __iomem *reg_base;
 	struct resource *res;
 	int rc;
+	const struct of_device_id *match;
+
+	match = of_match_device(ipq_mbox_table, &pdev->dev);
+	if (!match)
+		return -ENODEV;
+
+	ipq_mbox_info.ipq_hw = (u32)match->data;
 
 	np = pdev->dev.of_node;
 
@@ -782,13 +829,13 @@ static int ipq_mbox_probe(struct platform_device *pdev)
 		(rx_channel == CHN_STATUS_DISABLE) ? CHN_DISABLED : CHN_ENABLED;
 	mbox_rtime[id]->irq_no = irq;
 
+	if (ipq_mbox_info.ipq_hw == IPQ4019)
+		ipq_mbox_info.ipq_mbox_mask = DMA_BIT_MASK(28);
+	else
+		ipq_mbox_info.ipq_mbox_mask = DMA_BIT_MASK(32);
+
 	return 0;
 }
-
-static const struct of_device_id ipq_mbox_table[] = {
-	{ .compatible = "qca,ipq4019-mbox" },
-	{},
-};
 
 static struct platform_driver ipq_mbox_driver = {
 	.probe = ipq_mbox_probe,

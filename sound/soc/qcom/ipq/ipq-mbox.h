@@ -17,6 +17,8 @@
 #ifndef _IPQ_MBOX_H_
 #define _IPQ_MBOX_H_
 
+#include <sound/soc.h>
+
 #include "ipq-adss.h"
 
 #define ADSS_MBOX_INVALID_PCM			(0xFFFFFFFF)
@@ -70,16 +72,14 @@ struct ipq_mbox_desc {
 			ei	: 1,	/* bit 25 */
 			rsvd1	: 4,	/* bit 29-26 */
 			EOM	: 1,	/* bit 30 */
-			OWN	: 1,	/* bit 31 */
-			BufPtr	: 28,   /* bit 27-00 */
-			rsvd2	:  4,   /* bit 31-28 */
-			NextPtr	: 28,   /* bit 27-00 */
-			rsvd3	:  4;   /* bit 31-28 */
-
-	unsigned int vuc_dword[36];
+			OWN	: 1;	/* bit 31 */
+	unsigned int	BufPtr;
+	unsigned int	NextPtr;
+	unsigned int	vuc_dword[36];
 };
 
-#define MBOX_DMA_MASK		DMA_BIT_MASK(28)
+#define IPQ_MBOX_IRQ_ACK(status, mask, hw)	\
+	(hw == IPQ4019 ? (status & ~mask) : mask)
 
 struct ipq_mbox_rt_dir_priv {
 	/* Desc array in virtual space */
