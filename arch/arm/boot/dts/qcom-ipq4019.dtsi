@@ -23,6 +23,7 @@
 #include <dt-bindings/sound/ipq4019-audio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/soc/ipq,tcsr.h>
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ4019";
@@ -608,6 +609,19 @@
 			status = "disabled";
 		};
 
+		tcsr: tcsr@194b000 {
+			compatible = "ipq,tcsr";
+			reg = <0x194b000 0x100>;
+			ipq,usb-hsphy-mode-select = <TCSR_USB_HSPHY_HOST_MODE>;
+			status = "disabled";
+		};
+
+		ess_tcsr: ess_tcsr@1953000 {
+			compatible = "ipq,tcsr";
+			reg = <0x1953000 0x1000>;
+			ipq,ess-interface-select = <TCSR_ESS_PSGMII>;
+		};
+
 		usb3_ss_phy: ssphy@0 {
 			compatible = "qca,uni-ssphy";
 			reg = <0x9a000 0x800>;
@@ -744,5 +758,18 @@
 				nand-bus-width = <8>;
 			};
 		};
+
+		wifi_glb_tcsr: tcsr@1949000 {
+			compatible = "ipq,tcsr";
+			reg = <0x1949000 0x100>;
+			ipq,wifi_glb_cfg = <TCSR_WIFI_GLB_CFG>;
+		};
+
+		wifi_noc_memtype_m0_m2_tcsr: tcsr@1957000 {
+			compatible = "ipq,tcsr";
+			reg = <0x1957000 0x100>;
+			ipq,wifi_noc_memtype_m0_m2 = <TCSR_WIFI_NOC_MEMTYPE_M0_M2>;
+		};
+
 	};
 };

@@ -266,6 +266,10 @@
 			qcom,nonremovable;
 		};
 
+		tcsr: tcsr@194b000 {
+			status = "ok";
+		};
+
 		usb3_ss_phy: ssphy@0 {
 			status = "ok";
 		};
