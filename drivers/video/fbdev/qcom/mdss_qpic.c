@@ -11,26 +11,13 @@
  */
 
 #include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/sched.h>
 #include <linux/time.h>
-#include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/spinlock.h>
-#include <linux/hrtimer.h>
 #include <linux/clk.h>
 #include <linux/io.h>
-#include <linux/debugfs.h>
 #include <linux/delay.h>
-#include <linux/mutex.h>
-#include <linux/regulator/consumer.h>
-#include <linux/semaphore.h>
-#include <linux/uaccess.h>
-#include <linux/bootmem.h>
 #include <linux/dma-mapping.h>
-
-#include <linux/msm-sps.h>
-#include <linux/msm-bus.h>
+#include <linux/dmaengine.h>
 
 #include "mdss_fb.h"
 #include "mdss_qpic.h"
@@ -45,7 +32,7 @@ struct qpic_data_type *qpic_res;
 /* for debugging */
 static u32 use_bam = true;
 static u32 use_irq = true;
-static u32 use_vsync;
+static u32 use_vsync = true;
 
 static const struct of_device_id mdss_qpic_dt_match[] = {
 	{ .compatible = "qcom,mdss_qpic",},
@@ -82,25 +69,12 @@ int qpic_off(struct msm_fb_data_type *mfd)
 	return ret;
 }
 
-static int msm_qpic_bus_set_vote(u32 vote)
-{
-	int ret;
-
-	if (!qpic_res->bus_handle)
-		return 0;
-	ret = msm_bus_scale_client_update_request(qpic_res->bus_handle,
-			vote);
-	if (ret)
-		pr_err("msm_bus_scale_client_update_request() failed, bus_handle=0x%x, vote=%d, err=%d\n",
-			qpic_res->bus_handle, vote, ret);
-	return ret;
-}
 
 static void mdss_qpic_pan_display(struct msm_fb_data_type *mfd)
 {
 
 	struct fb_info *fbi;
-	u32 offset, fb_offset, size;
+	u32 offset, fb_offset, size, data;
 	int bpp;
 
 	if (!mfd) {
@@ -124,7 +98,6 @@ static void mdss_qpic_pan_display(struct msm_fb_data_type *mfd)
 	else
 		fb_offset = (u32)mfd->fbi->screen_base + offset;
 
-	msm_qpic_bus_set_vote(1);
 	mdss_qpic_panel_on(qpic_res->panel_data, &qpic_res->panel_io);
 	size = fbi->var.xres * fbi->var.yres * bpp;
 
@@ -136,11 +109,29 @@ static void mdss_qpic_pan_display(struct msm_fb_data_type *mfd)
 		qpic_send_frame(0, 0, fbi->var.xres - 1, fbi->var.yres - 1,
 			(u32 *)fb_offset, size / 2);
 
+		/* Disable vsync interrupt for second packet */
+		if (use_vsync) {
+			data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
+			data &= ~(1 << 0);
+			QPIC_OUTP(QPIC_REG_QPIC_LCDC_CTRL, data);
+		}
+
 		qpic_send_frame(0,  fbi->var.yres / 2, fbi->var.xres - 1,
 			 fbi->var.yres - 1, (u32 *)(fb_offset + (size / 2)),
 			 size / 2);
+
+		/* Enable vsync interrupt after sending second packet */
+		if (use_vsync) {
+			data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
+			data |= (1 << 0);
+			QPIC_OUTP(QPIC_REG_QPIC_LCDC_CTRL, data);
+		}
 	}
-	msm_qpic_bus_set_vote(0);
+}
+
+static void qpic_bam_cb(void *param)
+{
+	complete(&qpic_res->completion);
 }
 
 int mdss_qpic_alloc_fb_mem(struct msm_fb_data_type *mfd)
@@ -157,7 +148,6 @@ int mdss_qpic_alloc_fb_mem(struct msm_fb_data_type *mfd)
 		mfd->fbi->fix.smem_start = 0;
 		mfd->fbi->screen_base = NULL;
 		mfd->fbi->fix.smem_len = 0;
-		mfd->iova = 0;
 		return 0;
 	}
 
@@ -191,7 +181,7 @@ int mdss_qpic_alloc_fb_mem(struct msm_fb_data_type *mfd)
 	mfd->fbi->fix.smem_start = qpic_res->fb_phys;
 	mfd->fbi->screen_base = qpic_res->fb_virt;
 	mfd->fbi->fix.smem_len = size;
-	mfd->iova = 0;
+
 	return 0;
 }
 
@@ -205,11 +195,9 @@ int mdss_qpic_overlay_init(struct msm_fb_data_type *mfd)
 	struct msm_mdp_interface *qpic_interface = &mfd->mdp;
 	qpic_interface->on_fnc = qpic_on;
 	qpic_interface->off_fnc = qpic_off;
-	qpic_interface->do_histogram = NULL;
 	qpic_interface->cursor_update = NULL;
 	qpic_interface->dma_fnc = mdss_qpic_pan_display;
 	qpic_interface->ioctl_handler = NULL;
-	qpic_interface->kickoff_fnc = NULL;
 	return 0;
 }
 
@@ -238,111 +226,14 @@ int qpic_register_panel(struct mdss_panel_data *pdata)
 	return rc;
 }
 
-int qpic_init_sps(struct platform_device *pdev,
-				struct qpic_sps_endpt *end_point)
-{
-	int rc = 0;
-	struct sps_pipe *pipe_handle;
-	struct sps_connect *sps_config = &end_point->config;
-	struct sps_register_event *sps_event = &end_point->bam_event;
-	struct sps_bam_props bam = {0};
-	unsigned long bam_handle = 0;
-
-	if (qpic_res->sps_init)
-		return 0;
-	bam.phys_addr = qpic_res->qpic_phys + 0x4000;
-	bam.virt_addr = qpic_res->qpic_base + 0x4000;
-	bam.irq = qpic_res->bam_irq;
-	bam.manage = SPS_BAM_MGR_MULTI_EE;
-	bam.summing_threshold = 0x10;
-
-	rc = sps_phy2h(bam.phys_addr, &bam_handle);
-	if (rc)
-		rc = sps_register_bam_device(&bam, &bam_handle);
-	if (rc) {
-		pr_err("%s bam_handle is NULL", __func__);
-		rc = -ENOMEM;
-		goto out;
-	}
-
-	pipe_handle = sps_alloc_endpoint();
-	if (!pipe_handle) {
-		pr_err("sps_alloc_endpoint() failed\n");
-		rc = -ENOMEM;
-		goto out;
-	}
-
-	rc = sps_get_config(pipe_handle, sps_config);
-	if (rc) {
-		pr_err("sps_get_config() failed %d\n", rc);
-		goto free_endpoint;
-	}
-
-	/* WRITE CASE: source - system memory; destination - BAM */
-	sps_config->source = SPS_DEV_HANDLE_MEM;
-	sps_config->destination = bam_handle;
-	sps_config->mode = SPS_MODE_DEST;
-	sps_config->dest_pipe_index = 6;
-
-	sps_config->options = SPS_O_AUTO_ENABLE | SPS_O_EOT;
-	sps_config->lock_group = 0;
-	/*
-	 * Descriptor FIFO is a cyclic FIFO. If 64 descriptors
-	 * are allowed to be submitted before we get any ack for any of them,
-	 * the descriptor FIFO size should be: (SPS_MAX_DESC_NUM + 1) *
-	 * sizeof(struct sps_iovec).
-	 */
-	sps_config->desc.size = (64) *
-					sizeof(struct sps_iovec);
-	sps_config->desc.base = dmam_alloc_coherent(&pdev->dev,
-					sps_config->desc.size,
-					&sps_config->desc.phys_base,
-					GFP_KERNEL);
-	if (!sps_config->desc.base) {
-		pr_err("dmam_alloc_coherent() failed for size %x\n",
-				sps_config->desc.size);
-		rc = -ENOMEM;
-		goto free_endpoint;
-	}
-	memset(sps_config->desc.base, 0x00, sps_config->desc.size);
-
-	rc = sps_connect(pipe_handle, sps_config);
-	if (rc) {
-		pr_err("sps_connect() failed %d\n", rc);
-		goto free_endpoint;
-	}
-
-	init_completion(&end_point->completion);
-	sps_event->mode = SPS_TRIGGER_WAIT;
-	sps_event->options = SPS_O_EOT;
-	sps_event->xfer_done = &end_point->completion;
-	sps_event->user = (void *)qpic_res;
-
-	rc = sps_register_event(pipe_handle, sps_event);
-	if (rc) {
-		pr_err("sps_register_event() failed %d\n", rc);
-		goto sps_disconnect;
-	}
-
-	end_point->handle = pipe_handle;
-	qpic_res->sps_init = true;
-	goto out;
-sps_disconnect:
-	sps_disconnect(pipe_handle);
-free_endpoint:
-	sps_free_endpoint(pipe_handle);
-out:
-	return rc;
-}
-
 void mdss_qpic_set_cfg0(void)
 {
 	/*
-	 * RD_CS_HOLD=1,RD_ACTIVE=8,CS_WR_RD_SETUP=1,
-	 * WR_CS_HOLD,WR_ACTIVE,ADDR_CS_SETUP=1,
+	 * RD_CS_HOLD=1,RD_ACTIVE=8,CS_WR_RD_SETUP=0,
+	 * WR_CS_HOLD,WR_ACTIVE,ADDR_CS_SETUP=0,
 	 * CMD_BUS_ALIGNMENT=0.
 	 */
-	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG0, 0x02108501);
+	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG0, 0x2000101);
 }
 
 void mdss_qpic_reset(void)
@@ -394,43 +285,55 @@ static irqreturn_t qpic_irq_handler(int irq, void *ptr)
 
 static int qpic_send_pkt_bam(u32 cmd, u32 len, u8 *param)
 {
-	int  ret = 0;
-	u32 phys_addr, cfg2, block_len , flags;
+	int ret = 0;
+	struct dma_async_tx_descriptor *dma_desc;
+	dma_cookie_t cookie = 0;
+
+	u32 cfg2;
+	dma_addr_t phys_addr;
 
 	if ((cmd != OP_WRITE_MEMORY_START) &&
 		(cmd != OP_WRITE_MEMORY_CONTINUE)) {
 		memcpy((u8 *)qpic_res->cmd_buf_virt, param, len);
 		phys_addr = qpic_res->cmd_buf_phys;
 	} else {
-		phys_addr = (u32)param;
+		phys_addr = (dma_addr_t)param;
 	}
 	cfg2 = QPIC_INP(QPIC_REG_QPIC_LCDC_CFG2);
 	cfg2 &= ~0xFF;
 	cfg2 |= cmd;
 	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG2, cfg2);
-	block_len = 0x7FF0;
-	while (len > 0)  {
-		if (len <= 0x7FF0) {
-			flags = SPS_IOVEC_FLAG_EOT;
-			block_len = len;
-		} else {
-			flags = 0;
-		}
-		ret = sps_transfer_one(qpic_res->qpic_endpt.handle,
-				phys_addr, block_len, NULL, flags);
-		if (ret)
-			pr_err("failed to submit command %x ret %d\n",
-				cmd, ret);
-		phys_addr += block_len;
-		len -= block_len;
+
+	dma_desc = dmaengine_prep_slave_single(qpic_res->chan, phys_addr, len,
+				DMA_MEM_TO_DEV, DMA_PREP_INTERRUPT);
+	if (!dma_desc) {
+		pr_err("failed to prepare dma desc for command %x\n",
+				cmd);
+		return -EINVAL;
 	}
+
+	dma_desc->callback = qpic_bam_cb;
+	dma_desc->callback_param = qpic_res;
+
+	cookie = dmaengine_submit(dma_desc);
+	if (dma_submit_error(cookie)) {
+		pr_err("failed to submit command %x\n",
+			cmd);
+		ret = -EINVAL;
+	}
+
+	reinit_completion(&qpic_res->completion);
+	dma_async_issue_pending(qpic_res->chan);
+
 	ret = wait_for_completion_timeout(
-		&qpic_res->qpic_endpt.completion,
+		&qpic_res->completion,
 		msecs_to_jiffies(100 * 4));
+
 	if (ret <= 0)
 		pr_err("%s timeout %x", __func__, ret);
 	else
 		ret = 0;
+
 	return ret;
 }
 
@@ -622,7 +525,7 @@ int mdss_qpic_init(void)
 	if (use_irq && (!qpic_res->irq_requested)) {
 		ret = devm_request_irq(&qpic_res->pdev->dev,
 			qpic_res->irq, qpic_irq_handler,
-			IRQF_DISABLED,	"QPIC", qpic_res);
+			0,	"QPIC", qpic_res);
 		if (ret) {
 			pr_err("qpic request_irq() failed!\n");
 			use_irq = false;
@@ -641,11 +544,21 @@ int mdss_qpic_init(void)
 	QPIC_OUTP(QPIC_REG_QPIC_LCDC_CFG2, data);
 
 	if (use_bam) {
-		qpic_init_sps(qpic_res->pdev , &qpic_res->qpic_endpt);
+		if (!qpic_res->chan) {
+			qpic_res->chan = dma_request_slave_channel(
+						&qpic_res->pdev->dev, "chan");
+			if (!qpic_res->chan) {
+				dev_err(&qpic_res->pdev->dev,
+						"failed to request channel\n");
+				return -ENODEV;
+			}
+		}
+
 		data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
 		data |= (1 << 1);
 		QPIC_OUTP(QPIC_REG_QPIC_LCDC_CTRL, data);
 	}
+
 	/* TE enable */
 	if (use_vsync) {
 		data = QPIC_INP(QPIC_REG_QPIC_LCDC_CTRL);
@@ -666,25 +579,6 @@ u32 qpic_read_data(u32 cmd_index, u32 size)
 	return data;
 }
 EXPORT_SYMBOL(qpic_read_data);
-
-static int msm_qpic_bus_register(struct platform_device *pdev)
-{
-	int ret = 0;
-	struct msm_bus_scale_pdata *use_cases;
-
-	use_cases = msm_bus_cl_get_pdata(pdev);
-	if (!use_cases) {
-		pr_err("msm_bus_cl_get_pdata failed\n");
-		return -EINVAL;
-	}
-	qpic_res->bus_handle =
-		msm_bus_scale_register_client(use_cases);
-	if (!qpic_res->bus_handle) {
-		ret = -EINVAL;
-		pr_err("msm_bus_scale_register_client failed\n");
-	}
-	return ret;
-}
 
 static int mdss_qpic_probe(struct platform_device *pdev)
 {
@@ -746,30 +640,22 @@ static int mdss_qpic_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	qpic_res->bam_irq = platform_get_irq_byname(pdev, "bam_irq");
-	if (qpic_res->bam_irq < 0) {
-		dev_warn(&pdev->dev, "missing 'bam_irq' resource entry");
-		return -EINVAL;
-	}
-
 	qpic_res->res_init = true;
-
-	mdss_qpic_panel_io_init(pdev, &qpic_res->panel_io);
+	init_completion(&qpic_res->completion);
 
 	rc = mdss_fb_register_mdp_instance(&qpic_interface);
 	if (rc)
 		pr_err("unable to register QPIC instance\n");
 
-	msm_qpic_bus_register(pdev);
 probe_done:
 	return rc;
 }
 
 static int mdss_qpic_remove(struct platform_device *pdev)
 {
-	if (qpic_res->bus_handle)
-		msm_bus_scale_unregister_client(qpic_res->bus_handle);
-	qpic_res->bus_handle = 0;
+	if (!qpic_res->chan)
+		dma_release_channel(qpic_res->chan);
+
 	return 0;
 }
 

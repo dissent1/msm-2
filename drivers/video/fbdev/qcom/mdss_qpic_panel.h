@@ -15,7 +15,6 @@
 #define MDSS_QPIC_PANEL_H
 
 #include <linux/list.h>
-#include <linux/msm-sps.h>
 
 #include "mdss_panel.h"
 
