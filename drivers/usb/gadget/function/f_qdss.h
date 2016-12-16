@@ -17,21 +17,8 @@
 #include <linux/kernel.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
-<<<<<<< HEAD
 
 #define NR_QDSS_PORTS 4
-=======
-#include <linux/usb/msm_hsusb.h>
-#include <linux/usb/composite.h>
-#include <linux/usb/usb_qdss.h>
-
-struct usb_qdss_bam_connect_info {
-	u32 usb_bam_pipe_idx;
-	u32 peer_pipe_idx;
-	unsigned long usb_bam_handle;
-	struct sps_mem_buffer *data_fifo;
-};
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 
 struct gqdss {
 	struct usb_function function;
@@ -45,15 +32,9 @@ struct gqdss {
 /* struct f_qdss - USB qdss function driver private structure */
 struct f_qdss {
 	struct gqdss port;
-<<<<<<< HEAD
 	struct usb_composite_dev *cdev;
 	struct usb_gadget *gadget;
 	u8 port_num;
-=======
-	struct usb_qdss_bam_connect_info bam_info;
-	struct usb_gadget *gadget;
-	short int port_num;
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 	u8 ctrl_iface_id;
 	u8 data_iface_id;
 	int usb_connected;
@@ -71,16 +52,4 @@ struct f_qdss {
 	struct workqueue_struct *wq;
 };
 
-<<<<<<< HEAD
-=======
-struct usb_qdss_opts {
-	struct usb_function_instance func_inst;
-	struct f_qdss *usb_qdss;
-	char *channel_name;
-};
-
-int uninit_data(struct usb_ep *ep);
-int set_qdss_data_connection(struct usb_gadget *gadget,
-	struct usb_ep *data_ep, u8 data_addr, int enable);
->>>>>>> bcfb7d4... ipq807x: gadget: f_qdss: Added Snapshot of QDSS function driver
 #endif
