@@ -336,6 +336,46 @@
 		status = "ok";
 	};
 
+	audio: audio@7700000 {
+		status = "ok";
+	};
+
+	mbox0: mbox@7708000 {
+		status = "ok";
+	};
+
+	mbox3: mbox@770e000 {
+		status = "ok";
+	};
+
+	stereo0: stereo@7709000 {
+		status = "ok";
+	};
+
+	stereo3: stereo@770f000 {
+		status = "ok";
+	};
+
+	/* Enable Audio Interfaces */
+	i2s: ipq8074-pcm-i2s@0 {
+		status = "ok";
+	};
+
+	i2splatform: qca-pcm-i2s@7709000 {
+		status = "ok";
+	};
+
+	tdmplatform: qca-pcm-tdm@7709000 {
+		status = "ok";
+	};
+
+	tdm: tdm@0 {
+		status = "ok";
+	};
+
+	sound: sound@0 {
+		status = "ok";
+	};
 };
 
 &tlmm {
