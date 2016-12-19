@@ -240,6 +240,7 @@ static void _bond_l2da_remove_entries_unsafe(struct l2da_bond_info *bond_info,
 		/* NULL slave means "remove all" */
 		if (!slave || entry->slave == slave) {
 			hash_del(&entry->hnode);
+			bond_notify_l2da(entry->da);
 			kfree(entry);
 		}
 	}
@@ -551,6 +552,42 @@ static int bond_l2da_xmit_all_slaves(struct bonding *bond, struct sk_buff *skb)
 	return NETDEV_TX_OK;
 }
 
+/**
+ * bond_l2da_get_tx_dev - Calculate egress interface for a given packet,
+			  for a LAG that is configured in L2DA mode
+ * @dst_mac: pointer to destination L2 address
+ * @bond_dev: pointer to bond master device
+
+ * Returns: Either valid slave device, or NULL otherwise
+ */
+struct net_device *bond_l2da_get_tx_dev(u8 *dest_mac,
+					struct net_device *bond_dev)
+{
+	struct bonding *bond = netdev_priv(bond_dev);
+	struct l2da_bond_info *bond_info = &BOND_L2DA_INFO(bond);
+	struct l2da_bond_matrix_entry *entry;
+	struct net_device *dest_dev = NULL;
+	u32 opts = atomic_read(&bond_info->opts);
+
+	if ((opts & BOND_L2DA_OPT_DUP_MC_TX) &&
+	    (is_multicast_ether_addr(dest_mac)))
+		return NULL;
+
+	read_lock_bh(&bond_info->lock);
+	entry = _bond_l2da_find_entry_unsafe(bond_info, dest_mac);
+	if (entry && entry->slave && SLAVE_CAN_XMIT(entry->slave)) {
+		/* if a slave configured for this DA and it's OK - use it */
+		dest_dev = entry->slave->dev;
+	} else if (bond_info->default_slave &&
+		   SLAVE_CAN_XMIT(bond_info->default_slave)) {
+		/* otherwise, if default slave is configured - use it */
+		dest_dev = bond_info->default_slave->dev;
+	}
+	read_unlock_bh(&bond_info->lock);
+
+	return dest_dev;
+}
+
 /* bond_l2da_xmit - transmits skb in L2DA mode
  * @skb: skb to transmit
  * @dev: bonding net device
@@ -578,7 +615,8 @@ int bond_l2da_xmit(struct sk_buff *skb, struct net_device *dev)
 			_replace_src_mac(skb, entry->slave, eth_data);
 		/* if a slave configured for this DA and it's OK - use it */
 		bond_dev_queue_xmit(bond, skb, entry->slave->dev);
-	} else if (bond_info->default_slave) {
+	} else if (bond_info->default_slave &&
+		   SLAVE_CAN_XMIT(bond_info->default_slave)) {
 		if (opts & BOND_L2DA_OPT_REPLACE_MAC)
 			_replace_src_mac(skb, bond_info->default_slave,
 					 eth_data);
@@ -831,9 +869,19 @@ void bond_l2da_purge(struct bonding *bond)
 void bond_l2da_handle_link_change(struct bonding *bond, struct slave *slave)
 {
 	struct l2da_bond_info *bond_info = &BOND_L2DA_INFO(bond);
+	struct slave *prev_default_slave;
+	struct bond_cb *bond_cb_ref;
 
 	write_lock_bh(&bond_info->lock);
+	prev_default_slave = bond_info->default_slave;
 	_bond_l2da_check_default_slave_unsafe(bond);
+
+	rcu_read_lock();
+	bond_cb_ref = rcu_dereference(bond_cb);
+	if (prev_default_slave && bond_cb_ref &&
+	    bond_cb_ref->bond_cb_delete_by_slave)
+		bond_cb_ref->bond_cb_delete_by_slave(prev_default_slave->dev);
+	rcu_read_unlock();
 	write_unlock_bh(&bond_info->lock);
 }
 

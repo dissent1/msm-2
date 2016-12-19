@@ -4019,6 +4019,8 @@ struct net_device *bond_get_tx_dev(struct sk_buff *skb, uint8_t *src_mac,
 		return bond_3ad_get_tx_dev(skb, src_mac, dst_mac,
 					   src, dst, protocol,
 					   bond_dev, layer4hdr);
+	case BOND_MODE_L2DA:
+		return bond_l2da_get_tx_dev(dst_mac, bond_dev);
 	default:
 		return NULL;
 	}
@@ -4503,6 +4505,23 @@ static void bond_uninit(struct net_device *bond_dev)
 }
 
 /*------------------------- Module initialization ---------------------------*/
+
+/**
+ * Notify ECM about the change in bond slave
+ */
+void bond_notify_l2da(uint8_t *slave_mac_addr)
+{
+	struct bond_cb *bond_cb_ref;
+
+	rcu_read_lock();
+	bond_cb_ref = rcu_dereference(bond_cb);
+	if (bond_cb_ref && bond_cb_ref->bond_cb_delete_by_mac) {
+		bond_cb_ref->bond_cb_delete_by_mac(slave_mac_addr);
+		pr_info("Deleted fast path rules with mac-id: %pM\n",
+			slave_mac_addr);
+	}
+	rcu_read_unlock();
+}
 
 static int bond_check_params(struct bond_params *params)
 {

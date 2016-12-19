@@ -48,11 +48,15 @@ int bond_l2da_ctrl_set_default(struct bonding *bond, const char *slave_ifname)
 	struct slave *slave;
 	struct list_head *iter;
 	int ret = -EINVAL;
+	struct slave *prev_default_slave;
+	struct l2da_bond_info *bond_info = &bond->l2da_info;
+	struct bond_cb *bond_cb_ref;
 
 	ret = _bond_l2da_ctrl_try_lock(bond, true);
 	if (ret)
 		return ret;
 
+	prev_default_slave = bond_info->default_slave;
 	bond_for_each_slave(bond, slave, iter) {
 		if (!strncmp(netdev_name(slave->dev), slave_ifname, IFNAMSIZ)) {
 			if (slave->link == BOND_LINK_UP &&
@@ -71,7 +75,15 @@ int bond_l2da_ctrl_set_default(struct bonding *bond, const char *slave_ifname)
 		pr_err("%s: Unable to to set %s as default slave\n",
 		       netdev_name(bond->dev), slave_ifname);
 
+	rcu_read_lock();
+	bond_cb_ref = rcu_dereference(bond_cb);
+	if (!ret && prev_default_slave && bond_cb_ref &&
+	    bond_cb_ref->bond_cb_delete_by_slave)
+		bond_cb_ref->bond_cb_delete_by_slave(prev_default_slave->dev);
+	rcu_read_unlock();
+
 	_bond_l2da_ctrl_unlock(bond, true);
+
 	return ret;
 }
 
@@ -134,6 +146,8 @@ int bond_l2da_ctrl_change_map_entry(struct bonding *bond,
 	}
 
 	_bond_l2da_ctrl_unlock(bond, true);
+
+	bond_notify_l2da((uint8_t *)da);
 
 	return ret;
 }

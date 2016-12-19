@@ -594,6 +594,7 @@ uint32_t bond_xmit_hash_without_skb(uint8_t *src_mac, uint8_t *dst_mac,
 				    void *psrc, void *pdst, uint16_t protocol,
 				    struct net_device *bond_dev,
 				    __be16 *layer4hdr);
+void bond_notify_l2da(uint8_t *slave_mac_addr);
 
 #ifdef CONFIG_PROC_FS
 void bond_create_proc_entry(struct bonding *bond);
