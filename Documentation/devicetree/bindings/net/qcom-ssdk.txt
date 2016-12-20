@@ -14,3 +14,16 @@ ess-switch@3a000000 {
 	switch_access_mode = "local bus";
 };
 
+Required properties:
+- compatible: = should be "qcom,ess-uniphy";
+- reg: Base address and size for the ess-uniphy register space
+- uniphy_access_mode: should be "local bus"
+
+Example:
+
+ess-uniphy@7a00000 {
+	compatible = "qcom,ess-uniphy";
+	reg = <0x7a00000 0x30000>;
+	uniphy_access_mode = "local bus";
+};
+
