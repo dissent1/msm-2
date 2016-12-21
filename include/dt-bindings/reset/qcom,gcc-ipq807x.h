@@ -22,4 +22,6 @@
 #define GCC_PCIE0_BCR					0
 #define GCC_PCIE0_PHY_BCR				1
 #define GCC_PCIE0PHY_PHY_BCR				2
+#define GCC_ADSS_BCR					3
+#define AUDIO_BLK_ARES					GCC_ADSS_BCR
 #endif
