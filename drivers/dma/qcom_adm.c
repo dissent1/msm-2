@@ -29,6 +29,7 @@
 #include <linux/reset.h>
 #include <linux/clk.h>
 #include <linux/dmaengine.h>
+#include <linux/dmapool.h>
 
 #include "dmaengine.h"
 #include "virt-dma.h"
@@ -107,6 +108,15 @@
 #define ADM_MAX_ROWS		(SZ_64K-1)
 #define ADM_MAX_CHANNELS	16
 
+/*
+ * DMA POOL SIZE for small size DMA desc which requires
+ * maximum one box and one single desc.
+ */
+#define ADM_DMA_POOL_SIZE	(sizeof(struct adm_desc_hw_single) + \
+				 sizeof(struct adm_desc_hw_box) + \
+				 sizeof(u32 *) + \
+				 2 * ADM_DESC_ALIGN)
+
 struct adm_desc_hw_box {
 	u32 cmd;
 	u32 src_addr;
@@ -175,6 +185,7 @@ struct adm_device {
 	struct reset_control *c0_reset;
 	struct reset_control *c1_reset;
 	struct reset_control *c2_reset;
+	struct dma_pool *dma_pool;
 	int irq;
 };
 
@@ -417,8 +428,13 @@ static struct dma_async_tx_descriptor *adm_prep_slave_sg(struct dma_chan *chan,
 				box_count * sizeof(struct adm_desc_hw_box) +
 				sizeof(*cple) + 2 * ADM_DESC_ALIGN;
 
-	async_desc->cpl = dma_alloc_writecombine(adev->dev, async_desc->dma_len,
-				&async_desc->dma_addr, GFP_NOWAIT);
+	if (async_desc->dma_len <= ADM_DMA_POOL_SIZE)
+		async_desc->cpl = dma_pool_alloc(adev->dma_pool,
+					GFP_NOWAIT, &async_desc->dma_addr);
+	else
+		async_desc->cpl = dma_alloc_writecombine(adev->dev,
+					async_desc->dma_len,
+					&async_desc->dma_addr, GFP_NOWAIT);
 
 	if (!async_desc->cpl) {
 		dev_err(adev->dev, "failed to allocate cpl memory %d\n",
@@ -673,8 +689,14 @@ static void adm_dma_free_desc(struct virt_dma_desc *vd)
 	struct adm_async_desc *async_desc = container_of(vd,
 			struct adm_async_desc, vd);
 
-	dma_free_writecombine(async_desc->adev->dev, async_desc->dma_len,
-		async_desc->cpl, async_desc->dma_addr);
+	if (async_desc->dma_len <= ADM_DMA_POOL_SIZE)
+		dma_pool_free(async_desc->adev->dma_pool,
+			async_desc->cpl, async_desc->dma_addr);
+	else
+		dma_free_writecombine(async_desc->adev->dev,
+			async_desc->dma_len,
+			async_desc->cpl, async_desc->dma_addr);
+
 	kfree(async_desc);
 }
 
@@ -784,6 +806,9 @@ static int adm_dma_probe(struct platform_device *pdev)
 		goto err_disable_clks;
 	}
 
+	adev->dma_pool = dma_pool_create(dev_name(adev->dev), adev->dev,
+				ADM_DMA_POOL_SIZE, 1, 0);
+
 	/* allocate and initialize channels */
 	INIT_LIST_HEAD(&adev->common.channels);
 
@@ -808,7 +833,7 @@ static int adm_dma_probe(struct platform_device *pdev)
 	ret = devm_request_irq(adev->dev, adev->irq, adm_dma_irq,
 			0, "adm_dma", adev);
 	if (ret)
-		goto err_disable_clks;
+		goto err_destroy_pool;
 
 	platform_set_drvdata(pdev, adev);
 
@@ -835,7 +860,7 @@ static int adm_dma_probe(struct platform_device *pdev)
 	ret = dma_async_device_register(&adev->common);
 	if (ret) {
 		dev_err(adev->dev, "failed to register dma async device\n");
-		goto err_disable_clks;
+		goto err_destroy_pool;
 	}
 
 	ret = of_dma_controller_register(pdev->dev.of_node,
@@ -848,6 +873,8 @@ static int adm_dma_probe(struct platform_device *pdev)
 
 err_unregister_dma:
 	dma_async_device_unregister(&adev->common);
+err_destroy_pool:
+	dma_pool_destroy(adev->dma_pool);
 err_disable_clks:
 	clk_disable_unprepare(adev->iface_clk);
 err_disable_core_clk:
@@ -875,6 +902,7 @@ static int adm_dma_remove(struct platform_device *pdev)
 	}
 
 	devm_free_irq(adev->dev, adev->irq, adev);
+	dma_pool_destroy(adev->dma_pool);
 
 	clk_disable_unprepare(adev->core_clk);
 	clk_disable_unprepare(adev->iface_clk);
