@@ -46,7 +46,7 @@ Example (Allwinner sun4i A10 SoC):
 Example (Qualcomm Atheros ATH79 SoC)
 
    ehci0: usb@1b000000 {
-	   compatible = "generic-ehci", "ehci-platform";
+	   compatible = "qca,ath79-ehci", "qca,ap135-ehci", qca,ap137-ehci", "qca,ap147-ehci";
 	   reg = <0x1b000000 0x200>;
 	   interrupt-parent = <&ip3_int>;
 	   interrupts = <0>;

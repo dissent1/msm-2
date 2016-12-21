@@ -43,7 +43,7 @@
 
 	cpuintc: interrupt-controller {
 		qca,ddr-wb-channel-interrupts = <3>;
-		qca,ddr-wb-channels = <&ddr_ctrl 2>;
+		qca,ddr-wb-channels = <&ddr_ctrl 0xa4>;
 	};
 
 	ahb {
@@ -61,7 +61,7 @@
 			};
 
 			ehci0: usb@1b000000 {
-				compatible = "generic-ehci", "ehci-platform";
+				compatible = "qca,ath79-ehci", "qca,ap147-ehci";
 				reg = <0x1b000000 0x200>;
 				interrupt-parent = <&cpuintc>;
 				interrupts = <3>;

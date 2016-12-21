@@ -29,6 +29,8 @@
 		serial0 = "/ahb/apb/uart@18020000";
 		pci0 = &pci_0;
 		pci1 = &pci_1;
+		ehci_0 = &ehci0;
+		ehci_1 = &ehci1;
 	};
 
 	memory@0 {
@@ -53,7 +55,7 @@
 			};
 
 			ehci0: usb@1b000000 {
-				compatible = "generic-ehci", "ehci-platform";
+				compatible = "qca,ath79-ehci", "qca,ap135-ehci";
 				reg = <0x1b000000 0x1000>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <0>;
@@ -65,7 +67,7 @@
 			};
 
 			ehci1: usb@1b400000 {
-				compatible = "generic-ehci","ehci-platform";
+				compatible = "qca,ath79-ehci", "qca,ap135-ehci";
 				reg = <0x1b400000 0x1000>;
 				interrupt-parent = <&ip3_int>;
 				interrupts = <1>;
