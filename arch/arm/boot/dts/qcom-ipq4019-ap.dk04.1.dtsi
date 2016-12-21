@@ -318,5 +318,13 @@
 			wifi_led_num = <1>;         /* Wifi 5G */
 			wifi_led_source = <2>;      /* source id 2 */
 		};
+
+		qcom_mdss_qpic@7980000 {
+			status = "ok";
+		};
+
+		qcom_mdss_qpic_panel {
+			status = "ok";
+		};
 	};
 };
