@@ -509,6 +509,7 @@
 				<&gcc GCC_DUMMY_CLK>;
 			clock-names = "core", "aon";
 			dmas = <&qpic_bam 6>;
+			qcom,bam_timeout = <10000>;
 			status = "disabled";
 		};
 
