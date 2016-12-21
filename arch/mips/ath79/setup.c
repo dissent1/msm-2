@@ -41,6 +41,7 @@
 #define AR913X_BASE_FREQ	5000000
 
 static char ath79_sys_type[ATH79_SYS_TYPE_LEN];
+extern char __owrt_dtb[];
 
 static void ath79_restart(char *command)
 {
@@ -239,6 +240,9 @@ void __init plat_mem_setup(void)
 #ifdef CONFIG_BUILTIN_DTB
 	else
 		__dt_setup_arch(__dtb_start);
+#else
+	else
+		__dt_setup_arch(__owrt_dtb);
 #endif
 
 	ath79_reset_base = ioremap_nocache(AR71XX_RESET_BASE,
