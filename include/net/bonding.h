@@ -29,6 +29,7 @@
 #include <net/bond_3ad.h>
 #include <net/bond_alb.h>
 #include <net/bond_options.h>
+#include <net/bond_l2da.h>
 
 #define BOND_MAX_ARP_TARGETS	16
 
@@ -227,6 +228,7 @@ struct bonding {
 	u32      rr_tx_counter;
 	struct   ad_bond_info ad_info;
 	struct   alb_bond_info alb_info;
+	struct   l2da_bond_info l2da_info;
 	struct   bond_params params;
 	struct   workqueue_struct *wq;
 	struct   delayed_work mii_work;
@@ -242,6 +244,20 @@ struct bonding {
 	struct rtnl_link_stats64 bond_stats;
 	u32      id;
 };
+
+#pragma pack(1)
+struct arp_pkt {
+	__be16  hw_addr_space;
+	__be16  prot_addr_space;
+	u8      hw_addr_len;
+	u8      prot_addr_len;
+	__be16  op_code;
+	u8      mac_src[ETH_ALEN];	/* sender hardware address */
+	__be32  ip_src;			/* sender IP address */
+	u8      mac_dst[ETH_ALEN];	/* target hardware address */
+	__be32  ip_dst;			/* target IP address */
+};
+#pragma pack()
 
 #define bond_slave_get_rcu(dev) \
 	((struct slave *) rcu_dereference(dev->rx_handler_data))
@@ -282,6 +298,11 @@ static inline bool bond_is_lb(const struct bonding *bond)
 {
 	return BOND_MODE(bond) == BOND_MODE_TLB ||
 	       BOND_MODE(bond) == BOND_MODE_ALB;
+}
+
+static inline bool bond_is_l2da(const struct bonding *bond)
+{
+	return bond->params.mode == BOND_MODE_L2DA;
 }
 
 static inline bool bond_is_nondyn_tlb(const struct bonding *bond)
