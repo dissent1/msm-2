@@ -562,7 +562,7 @@ static void qcom_pcie_deinit_v0(struct qcom_pcie *pcie)
 	struct qcom_pcie_resources_v0 *res = &pcie->res.v0;
 
 	clk_disable_unprepare(res->phy_clk);
-	reset_control_assert(res->pci_reset);
+	reset_control_assert(res->phy_reset);
 	reset_control_assert(res->axi_reset);
 	reset_control_assert(res->ahb_reset);
 	reset_control_assert(res->por_reset);
