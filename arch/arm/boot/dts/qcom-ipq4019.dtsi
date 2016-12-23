@@ -33,6 +33,8 @@
 	aliases {
 		spi0 = &spi_0;
 		i2c0 = &i2c_0;
+		ethernet0 = "/soc/edma/gmac0";
+		ethernet1 = "/soc/edma/gmac1";
 	};
 
 	cpus {
@@ -835,6 +837,62 @@
 			qcom,mdss-pan-bpp = <18>;
 			qcom,refresh_rate = <60>;
 			status = "disabled";
+		};
+
+		edma@c080000 {
+			compatible = "qcom,ess-edma";
+			reg = <0xc080000 0x8000>;
+			qcom,page-mode = <0>;
+			qcom,rx-head-buf-size = <1540>;
+			qcom,num-gmac = <2>;
+			qcom,mdio-supported;
+
+			interrupts = <0 65 1>,
+					<0 66 1>,
+					<0 67 1>,
+					<0 68 1>,
+					<0 69 1>,
+					<0 70 1>,
+					<0 71 1>,
+					<0 72 1>,
+					<0 73 1>,
+					<0 74 1>,
+					<0 75 1>,
+					<0 76 1>,
+					<0 77 1>,
+					<0 78 1>,
+					<0 79 1>,
+					<0 80 1>,
+					<0 240 1>,
+					<0 241 1>,
+					<0 242 1>,
+					<0 243 1>,
+					<0 244 1>,
+					<0 245 1>,
+					<0 246 1>,
+					<0 247 1>,
+					<0 248 1>,
+					<0 249 1>,
+					<0 250 1>,
+					<0 251 1>,
+					<0 252 1>,
+					<0 253 1>,
+					<0 254 1>,
+					<0 255 1>;
+
+			gmac0 {
+				local-mac-address = [000000000000];
+				qcom,phy-mdio-addr = <4>;
+				qcom,poll-required = <1>;
+				qcom,forced-speed = <1000>;
+				qcom,forced-duplex = <1>;
+				vlan-tag = <2 0x20>;
+			};
+
+			gmac1 {
+				local-mac-address = [000000000000];
+				vlan-tag = <1 0x1e>;
+			};
 		};
 	};
 };
