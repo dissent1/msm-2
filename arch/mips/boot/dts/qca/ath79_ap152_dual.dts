@@ -40,6 +40,10 @@
 		clock-frequency = <25000000>;
 	};
 
+	chosen {
+		bootargs = "board=DTB console=ttyS0,115200 mtdparts=spi0.1:256k(u-boot)ro,128k(u-boot-env),12288k(rootfs),1536k(kernel),128k(art) rootfstype=jffs2 noinitrd crashkernel=10M@20M";
+	};
+
 	ahb {
 		apb {
 			uart@18020000 {
