@@ -1,6 +1,6 @@
-* Qualcomm Technologies IPQ8074 ASoC PCM driver
+* Qualcomm Technologies, Inc IPQ8074 ASoC PCM driver
 
-This node models the Qualcomm Technologies IPQ8074 ASoC I2S PCM driver
+This node models the Qualcomm Technologies, Inc IPQ8074 ASoC I2S PCM driver
 
 Required properties:
 
