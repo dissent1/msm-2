@@ -67,6 +67,7 @@ enum {
 	BOND_OPT_AD_ACTOR_SYSTEM,
 	BOND_OPT_AD_USER_PORT_KEY,
 	BOND_OPT_NUM_PEER_NOTIF_ALIAS,
+	BOND_OPT_L2DA_MULTIMAC,
 	BOND_OPT_LAST
 };
 
@@ -130,5 +131,6 @@ static inline void __bond_opt_init(struct bond_opt_value *optval,
 #define bond_opt_initstr(optval, str) __bond_opt_init(optval, str, ULLONG_MAX)
 
 void bond_option_arp_ip_targets_clear(struct bonding *bond);
-
+int bond_option_l2da_multimac_set(struct bonding *bond,
+				  struct bond_opt_value *newval);
 #endif /* _NET_BOND_OPTIONS_H */

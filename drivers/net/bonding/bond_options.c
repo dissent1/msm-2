@@ -17,6 +17,7 @@
 #include <linux/ctype.h>
 #include <linux/inet.h>
 #include <net/bonding.h>
+#include <net/bond_l2da.h>
 
 static int bond_option_active_slave_set(struct bonding *bond,
 					const struct bond_opt_value *newval);
@@ -86,6 +87,7 @@ static const struct bond_opt_value bond_mode_tbl[] = {
 	{ "802.3ad",       BOND_MODE_8023AD,       0},
 	{ "balance-tlb",   BOND_MODE_TLB,          0},
 	{ "balance-alb",   BOND_MODE_ALB,          0},
+	{ "l2da",          BOND_MODE_L2DA,         0},
 	{ NULL,            -1,                     0},
 };
 
@@ -204,6 +206,12 @@ static const struct bond_opt_value bond_ad_user_port_key_tbl[] = {
 	{ NULL,      -1,    0},
 };
 
+static struct bond_opt_value bond_l2da_multimac_tbl[] = {
+	{ "off", 0,  BOND_VALFLAG_DEFAULT},
+	{ "on",  1,  0},
+	{ NULL,  -1, 0}
+};
+
 static const struct bond_option bond_opts[BOND_OPT_LAST] = {
 	[BOND_OPT_MODE] = {
 		.id = BOND_OPT_MODE,
@@ -257,7 +265,7 @@ static const struct bond_option bond_opts[BOND_OPT_LAST] = {
 		.name = "arp_interval",
 		.desc = "arp interval in milliseconds",
 		.unsuppmodes = BIT(BOND_MODE_8023AD) | BIT(BOND_MODE_TLB) |
-			       BIT(BOND_MODE_ALB),
+			       BIT(BOND_MODE_ALB) | BIT(BOND_MODE_L2DA),
 		.values = bond_intmax_tbl,
 		.set = bond_option_arp_interval_set
 	},
@@ -427,6 +435,14 @@ static const struct bond_option bond_opts[BOND_OPT_LAST] = {
 		.desc = "Number of peer notifications to send on failover event",
 		.values = bond_num_peer_notif_tbl,
 		.set = bond_option_num_peer_notif_set
+	},
+	[BOND_OPT_L2DA_MULTIMAC] = {
+		.id = BOND_OPT_L2DA_MULTIMAC,
+		.name = "l2da_multimac",
+		.desc = "Keeps MAC addresses of slaves in L2DA mode",
+		.flags = BOND_OPTFLAG_NOSLAVES,
+		.values = bond_l2da_multimac_tbl,
+		.set = bond_option_l2da_multimac_set
 	}
 };
 
@@ -719,7 +735,8 @@ const struct bond_option *bond_opt_get(unsigned int option)
 static int bond_option_mode_set(struct bonding *bond,
 				const struct bond_opt_value *newval)
 {
-	if (!bond_mode_uses_arp(newval->value) && bond->params.arp_interval) {
+	if ((!bond_mode_uses_arp(newval->value) || bond_is_l2da(bond)) &&
+	    bond->params.arp_interval) {
 		netdev_info(bond->dev, "%s mode is incompatible with arp monitoring, start mii monitoring\n",
 			    newval->string);
 		/* disable arp monitoring */
@@ -728,6 +745,20 @@ static int bond_option_mode_set(struct bonding *bond,
 		bond->params.miimon = BOND_DEFAULT_MIIMON;
 		netdev_info(bond->dev, "Setting MII monitoring interval to %d\n",
 			    bond->params.miimon);
+	}
+
+	if (bond->params.mode != newval->value) {
+		if (newval->value == BOND_MODE_L2DA) {
+			int ret = bond_l2da_initialize(bond);
+
+			if (ret) {
+				pr_err("%s: l2da mode cannot be initialized\n",
+				       bond->dev->name);
+				return ret;
+			}
+		} else if (bond_is_l2da(bond)) {
+			bond_l2da_deinitialize(bond);
+		}
 	}
 
 	/* don't cache arp_validate between modes */
@@ -1432,5 +1463,14 @@ static int bond_option_ad_user_port_key_set(struct bonding *bond,
 		    newval->value);
 
 	bond->params.ad_user_port_key = newval->value;
+	return 0;
+}
+
+int bond_option_l2da_multimac_set(struct bonding *bond,
+				  struct bond_opt_value *newval)
+{
+	pr_info("%s: Setting l2da_multimac to (%llu).\n",
+		bond->dev->name, newval->value);
+	bond->l2da_info.multimac = newval->value;
 	return 0;
 }

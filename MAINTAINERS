@@ -2259,6 +2259,7 @@ W:	http://sourceforge.net/projects/bonding/
 S:	Supported
 F:	drivers/net/bonding/
 F:	include/uapi/linux/if_bonding.h
+F:	include/net/bond_l2da.h
 
 BPF (Safe dynamic programs and tools)
 M:	Alexei Starovoitov <ast@kernel.org>
