@@ -561,7 +561,8 @@ static void qcom_pcie_deinit_v0(struct qcom_pcie *pcie)
 {
 	struct qcom_pcie_resources_v0 *res = &pcie->res.v0;
 
-	reset_control_assert(res->pci_reset);
+	clk_disable_unprepare(res->phy_clk);
+	reset_control_assert(res->phy_reset);
 	reset_control_assert(res->axi_reset);
 	reset_control_assert(res->ahb_reset);
 	reset_control_assert(res->por_reset);
@@ -569,7 +570,6 @@ static void qcom_pcie_deinit_v0(struct qcom_pcie *pcie)
 	reset_control_assert(res->ext_reset);
 	clk_disable_unprepare(res->iface_clk);
 	clk_disable_unprepare(res->core_clk);
-	clk_disable_unprepare(res->phy_clk);
 	clk_disable_unprepare(res->aux_clk);
 	clk_disable_unprepare(res->ref_clk);
 	regulator_disable(res->vdda);
@@ -623,12 +623,6 @@ static int qcom_pcie_init_v0(struct qcom_pcie *pcie)
 	if (ret) {
 		dev_err(dev, "cannot prepare/enable core clock\n");
 		goto err_clk_core;
-	}
-
-	ret = clk_prepare_enable(res->phy_clk);
-	if (ret) {
-		dev_err(dev, "cannot prepare/enable phy clock\n");
-		goto err_clk_phy;
 	}
 
 	ret = clk_prepare_enable(res->aux_clk);
@@ -695,6 +689,12 @@ static int qcom_pcie_init_v0(struct qcom_pcie *pcie)
 		return ret;
 	}
 
+	ret = clk_prepare_enable(res->phy_clk);
+	if (ret) {
+		dev_err(dev, "cannot prepare/enable phy clock\n");
+		goto err_deassert_ahb;
+	}
+
 	/* wait for clock acquisition */
 	usleep_range(1000, 1500);
 	if (pcie->force_gen1) {
@@ -713,8 +713,6 @@ err_deassert_ahb:
 err_clk_ref:
 	clk_disable_unprepare(res->aux_clk);
 err_clk_aux:
-	clk_disable_unprepare(res->phy_clk);
-err_clk_phy:
 	clk_disable_unprepare(res->core_clk);
 err_clk_core:
 	clk_disable_unprepare(res->iface_clk);
