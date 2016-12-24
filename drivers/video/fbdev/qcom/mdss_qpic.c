@@ -327,7 +327,7 @@ static int qpic_send_pkt_bam(u32 cmd, u32 len, u8 *param)
 
 	ret = wait_for_completion_timeout(
 		&qpic_res->completion,
-		msecs_to_jiffies(100 * 4));
+		qpic_res->bam_timeout);
 
 	if (ret <= 0)
 		pr_err("%s timeout %x", __func__, ret);
@@ -584,6 +584,7 @@ static int mdss_qpic_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	int rc = 0;
+	u32 bam_timeout;
 	static struct msm_mdp_interface qpic_interface = {
 		.init_fnc = mdss_qpic_overlay_init,
 		.fb_mem_alloc_fnc = mdss_qpic_alloc_fb_mem,
@@ -638,6 +639,12 @@ static int mdss_qpic_probe(struct platform_device *pdev)
 		dev_warn(&pdev->dev, "missing 'lcdc_irq' resource entry");
 		return -EINVAL;
 	}
+
+	if (of_property_read_u32(pdev->dev.of_node,
+				 "qcom,bam_timeout", &bam_timeout))
+		bam_timeout = QPIC_BAM_TIMEOUT;
+
+	qpic_res->bam_timeout = msecs_to_jiffies(bam_timeout);
 
 	qpic_res->res_init = true;
 	init_completion(&qpic_res->completion);

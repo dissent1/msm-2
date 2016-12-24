@@ -10,6 +10,10 @@ Required properties:
 			controller node and the channel number to
 			be used for LCD. Refer to dma.txt and
 			qcom_bam_dma.txt for more details
+Optional properties:
+- qcom,bam_timeout:	Timeout in ms for QPIC BAM transfer. Default timeout
+			i.e. 400 ms will be used if this parameter is not
+			present.
 
 Example:
 
@@ -20,6 +24,7 @@ qcom_mdss_qpic@7980000 {
 	clocks = <&gcc GCC_QPIC_CLK>, <&gcc GCC_QPIC_AHB_CLK>;
 	clock-names = "core", "aon";
 	dmas = <&qpic_bam 6>;
+	qcom,bam_timeout = <1000>;
 };
 
 * QPIC LCD Display Panel
