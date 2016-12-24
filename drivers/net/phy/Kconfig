@@ -346,3 +346,9 @@ config PSB6970_PHY
 	tristate "Lantiq XWAY Tantos (PSB6970) Ethernet switch"
 	select SWCONFIG
 	select ETHERNET_PACKET_MANGLE
+
+config MDIO_IPQ40XX
+	tristate "Qualcomm Atheros ipq40xx MDIO interface"
+	help
+	  This driver supports the MDIO interface found in Qualcomm
+	  Atheros ipq40xx Soc chip.

@@ -4208,6 +4208,7 @@ S:	Maintained
 F:	include/linux/phy.h
 F:	include/linux/phy_fixed.h
 F:	drivers/net/phy/
+F:	drivers/net/phy/mdio-ipq40xx.c
 F:	Documentation/networking/phy.txt
 F:	drivers/of/of_mdio.c
 F:	drivers/of/of_net.c
