@@ -1322,6 +1322,9 @@ enum netdev_priv_flags {
 	IFF_L3MDEV_SLAVE		= 1<<23,
 	IFF_NO_IP_ALIGN			= 1<<24,
 	IFF_TUN_TAP			= 1<<25,
+	IFF_PPP_L2TPV2			= 1<<26,
+	IFF_PPP_L2TPV3			= 1<<27,
+	IFF_PPP_PPTP			= 1<<28,
 };
 
 #define IFF_802_1Q_VLAN			IFF_802_1Q_VLAN
