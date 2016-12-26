@@ -516,31 +516,22 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-apq8074-dragonboard.dtb \
 	qcom-apq8084-ifc6540.dtb \
 	qcom-apq8084-mtp.dtb \
-	qcom-ipq8064-ap145.dtb \
 	qcom-ipq8064-v2.0-ap145.dtb \
 	qcom-ipq8064-v3.0-ap145.dtb \
-	qcom-ipq8064-ap145_1xx.dtb \
 	qcom-ipq8064-v2.0-ap145_1xx.dtb \
 	qcom-ipq8064-v3.0-ap145_1xx.dtb \
-	qcom-ipq8064-ap148.dtb \
 	qcom-ipq8064-v2.0-ap148.dtb \
 	qcom-ipq8064-v3.0-ap148.dtb \
-	qcom-ipq8064-ap148_1xx.dtb \
 	qcom-ipq8064-v2.0-ap148_1xx.dtb \
 	qcom-ipq8064-v3.0-ap148_1xx.dtb \
-	qcom-ipq8064-db149.dtb \
 	qcom-ipq8064-v2.0-db149.dtb \
 	qcom-ipq8064-v3.0-db149.dtb \
-	qcom-ipq8064-ap160.dtb \
 	qcom-ipq8064-v2.0-ap160.dtb \
 	qcom-ipq8064-v3.0-ap160.dtb \
-	qcom-ipq8064-ap160_2xx.dtb \
 	qcom-ipq8064-v2.0-ap160_2xx.dtb \
 	qcom-ipq8064-v3.0-ap160_2xx.dtb \
-	qcom-ipq8064-ap161.dtb \
 	qcom-ipq8064-v2.0-ap161.dtb \
 	qcom-ipq8064-v3.0-ap161.dtb \
-	qcom-ipq8064-r7500.dtb \
 	qcom-msm8660-surf.dtb \
 	qcom-msm8960-cdp.dtb \
 	qcom-msm8974-sony-xperia-honami.dtb \
