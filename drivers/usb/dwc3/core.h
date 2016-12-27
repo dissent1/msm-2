@@ -873,6 +873,7 @@ struct dwc3 {
 
 	unsigned		tx_de_emphasis_quirk:1;
 	unsigned		tx_de_emphasis:2;
+	atomic_t		in_lpm;
 };
 
 /* -------------------------------------------------------------------------- */
