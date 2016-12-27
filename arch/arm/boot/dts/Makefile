@@ -533,6 +533,8 @@ dtb-$(CONFIG_ARCH_QCOM) += \
 	qcom-ipq8064-v3.0-ap160_2xx.dtb \
 	qcom-ipq8064-v2.0-ap161.dtb \
 	qcom-ipq8064-v3.0-ap161.dtb \
+	qcom-ipq8064-v2.0-ak01.dtb \
+	qcom-ipq8064-v3.0-ak01.dtb \
 	qcom-msm8660-surf.dtb \
 	qcom-msm8960-cdp.dtb \
 	qcom-msm8974-sony-xperia-honami.dtb \
