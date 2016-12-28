@@ -101,6 +101,7 @@ struct usb_request {
 	unsigned		no_interrupt:1;
 	unsigned		zero:1;
 	unsigned		short_not_ok:1;
+	unsigned		dma_pre_mapped:1;
 
 	void			(*complete)(struct usb_ep *ep,
 					struct usb_request *req);
@@ -109,6 +110,7 @@ struct usb_request {
 
 	int			status;
 	unsigned		actual;
+	unsigned		udc_priv;
 };
 
 /*-------------------------------------------------------------------------*/
