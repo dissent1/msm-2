@@ -202,6 +202,9 @@ config USB_F_PRINTER
 config USB_F_DIAG
 	tristate
 
+config USB_F_QDSS
+	tristate
+
 choice
 	tristate "USB Gadget Drivers"
 	default USB_ETH
@@ -461,6 +464,13 @@ config USB_CONFIGFS_F_DIAG
 	help
 	  Diag function driver enables support for Qualcomm diagnostics
 	  port over USB.
+
+config USB_CONFIGFS_F_QDSS
+	bool "USB QDSS function"
+	select USB_F_QDSS
+	depends on USB_CONFIGFS
+	help
+	  USB QDSS function driver to get hwtracing related data over USB.
 
 source "drivers/usb/gadget/legacy/Kconfig"
 
