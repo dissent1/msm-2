@@ -126,3 +126,11 @@
 		reg = <0x0b1b8000 0x1000>;
 	};
 };
+
+&qpic_bam {
+	status = "ok";
+};
+
+&nand {
+	status = "ok";
+};
