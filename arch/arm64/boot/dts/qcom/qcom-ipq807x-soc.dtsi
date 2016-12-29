@@ -137,7 +137,6 @@
 			clock-frequency = <0x124f800>;
 		};
 
-
 		gcc: qcom,gcc@1800000 {
 			compatible = "qcom,gcc-ipq807x";
 			reg = <0x1800000 0x80000>;
@@ -343,6 +342,44 @@
 				"wbm2host-tx-completions-ring1",
 				"tcl2host-status-ring";
 			status = "disabled";
+		};
+
+		qpic_bam: dma@7984000{
+			compatible = "qcom,bam-v1.7.0";
+			reg = <0x7984000 0x1a000>;
+			interrupts = <0 146 0>;
+			clocks = <&gcc GCC_DUMMY_CLK>;
+			clock-names = "bam_clk";
+			#dma-cells = <1>;
+			qcom,ee = <0>;
+			status = "disabled";
+		};
+
+		nand: qpic-nand@79b0000 {
+			compatible = "qcom,ebi2-nandc-bam-v1.5.0";
+			reg = <0x79b0000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>;
+			clock-names = "core", "aon";
+
+			dmas = <&qpic_bam 0>,
+				<&qpic_bam 1>,
+				<&qpic_bam 2>;
+			dma-names = "tx", "rx", "cmd";
+			status = "disabled";
+
+			nandcs@0 {
+				compatible = "qcom,nandcs";
+				reg = <0>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				nand-ecc-strength = <4>;
+				nand-ecc-step-size = <512>;
+				nand-bus-width = <8>;
+			};
 		};
 	};
 };
