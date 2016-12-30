@@ -587,7 +587,7 @@ int __qcom_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf)
 	long ret;
 
 	if (cmd_buf)
-		ret = qcom_scm_call(dev, svc_id, cmd_id, &cmd_buf,
+		ret = qcom_scm_call(dev, svc_id, cmd_id, cmd_buf,
 				sizeof(cmd_buf), NULL, 0);
 	else
 		ret = qcom_scm_call(dev, svc_id, cmd_id, NULL, 0, NULL, 0);
