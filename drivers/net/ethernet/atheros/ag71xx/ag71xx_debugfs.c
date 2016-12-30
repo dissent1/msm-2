@@ -1,6 +1,7 @@
 /*
  *  Atheros AR71xx built-in ethernet mac driver
  *
+ *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -157,49 +158,41 @@ static ssize_t read_file_ring(struct file *file, char __user *user_buf,
 			      struct ag71xx_ring *ring,
 			      unsigned desc_reg)
 {
-	int ring_size = BIT(ring->order);
-	int ring_mask = ring_size - 1;
 	char *buf;
 	unsigned int buflen;
 	unsigned int len = 0;
 	unsigned long flags;
 	ssize_t ret;
-	int curr;
-	int dirty;
 	u32 desc_hw;
 	int i;
 
-	buflen = (ring_size * DESC_PRINT_LEN);
+	buflen = (ring->size * DESC_PRINT_LEN);
 	buf = kmalloc(buflen, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
 	len += snprintf(buf + len, buflen - len,
-			"Idx ... %-8s %-8s %-8s %-8s . %-10s\n",
-			"desc", "next", "data", "ctrl", "timestamp");
+			"Idx ... %-8s %-8s %-8s %-8s\n",
+			"desc", "next", "data", "ctrl");
 
 	spin_lock_irqsave(&ag->lock, flags);
 
-	curr = (ring->curr & ring_mask);
-	dirty = (ring->dirty & ring_mask);
 	desc_hw = ag71xx_rr(ag, desc_reg);
-	for (i = 0; i < ring_size; i++) {
+	for (i = 0; i < ring->size; i++) {
 		struct ag71xx_buf *ab = &ring->buf[i];
-		struct ag71xx_desc *desc = ag71xx_ring_desc(ring, i);
-		u32 desc_dma = ((u32) ring->descs_dma) + i * AG71XX_DESC_SIZE;
+		u32 desc_dma = ((u32)ring->descs_dma) + i * ring->desc_size;
 
 		len += snprintf(buf + len, buflen - len,
-			"%3d %c%c%c %08x %08x %08x %08x %c %10lu\n",
+			"%3d %c%c%c %08x %08x %08x %08x %c\n",
 			i,
-			(i == curr) ? 'C' : ' ',
-			(i == dirty) ? 'D' : ' ',
+			(&ring->buf[i] == ring->curr) ? 'C' : ' ',
+			(&ring->buf[i] == ring->dirty) ? 'D' : ' ',
 			(desc_hw == desc_dma) ? 'H' : ' ',
 			desc_dma,
-			desc->next,
-			desc->data,
-			desc->ctrl,
-			(desc->ctrl & DESC_EMPTY) ? 'E' : '*',
-			ab->timestamp);
+			ab->desc->next,
+			ab->desc->data,
+			ab->desc->ctrl,
+			(ab->desc->ctrl & DESC_EMPTY) ? 'E' : '*');
 	}
 
 	spin_unlock_irqrestore(&ag->lock, flags);
@@ -247,14 +240,10 @@ void ag71xx_debugfs_exit(struct ag71xx *ag)
 
 int ag71xx_debugfs_init(struct ag71xx *ag)
 {
-	struct device *dev = &ag->pdev->dev;
-
-	ag->debug.debugfs_dir = debugfs_create_dir(dev_name(dev),
+	ag->debug.debugfs_dir = debugfs_create_dir(ag->dev->name,
 						   ag71xx_debugfs_root);
-	if (!ag->debug.debugfs_dir) {
-		dev_err(dev, "unable to create debugfs directory\n");
-		return -ENOENT;
-	}
+	if (!ag->debug.debugfs_dir)
+		return -ENOMEM;
 
 	debugfs_create_file("int_stats", S_IRUGO, ag->debug.debugfs_dir,
 			    ag, &ag71xx_fops_int_stats);

@@ -35,7 +35,7 @@ static int ag71xx_frame_len_mask = DESC_PKTLEN_M;
 
 #define SGMII_PROCFS_DIR                        "ag71xx_sgmii"
 #define SGMII_FLAG_NAME				"sgmii_en"
-static u8 ag71xx_sgmii_flag = 1;
+static u8 ag71xx_sgmii_flag;
 static struct proc_dir_entry *ag71xx_sgmii_dir;
 static struct proc_dir_entry *ag71xx_sgmii_flag_file;
 void ag71xx_sgmii_flag_set(u8 flag)
