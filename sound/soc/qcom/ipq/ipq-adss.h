@@ -18,12 +18,17 @@
 #ifndef IPQ_ADSS_H
 #define IPQ_ADSS_H
 
+#include <sound/pcm.h>
+
 /* ADSS AUDIO Registers */
 
 #define ADSS_BASE	0x7700000
 #define ADSS_RANGE	0x20000
 
 /* ADSS_AUDIO_LOCAL_REG Registers */
+
+#define ADSS_GLB_PCM_RST_REG			0x0
+#define GLB_PCM_RST_CTRL(x)			(x << 0)
 
 #define ADSS_GLB_PCM_MBOX_CTRL_REG		0x0C
 
@@ -40,6 +45,7 @@
 #define GLB_I2S_RESET_VAL_4019		0xF
 /* IPQ8074 bit fields ADSS_GLB_I2S_RST_REG */
 #define GLB_I2S_RESET_VAL_8074		0xFF
+#define GLB_I2S_RST_MBOX_RESET_MASK	0x5
 #define GLB_I2S_RST_CTRL_I2S3		BIT(3)
 #define GLB_I2S_RST_CTRL_TXMCLK		BIT(4)
 #define GLB_I2S_RST_CTRL_TXBCLK		BIT(5)
@@ -209,6 +215,8 @@
 #define AADSS_PCM_TX_DATA_8BIT_REG	0x1C
 #define AADSS_PCM_DIVIDER_REG		0x20
 #define AADSS_PCM_TH_REG		0x24
+#define PCM_TH_PCM_TX_THRESH(x)		(x << 0)
+#define PCM_TH_PCM_RX_THRESH(x)		(x << 9)
 #define AADSS_PCM_FIFO_CNT_REG		0x28
 #define AADSS_PCM_FIFO_ERR_SLOT_REG	0x2C
 #define AADSS_PCM_RX_DATA_16BIT_REG	0x30
@@ -341,6 +349,18 @@
 #define ADSS_AUDIO_SPDIFINFAST_CBCR_REG		0x1EC
 #define AUDIO_SPDIFINFAST			49152000
 
+#define ADSS_AUDIO_PCM_CMD_RCGR_REG		0x1A0
+
+#define ADSS_AUDIO_PCM_CFG_RCGR_REG		0x1A4
+#define AUDIO_PCM_CFG_RCGR_SRC_SEL(x)		(x << 8)
+#define AUDIO_PCM_CFG_RGCR_SRC_DIV(x)		(x << 0)
+
+#define ADSS_AUDIO_PCM_MISC_REG			0x1A8
+#define AUDIO_PCM_MISC_AUTO_SCALE_DIV(x)	(x << 0)
+
+#define ADSS_AUDIO_PCM_CBCR_REG			0x1AC
+#define ADSS_AUDIO_ZSI_CBCR_REG			0x1B8
+
 #define SNDRV_PCM_FMTBIT_S24_3			SNDRV_PCM_FMTBIT_S24_3LE
 
 /* Enumerations */
@@ -441,6 +461,11 @@ extern void ipq_glb_rx_data_port_en(uint32_t enable);
 extern void ipq_glb_tx_framesync_port_en(uint32_t enable);
 extern void ipq_glb_rx_framesync_port_en(uint32_t enable);
 extern void ipq_glb_clk_enable_oe(uint32_t dir);
+extern void ipq_glb_pcm_rst(uint32_t enable);
+extern void ipq_pcm_clk_cfg(uint32_t rate);
+extern void ipq_pcm_clk_enable(void);
+extern void ipq_glb_mbox_reset(void);
+
 /* Stereo APIs */
 extern void ipq_stereo_config_reset(uint32_t reset, uint32_t stereo_offset);
 extern void ipq_stereo_config_mic_reset(uint32_t reset,
