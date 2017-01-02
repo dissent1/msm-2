@@ -152,11 +152,11 @@
 
 	soc: soc {
 		rpm@108000 {
-			smb208-s2a {
+			s2a {
 				regulator-max-microvolt = <1275000>;
 			};
 
-			smb208-s2b {
+			s2b {
 				regulator-max-microvolt = <1275000>;
 			};
 		};
