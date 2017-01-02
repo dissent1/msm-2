@@ -83,6 +83,7 @@ struct alpha_pll_config {
 extern const struct clk_ops clk_alpha_pll_ops;
 extern const struct clk_ops clk_alpha_pll_hwfsm_ops;
 extern const struct clk_ops clk_alpha_pll_huayra_ops;
+extern const struct clk_ops clk_alpha_pll_brammo_ops;
 extern const struct clk_ops clk_alpha_pll_postdiv_ops;
 
 void clk_alpha_pll_configure(struct clk_alpha_pll *pll, struct regmap *regmap,
