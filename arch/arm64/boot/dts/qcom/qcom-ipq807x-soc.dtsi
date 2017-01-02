@@ -407,6 +407,7 @@
 			};
 		};
 
+
 		pcie0: pci@20000000 {
 			compatible = "qcom,pcie-ipq807x";
 			reg =  <0x20000000 0xf1d
@@ -535,6 +536,13 @@
 			clock-frequency  = <100000>;
 			dmas = <&blsp_bam 15>, <&blsp_bam 14>;
 			dma-names = "rx", "tx";
+		};
+
+		qcom_rng: qrng@e1000 {
+			compatible = "qcom,prng";
+			reg = <0xe1000 0x1000>;
+			clocks = <&gcc GCC_DUMMY_CLK>;
+			clock-names = "core";
 		};
 	};
 };
