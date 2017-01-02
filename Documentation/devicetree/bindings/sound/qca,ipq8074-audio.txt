@@ -1,6 +1,6 @@
-* Qualcomm Technologies IPQ8074 ASoC machine driver
+* Qualcomm Technologies, Inc IPQ8074 ASoC machine driver
 
-This node models the Qualcomm Technologies IPQ8074 ASoC machine driver
+This node models the Qualcomm Technologies, Inc IPQ8074 ASoC machine driver
 
 Required properties:
 

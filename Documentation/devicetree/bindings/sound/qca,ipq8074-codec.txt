@@ -1,6 +1,6 @@
-* Qualcomm Technologies IPQ8074 ASoC Codec driver
+* Qualcomm Technologies, Inc IPQ8074 ASoC Codec driver
 
-This node models the Qualcomm Technologies IPQ8074 ASoC Codec driver
+This node models the Qualcomm Technologies, Inc IPQ8074 ASoC Codec driver
 
 Required properties:
 

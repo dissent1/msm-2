@@ -1,6 +1,6 @@
-* Qualcomm Technologies IPQ8074 ASoC TDM driver
+* Qualcomm Technologies, Inc IPQ8074 ASoC TDM driver
 
-This node models the Qualcomm Technologies IPQ8074 ASoC TDM driver
+This node models the Qualcomm Technologies, Inc IPQ8074 ASoC TDM driver
 
 Required properties:
 
