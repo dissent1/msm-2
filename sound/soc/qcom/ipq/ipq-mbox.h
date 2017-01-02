@@ -58,8 +58,23 @@
  *		       bit 3.0 = 1 is sampling freq No specified
  */
 #define SPDIF_CONSUMER_COMPRESD 0x01000006
-#define MBOX_MIN_DESC_NUM	3
-#define MBOX_DESC_REPEAT_NUM	5
+
+/*
+ * When the mailbox operation is started, the mailbox would get one descriptor
+ * for the current data transfer and prefetch one more descriptor. When less
+ * than 10 descriptors are configured, then it is possible that before the CPU
+ * handles the interrupt, the mailbox could check the pre fetched descriptor
+ * and stop the DMA transfer.
+ * To handle this, the design is to use multiple descriptors, but they would
+ * point to the same buffer address. This way  more number of descriptors
+ * would satisfy the mbox requirement, and reusing the buffer address would
+ * satisfy the upper layer's buffer requirement.
+ *
+ * The value of 10 descriptors was derived from trial and error testing
+ * for minimum number of descriptors that would result in MBOX operations
+ * without stopping.
+ */
+#define MBOX_MIN_DESC_NUM	10
 
 enum {
 	ADSS_MBOX_NR_CHANNELS = 5,
@@ -141,6 +156,26 @@ static inline u32 ipq_convert_id_to_channel(u32 id)
 static inline u32 ipq_convert_id_to_dir(u32 id)
 {
 	return (id % 2);
+}
+
+/*
+ * If number of mbox descriptors are less than MBOX_MIN_DESC_NUM
+ * there should be duplicate mbox descriptors in order to be compliant
+ * with the mbox operation logic described at the definition of
+ * macro MBOX_MIN_DESC_NUM.
+ */
+static inline int ipq_get_mbox_descs_duplicate(int ndescs)
+{
+	int repeat_cnt;
+
+	if (ndescs < MBOX_MIN_DESC_NUM) {
+		repeat_cnt = MBOX_MIN_DESC_NUM / ndescs;
+		if (MBOX_MIN_DESC_NUM % ndescs)
+			repeat_cnt++;
+		ndescs *= repeat_cnt;
+	}
+
+	return ndescs;
 }
 
 #endif /* _IPQ_MBOX_H_ */

@@ -585,6 +585,15 @@ int ipq_mbox_form_ring(int channel_id, dma_addr_t baseaddr, u8 *area,
 	desc = (struct ipq_mbox_desc *)(area + (ndescs * period_bytes));
 	desc_p = baseaddr + (ndescs * period_bytes);
 
+	/*
+	 * Finding whether duplicate desc entries are required or not should
+	 * be done after desc is initialized. Else if ndescs are less than
+	 * MBOX_MIN_DESC_NUM and duplicate desc entry is calculated before desc
+	 * initialization, then desc will point to a region beyond allocated
+	 * coherent memory.
+	 */
+	ndescs = ipq_get_mbox_descs_duplicate(ndescs);
+
 	memset(desc, 0, ndescs * sizeof(struct ipq_mbox_desc));
 
 	mbox_cb->read = 0;
