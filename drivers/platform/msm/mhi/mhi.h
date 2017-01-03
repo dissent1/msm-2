@@ -524,7 +524,9 @@ struct mhi_dev_space {
 struct mhi_device_ctxt {
 	struct list_head node;
 	struct pcie_core_info core;
+#ifdef CONFIG_PCI_MSM
 	struct msm_pcie_register_event mhi_pci_link_event;
+#endif /* CONFIG_PCI_MSM */
 	struct pci_dev *pcie_device;
 	struct bhi_ctxt_t bhi_ctxt;
 	struct platform_device *plat_dev;
