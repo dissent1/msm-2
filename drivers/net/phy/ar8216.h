@@ -1,6 +1,7 @@
 /*
  * ar8216.h: AR8216 switch driver
  *
+ * Copyright (c) 2017 The Linux Foundation. All rights reserved.
  * Copyright (C) 2009 Felix Fietkau <nbd@openwrt.org>
  *
  * This program is free software; you can redistribute it and/or
@@ -467,6 +468,8 @@ void
 ar8xxx_write(struct ar8xxx_priv *priv, int reg, u32 val);
 u32
 ar8xxx_rmw(struct ar8xxx_priv *priv, int reg, u32 mask, u32 val);
+u32
+ar8xxx_rmr(struct ar8xxx_priv *priv, int reg, u32 mask);
 
 void
 ar8xxx_phy_dbg_write(struct ar8xxx_priv *priv, int phy_addr,
@@ -622,7 +625,7 @@ split_addr(u32 regaddr, u16 *r1, u16 *r2, u16 *page)
 static inline void
 wait_for_page_switch(void)
 {
-	udelay(5);
+	usleep_range(1000, 2000);
 }
 
 #endif

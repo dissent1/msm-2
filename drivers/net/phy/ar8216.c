@@ -1,6 +1,7 @@
 /*
  * ar8216.c: AR8216 switch driver
  *
+ * Copyright (c) 2017 The Linux Foundation. All rights reserved.
  * Copyright (C) 2009 Felix Fietkau <nbd@openwrt.org>
  * Copyright (C) 2011-2012 Gabor Juhos <juhosg@openwrt.org>
  *
@@ -290,6 +291,28 @@ ar8xxx_rmw(struct ar8xxx_priv *priv, int reg, u32 mask, u32 val)
 	ret &= ~mask;
 	ret |= val;
 	ar8xxx_mii_write32(priv, 0x10 | r2, r1, ret);
+
+	mutex_unlock(&bus->mdio_lock);
+
+	return ret;
+}
+
+u32
+ar8xxx_rmr(struct ar8xxx_priv *priv, int reg, u32 mask)
+{
+	struct mii_bus *bus = priv->mii_bus;
+	u16 r1, r2, page;
+	u32 ret;
+
+	split_addr((u32) reg, &r1, &r2, &page);
+
+	mutex_lock(&bus->mdio_lock);
+
+	bus->write(bus, 0x18, 0, page);
+	wait_for_page_switch();
+
+	ret = ar8xxx_mii_read32(priv, 0x10 | r2, r1);
+	ret &= mask;
 
 	mutex_unlock(&bus->mdio_lock);
 

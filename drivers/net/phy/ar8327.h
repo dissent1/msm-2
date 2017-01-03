@@ -1,6 +1,7 @@
 /*
  * ar8327.h: AR8216 switch driver
  *
+ * Copyright (c) 2017 The Linux Foundation. All rights reserved.
  * Copyright (C) 2009 Felix Fietkau <nbd@openwrt.org>
  *
  * This program is free software; you can redistribute it and/or
@@ -204,6 +205,9 @@
 #define   AR8327_PORT_LOOKUP_ING_MIRROR_EN	BIT(25)
 
 #define AR8327_REG_PORT_PRIO(_i)		(0x664 + (_i) * 0xc)
+
+#define AR8327_REG_GLOBAL_FC_THRESH		0x800
+#define AR8327_GLOBAL_FC_THRESH_DFLT_VAL	0x12001f0
 
 #define AR8327_REG_PORT_HOL_CTRL1(_i)		(0x974 + (_i) * 0x8)
 #define   AR8327_PORT_HOL_CTRL1_EG_MIRROR_EN	BIT(16)
