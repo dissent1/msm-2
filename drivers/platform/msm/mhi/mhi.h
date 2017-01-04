@@ -581,6 +581,9 @@ struct mhi_device_ctxt {
 	struct dentry *parent;
 	void *mhi_ipc_log;
 
+	struct workqueue_struct *wq;
+	struct delayed_work work;
+
 	/* Shadow functions since not all device supports runtime pm */
 	void (*runtime_get)(struct mhi_device_ctxt *mhi_dev_ctxt);
 	void (*runtime_put)(struct mhi_device_ctxt *mhi_dev_ctxt);
