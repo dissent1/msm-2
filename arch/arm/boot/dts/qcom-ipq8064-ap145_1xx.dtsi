@@ -214,6 +214,14 @@
 					bias-bus-hold;
 				};
 			};
+
+			buttons_pins: buttons_pinmux {
+				mux {
+					pins = "gpio22", "gpio24";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
 		};
 
 		gsbi@16300000 {
@@ -308,8 +316,16 @@
 
 		gpio_keys {
 			compatible = "gpio-keys";
-
+			pinctrl-0 = <&buttons_pins>;
+			pinctrl-names = "default";
 			button@1 {
+				label = "reset";
+				linux,code = <KEY_RESTART>;
+				gpios = <&qcom_pinmux 24 GPIO_ACTIVE_LOW>;
+				linux,input-type = <1>;
+				debounce-interval = <60>;
+			};
+			button@2 {
 				label = "wps";
 				linux,code = <KEY_WPS_BUTTON>;
 				gpios = <&qcom_pinmux 22 GPIO_ACTIVE_LOW>;
