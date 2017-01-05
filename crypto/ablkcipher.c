@@ -598,6 +598,11 @@ static int crypto_givcipher_default(struct crypto_alg *alg, u32 type, u32 mask)
 	if (IS_ERR(inst))
 		goto put_tmpl;
 
+	/*
+	 * copy flags from registered algorithm
+	 */
+	inst->alg.cra_flags |= (alg->cra_flags & CRYPTO_ALG_NOSUPP_SG);
+
 	err = crypto_register_instance(tmpl, inst);
 	if (err) {
 		tmpl->free(inst);

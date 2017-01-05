@@ -102,6 +102,11 @@
 #define CRYPTO_ALG_INTERNAL		0x00002000
 
 /*
+ * Set this flag if algorithm does not support SG list transforms
+ */
+#define CRYPTO_ALG_NOSUPP_SG		0x00004000
+
+/*
  * Transform masks and values (for crt_flags).
  */
 #define CRYPTO_TFM_REQ_MASK		0x000fff00
@@ -646,6 +651,11 @@ static inline int crypto_tfm_alg_priority(struct crypto_tfm *tfm)
 static inline u32 crypto_tfm_alg_type(struct crypto_tfm *tfm)
 {
 	return tfm->__crt_alg->cra_flags & CRYPTO_ALG_TYPE_MASK;
+}
+
+static inline u32 crypto_tfm_alg_flags(struct crypto_tfm *tfm)
+{
+	return tfm->__crt_alg->cra_flags & ~CRYPTO_ALG_TYPE_MASK;
 }
 
 static inline unsigned int crypto_tfm_alg_blocksize(struct crypto_tfm *tfm)

@@ -444,6 +444,7 @@ static int crypto_authenc_create(struct crypto_template *tmpl,
 		goto err_drop_enc;
 
 	inst->alg.base.cra_flags = enc->cra_flags & CRYPTO_ALG_ASYNC;
+	inst->alg.base.cra_flags |= enc->cra_flags & CRYPTO_ALG_NOSUPP_SG;
 	inst->alg.base.cra_priority = enc->cra_priority * 10 +
 				      auth_base->cra_priority;
 	inst->alg.base.cra_blocksize = enc->cra_blocksize;
