@@ -4,6 +4,7 @@ snd-soc-ipq-cpu-dai-objs := ipq-cpu-dai.o
 snd-soc-ipq-pcm-i2s-objs := ipq-pcm-i2s.o
 snd-soc-ipq-pcm-tdm-objs := ipq-pcm-tdm.o
 snd-soc-ipq-pcm-spdif-objs := ipq-pcm-spdif.o
+snd-soc-ipq-pcm-raw-objs := ipq-pcm-raw.o ipq-pcm-raw-lb-test.o
 
 obj-$(CONFIG_SND_SOC_IPQ) += ipq.o
 obj-$(CONFIG_SND_SOC_IPQ_ADSS) += ipq-adss.o
@@ -14,3 +15,4 @@ obj-$(CONFIG_SND_SOC_IPQ_PCM_I2S) += snd-soc-ipq-pcm-i2s.o
 obj-$(CONFIG_SND_SOC_IPQ_CODEC) += ipq-codec.o
 obj-$(CONFIG_SND_SOC_IPQ_PCM_SPDIF) += snd-soc-ipq-pcm-spdif.o
 obj-$(CONFIG_SND_SOC_IPQ_PCM_TDM) += snd-soc-ipq-pcm-tdm.o
+obj-$(CONFIG_SND_SOC_IPQ_PCM_RAW) += snd-soc-ipq-pcm-raw.o

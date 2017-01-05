@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,10 +33,11 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <linux/io.h>
+#include <linux/of_device.h>
 
-#include "ipq40xx-pcm-raw.h"
-#include "ipq40xx-adss.h"
-#include "ipq40xx-mbox.h"
+#include "ipq-pcm-raw.h"
+#include "ipq-adss.h"
+#include "ipq-mbox.h"
 
 /*
  * Constant / Define Declarations
@@ -45,6 +46,10 @@
 #define PCM_DIVIDER_VAL		1
 #define PCM_START_VAL		1
 #define PCM_STOP_VAL		0
+#define PCM_PHASE_NEG_EDGE		0
+#define PCM_PHASE_90SHIFT_NEG_EDGE	1
+#define PCM_PHASE_POS_EDGE		2
+#define PCM_PHASE_90SHIFT_POS_EDGE	3
 
 #define PCM_MULT_FACTOR		4
 #define SET_DESC_OWN		1
@@ -65,8 +70,10 @@ static struct platform_device *pcm_pdev;
 static spinlock_t pcm_lock;
 static struct pcm_context context;
 static struct clk *pcm_clk;
+static enum ipq_hw_type ipq_hw;
 
 static uint32_t rx_size_count;
+struct ipq_pcm_params *pcm_params;
 
 static DECLARE_WAIT_QUEUE_HEAD(pcm_q);
 
@@ -78,7 +85,8 @@ static int voice_allocate_dma_buffer(struct device *dev,
 static int voice_free_dma_buffer(struct device *dev,
 		struct voice_dma_buffer *dma_buff);
 
-static void pcm_init_tx_data(struct ipq_pcm_params *params);
+static void ipq4019_pcm_init_tx_data(struct ipq_pcm_params *params);
+static void ipq8074_pcm_init_tx_data(struct ipq_pcm_params *params);
 
 /*
  * FUNCTION: pcm_rx_irq_handler
@@ -92,14 +100,14 @@ static irqreturn_t pcm_rx_irq_handler(int intrsrc, void *data)
 	uint32_t dma_at;
 	uint32_t rx_size;
 
-	rx_size = ipq40xx_mbox_get_played_offset_set_own(
+	rx_size = ipq_mbox_get_played_offset_set_own(
 			rx_dma_buffer->channel_id);
 
 	/* the buffer number calculated would actually point to the next
 	 * buffer to be played. We need to go to the previous buffer, keeping
 	 * ring buffer in picture.
 	 */
-	dma_at = rx_size / (rx_dma_buffer->size / NUM_BUFFERS);
+	dma_at = rx_size / (rx_dma_buffer->single_buf_size);
 	dma_at = (dma_at + NUM_BUFFERS - 1) % NUM_BUFFERS;
 
 	atomic_set(&data_at, dma_at);
@@ -119,19 +127,19 @@ static irqreturn_t pcm_rx_irq_handler(int intrsrc, void *data)
  */
 static irqreturn_t pcm_tx_irq_handler(int intrsrc, void *data)
 {
-	ipq40xx_mbox_get_elapsed_size(tx_dma_buffer->channel_id);
+	ipq_mbox_get_elapsed_size(tx_dma_buffer->channel_id);
 	/* do nothing for now, done in rx irq handler */
 	return IRQ_HANDLED;
 }
 
 /*
- * FUNCTION: ipq40xx_pcm_validate_params
+ * FUNCTION: ipq_pcm_validate_params
  *
  * DESCRIPTION: validates the input parameters
  *
  * RETURN VALUE: error if any
  */
-uint32_t ipq40xx_pcm_validate_params(struct ipq_pcm_params *params)
+uint32_t ipq_pcm_validate_params(struct ipq_pcm_params *params)
 {
 	uint32_t count;
 
@@ -141,29 +149,29 @@ uint32_t ipq40xx_pcm_validate_params(struct ipq_pcm_params *params)
 	}
 
 	/* Bit width supported is 8 or 16 */
-	if (!((params->bit_width == IPQ40xx_PCM_BIT_WIDTH_8) ||
-			(params->bit_width == IPQ40xx_PCM_BIT_WIDTH_16))) {
+	if (!((params->bit_width == IPQ_PCM_BIT_WIDTH_8) ||
+			(params->bit_width == IPQ_PCM_BIT_WIDTH_16))) {
 		pr_err("%s: Invalid Bitwidth %d.\n",
 				__func__, params->bit_width);
 		return -EINVAL;
 	}
 
-	if ((params->bit_width == IPQ40xx_PCM_BIT_WIDTH_8) &&
-			(params->slot_count != IPQ40xx_PCM_SLOTS_32)) {
+	if ((params->bit_width == IPQ_PCM_BIT_WIDTH_8) &&
+			(params->slot_count != IPQ_PCM_SLOTS_32)) {
 		pr_err("%s: Invalid slot count for bit width 8 %d.\n",
 				__func__, params->slot_count);
 		return -EINVAL;
 	}
 
-	if ((params->bit_width == IPQ40xx_PCM_BIT_WIDTH_16) &&
-			(params->slot_count != IPQ40xx_PCM_SLOTS_16)) {
+	if ((params->bit_width == IPQ_PCM_BIT_WIDTH_16) &&
+			(params->slot_count != IPQ_PCM_SLOTS_16)) {
 		pr_err("%s: Invalid slot count for bit width 16 %d.\n",
 				__func__, params->slot_count);
 		return -EINVAL;
 	}
 
-	if ((params->rate <  IPQ40xx_PCM_SAMPLING_RATE_MIN) ||
-		(params->rate > IPQ40xx_PCM_SAMPLING_RATE_MAX)) {
+	if ((params->rate <  IPQ_PCM_SAMPLING_RATE_MIN) ||
+		(params->rate > IPQ_PCM_SAMPLING_RATE_MAX)) {
 		pr_err("%s: Invalid sampling rate %d.\n",
 				__func__, params->rate);
 		return -EINVAL;
@@ -171,9 +179,9 @@ uint32_t ipq40xx_pcm_validate_params(struct ipq_pcm_params *params)
 
 	/* Number of active slots should be less than or same as max slots */
 	if ((!params->active_slot_count) ||
-			(params->active_slot_count > IPQ40xx_PCM_MAX_SLOTS)) {
+			(params->active_slot_count > IPQ_PCM_MAX_SLOTS)) {
 		pr_err("%s: Active slots should be less than or same as %d\n",
-				__func__, IPQ40xx_PCM_MAX_SLOTS);
+				__func__, IPQ_PCM_MAX_SLOTS);
 		return -EINVAL;
 	}
 
@@ -199,7 +207,7 @@ uint32_t ipq40xx_pcm_validate_params(struct ipq_pcm_params *params)
 }
 
 /*
- * FUNCTION: ipq40xx_pcm_init
+ * FUNCTION: ipq_pcm_init
  *
  * DESCRIPTION: initializes PCM interface and MBOX interface
  *
@@ -213,7 +221,9 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	uint32_t i;
 	uint32_t reg_val;
 
-	ret = ipq40xx_pcm_validate_params(params);
+	pcm_params = params;
+
+	ret = ipq_pcm_validate_params(params);
 	if (ret)
 		return ret;
 
@@ -225,7 +235,8 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 
 	ret = clk_set_rate(pcm_clk, clk_rate);
 	if (ret) {
-		pr_err("%s : clk_set_rate failed for pcm clock\n", __func__);
+		pr_err("%s : clk_set_rate failed for pcm clock\n",
+							__func__);
 		return ret;
 	}
 
@@ -236,21 +247,38 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 		return ret;
 	}
 
-	ipq40xx_glb_audio_mode_B1K();
+	ipq_glb_pcm_rst(ENABLE);
+	mdelay(5);
+	ipq_glb_pcm_rst(DISABLE);
+
+	/* MBOX reset */
+	ipq_glb_mbox_reset();
+
+	if (ipq_hw == IPQ8074)
+		ipq_pcm_clk_cfg(params->rate);
+
+	/* write ADSS_PCM_DIVIDER_REG */
+	writel(PCM_DIVIDER_VAL, adss_pcm_base + AADSS_PCM_DIVIDER_REG);
 
 	/* set ADSS_PCM_CTRL_REG */
-	reg_val = PCM_CTRL_CPU_MODE(0) | PCM_CTRL_FRAME_SYNC_LEN(0);
+	reg_val = (PCM_CTRL_CPU_MODE(0) |
+			PCM_CTRL_FRAME_SYNC_LEN(0) |
+			PCM_CTRL_PCM_CLK_MODE(0) |
+			PCM_CTRL_PCM_DCLK_MODE(0));
 
-	if (params->bit_width == IPQ40xx_PCM_BIT_WIDTH_16)
+	if (params->bit_width == IPQ_PCM_BIT_WIDTH_16)
 		reg_val |= PCM_CTRL_PCM_SLOT_MODE(1);
+
+	reg_val &= ~PCM_CTRL_PCM_PHASE_MASK;
+	reg_val |= PCM_CTRL_PCM_TX_PHASE(PCM_PHASE_NEG_EDGE);
+	reg_val |= PCM_CTRL_PCM_RX_PHASE(PCM_PHASE_POS_EDGE);
 
 	writel(reg_val, adss_pcm_base + AADSS_PCM_CTRL_REG);
 
 	/* write ADSS_PCM_OFFSET_REG */
 	writel(PCM_OFFSET_VAL, adss_pcm_base + AADSS_PCM_OFFSET_REG);
 
-	/* write ADSS_PCM_DIVIDER_REG */
-	writel(PCM_DIVIDER_VAL, adss_pcm_base + AADSS_PCM_DIVIDER_REG);
+	ipq_pcm_clk_enable();
 
 	/* write ADSS_PCM_BITMAP_REG */
 	reg_val = 0;
@@ -259,47 +287,52 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 
 	writel(reg_val, adss_pcm_base + AADSS_PCM_BITMAP_REG);
 
+	writel((PCM_TH_PCM_TX_THRESH(160) | PCM_TH_PCM_RX_THRESH(160)),
+					adss_pcm_base + AADSS_PCM_TH_REG);
+
 	/* allocate DMA buffers */
-	single_buf_size = IPQ40xx_PCM_SAMPLES_PER_10MS(params->rate) *
-			IPQ40xx_PCM_BYTES_PER_SAMPLE(params->bit_width) *
+	if (ipq_hw == IPQ4019)
+		single_buf_size = IPQ_PCM_SAMPLES_PER_10MS(params->rate) *
+			IPQ4019_PCM_BYTES_PER_SAMPLE(params->bit_width) *
+			params->active_slot_count;
+	else
+		single_buf_size = IPQ_PCM_SAMPLES_PER_10MS(params->rate) *
+			IPQ8074_PCM_BYTES_PER_SAMPLE(params->bit_width) *
 			params->active_slot_count;
 
-	rx_dma_buffer->size = single_buf_size * NUM_BUFFERS;
-	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
-	if (ret) {
-		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating rx dma buffer, error %d\n",
-				__func__, __LINE__, ret);
-		return -ENOMEM;
-	}
+	/* Overwrite single_buf_size based on params */
+	rx_dma_buffer->single_buf_size = single_buf_size;
+	tx_dma_buffer->single_buf_size = single_buf_size;
 
-	tx_dma_buffer->size = single_buf_size * NUM_BUFFERS;
-	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
-	if (ret) {
-		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating tx dma buffer, error: %d\n",
-				__func__, __LINE__, ret);
-		ret = -ENOMEM;
-		goto err_mem_tx;
-	}
+	memset(tx_dma_buffer->area, 0, tx_dma_buffer->size_max);
+	if (ipq_hw == IPQ4019)
+		ipq4019_pcm_init_tx_data(params);
+	else
+		ipq8074_pcm_init_tx_data(params);
 
-	pcm_init_tx_data(params);
+	ipq_mbox_fifo_reset(rx_dma_buffer->channel_id);
+	ipq_mbox_fifo_reset(tx_dma_buffer->channel_id);
+
+	/* Give delay for the fifo reset to reflect */
+	mdelay(20);
 
 	/* initialize mbox here*/
 	/* first for QCM_PCM_STREAM_PLAYBACK */
-	ret = ipq40xx_mbox_dma_init(&pcm_pdev->dev,
+	ret = ipq_mbox_dma_init(&pcm_pdev->dev,
 			tx_dma_buffer->channel_id,
 			pcm_tx_irq_handler, NULL);
 
 	if (ret) {
 		pr_err("\n%s: %d: Error initializing dma for playback, error %d\n",
 				__func__, __LINE__, ret);
-		goto err_mbox_tx_init;
+		return ret;
 	}
 
-	ret = ipq40xx_mbox_form_ring(tx_dma_buffer->channel_id,
+	ret = ipq_mbox_form_ring(tx_dma_buffer->channel_id,
 			tx_dma_buffer->addr,
 			tx_dma_buffer->area,
 			single_buf_size,
-			tx_dma_buffer->size,
+			(single_buf_size * NUM_BUFFERS),
 			SET_DESC_OWN);
 	if (ret) {
 		pr_err("\n%s: %d: Error dma form ring for playback, error %d\n",
@@ -307,15 +340,15 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 		goto err_mbox_tx_dma_init;
 	}
 
-	ret = ipq40xx_mbox_dma_prepare(tx_dma_buffer->channel_id);
+	ret = ipq_mbox_dma_prepare(tx_dma_buffer->channel_id);
 	if (ret) {
 		pr_err("\n%s: %d: Error dma prepare for playback, error %d\n",
 					__func__, __LINE__, ret);
 		goto err_mbox_tx_dma_init;
 	}
 
-	/* next for IPQ40xx_PCM_STREAM_CAPTURE */
-	ret = ipq40xx_mbox_dma_init(&pcm_pdev->dev,
+	/* next for IPQ_PCM_STREAM_CAPTURE */
+	ret = ipq_mbox_dma_init(&pcm_pdev->dev,
 			rx_dma_buffer->channel_id,
 			pcm_rx_irq_handler, NULL);
 
@@ -325,11 +358,12 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 		goto err_mbox_tx_dma_init;
 	}
 
-	ret = ipq40xx_mbox_form_ring(rx_dma_buffer->channel_id,
+	memset(rx_dma_buffer->area, 0, rx_dma_buffer->size_max);
+	ret = ipq_mbox_form_ring(rx_dma_buffer->channel_id,
 			rx_dma_buffer->addr,
 			rx_dma_buffer->area,
 			single_buf_size,
-			rx_dma_buffer->size,
+			(single_buf_size * NUM_BUFFERS),
 			SET_DESC_OWN);
 	if (ret) {
 		pr_err("\n %s: %d: Error dma form ring for capture, error: %d\n",
@@ -337,15 +371,12 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 		goto err_mbox_rx_dma_init;
 	}
 
-	ret = ipq40xx_mbox_dma_prepare(rx_dma_buffer->channel_id);
+	ret = ipq_mbox_dma_prepare(rx_dma_buffer->channel_id);
 	if (ret) {
 		pr_err("\n%s: %d: Error dma prepare for capture, error %d\n",
 					__func__, __LINE__, ret);
 		goto err_mbox_rx_dma_init;
 	}
-
-	/*take pcm out of reset */
-	ipq40xx_glb_pcm_rst(DISABLE);
 
 	writel(PCM_START_VAL, adss_pcm_base + AADSS_PCM_START_REG);
 
@@ -353,41 +384,34 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	context.pcm_started = 1;
 	rx_size_count = 0;
 
-	ipq40xx_mbox_fifo_reset(rx_dma_buffer->channel_id);
-	ipq40xx_mbox_fifo_reset(tx_dma_buffer->channel_id);
-
-	/* Give delay for the fifo reset to reflect */
-	mdelay(20);
-
-	ipq40xx_mbox_dma_start(rx_dma_buffer->channel_id);
-	ipq40xx_mbox_dma_start(tx_dma_buffer->channel_id);
+	ipq_mbox_dma_start(rx_dma_buffer->channel_id);
+	ipq_mbox_dma_start(tx_dma_buffer->channel_id);
 
 
 	return 0;
 
 err_mbox_rx_dma_init:
-	ipq40xx_mbox_dma_release(rx_dma_buffer->channel_id);
+	ipq_mbox_dma_release(rx_dma_buffer->channel_id);
 err_mbox_tx_dma_init:
-	ipq40xx_mbox_dma_release(tx_dma_buffer->channel_id);
-err_mbox_tx_init:
-	voice_free_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
-err_mem_tx:
-	voice_free_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+	ipq_mbox_dma_release(tx_dma_buffer->channel_id);
 	return ret;
 }
 EXPORT_SYMBOL(ipq_pcm_init);
 
 
-static void pcm_init_tx_data(struct ipq_pcm_params *params)
+static void ipq4019_pcm_init_tx_data(struct ipq_pcm_params *params)
 {
-	uint32_t i, slot;
+	uint32_t i, slot, size_act;
 	uint32_t *buffer;
 
 	buffer = (uint32_t *)tx_dma_buffer->area;
 
-	for (i = 0; i < tx_dma_buffer->size/4; ) {
+	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS) / 4);
+
+	for (i = 0; i < size_act; ) {
 		for (slot = 0; slot < params->active_slot_count; slot++) {
-			if (params->bit_width == IPQ40xx_PCM_BIT_WIDTH_16) {
+
+			if (params->bit_width == IPQ_PCM_BIT_WIDTH_16) {
 				buffer[i] |= params->tx_slots[slot] << 16;
 			} else {
 				buffer[i] |= params->tx_slots[slot] << 8;
@@ -397,6 +421,33 @@ static void pcm_init_tx_data(struct ipq_pcm_params *params)
 		}
 	}
 }
+
+static void ipq8074_pcm_init_tx_data(struct ipq_pcm_params *params)
+{
+	uint32_t i, slot, size_act;
+	uint32_t *buffer_32;
+	uint16_t *buffer_16;
+
+	buffer_32 = (uint32_t *)tx_dma_buffer->area;
+	buffer_16 = (uint16_t *)tx_dma_buffer->area;
+
+	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS)/
+			((params->bit_width == IPQ_PCM_BIT_WIDTH_16) ?
+				sizeof(*buffer_32) : sizeof(*buffer_16)));
+
+	for (i = 0; i < size_act; ) {
+		for (slot = 0; slot < params->active_slot_count; slot++) {
+			if (params->bit_width == IPQ_PCM_BIT_WIDTH_16) {
+				buffer_32[i] = params->tx_slots[slot] << 16;
+			} else {
+				buffer_16[i] = params->tx_slots[slot] << 8;
+				buffer_16[i] |= 1 << 15; /* valid bit */
+			}
+			i++;
+		}
+	}
+}
+
 /*
  * FUNCTION: ipq_pcm_data
  *
@@ -406,7 +457,7 @@ static void pcm_init_tx_data(struct ipq_pcm_params *params)
  * RETURN VALUE: returns the rx and tx buffer pointers and the size to fill or
  *		read
  */
-uint32_t ipq_pcm_data(char **rx_buf, char **tx_buf)
+uint32_t ipq_pcm_data(uint8_t **rx_buf, uint8_t **tx_buf)
 {
 	unsigned long flag;
 	uint32_t offset;
@@ -415,14 +466,14 @@ uint32_t ipq_pcm_data(char **rx_buf, char **tx_buf)
 	wait_event_interruptible(pcm_q, atomic_read(&data_avail) != 0);
 
 	atomic_set(&data_avail, 0);
-	offset = (rx_dma_buffer->size / NUM_BUFFERS) * atomic_read(&data_at);
+	offset = (rx_dma_buffer->single_buf_size) * atomic_read(&data_at);
 
 	spin_lock_irqsave(&pcm_lock, flag);
 	*rx_buf = rx_dma_buffer->area + offset;
 	*tx_buf = tx_dma_buffer->area + offset;
 	spin_unlock_irqrestore(&pcm_lock, flag);
 
-	size = rx_dma_buffer->size / NUM_BUFFERS;
+	size = rx_dma_buffer->single_buf_size;
 
 	return size;
 }
@@ -457,26 +508,32 @@ EXPORT_SYMBOL(ipq_pcm_send_event);
  *
  * RETURN VALUE: none
  */
-void ipq_pcm_deinit(void)
+void ipq_pcm_deinit(struct ipq_pcm_params *params)
 {
-	if (context.needs_deinit) {
+	uint32_t desc_duration;
+	uint32_t bytes_per_sec;
 
-		ipq40xx_mbox_dma_stop(rx_dma_buffer->channel_id);
-		ipq40xx_mbox_dma_stop(tx_dma_buffer->channel_id);
+	if (!context.needs_deinit)
+		return;
 
-		ipq40xx_mbox_dma_release(rx_dma_buffer->channel_id);
-		ipq40xx_mbox_dma_release(tx_dma_buffer->channel_id);
+	bytes_per_sec = (params->rate *
+			DIV_ROUND_UP(params->bit_width, 8) *
+			params->active_slot_count);
 
-		memset(&context, 0, sizeof(struct pcm_context));
+	desc_duration =
+		((rx_dma_buffer->single_buf_size * 1000) / bytes_per_sec);
 
-		writel(PCM_STOP_VAL, adss_pcm_base + AADSS_PCM_START_REG);
+	ipq_mbox_dma_stop(rx_dma_buffer->channel_id, desc_duration);
+	ipq_mbox_dma_stop(tx_dma_buffer->channel_id, desc_duration);
 
-		clk_disable_unprepare(pcm_clk);
-	}
-	if (tx_dma_buffer)
-		voice_free_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
-	if (rx_dma_buffer)
-		voice_free_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+	ipq_mbox_dma_release(rx_dma_buffer->channel_id);
+	ipq_mbox_dma_release(tx_dma_buffer->channel_id);
+
+	memset(&context, 0, sizeof(struct pcm_context));
+
+	writel(PCM_STOP_VAL, adss_pcm_base + AADSS_PCM_START_REG);
+
+	clk_disable_unprepare(pcm_clk);
 }
 EXPORT_SYMBOL(ipq_pcm_deinit);
 
@@ -493,9 +550,9 @@ static int voice_allocate_dma_buffer(struct device *dev,
 	int size;
 	int ndescs;
 
-	ndescs = ipq40xx_get_mbox_descs_duplicate(NUM_BUFFERS);
-	size = (dma_buffer->size * NUM_BUFFERS) + (ndescs *
-				sizeof(struct ipq40xx_mbox_desc));
+	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS);
+	size = (dma_buffer->size_max) + (ndescs *
+				sizeof(struct ipq_mbox_desc));
 
 	dma_buffer->area = dma_zalloc_coherent(dev, size,
 					&dma_buffer->addr, GFP_KERNEL);
@@ -516,28 +573,50 @@ static int voice_allocate_dma_buffer(struct device *dev,
 static int voice_free_dma_buffer(struct device *dev,
 					struct voice_dma_buffer *dma_buff)
 {
+	int size;
+	int ndescs;
+
 	if (!dma_buff->area)
 		return 0;
 
-	dma_free_coherent(dev, dma_buff->size + 4,
+	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS);
+	size = (dma_buff->size_max) + (ndescs *
+				sizeof(struct ipq_mbox_desc));
+
+	dma_free_coherent(dev, size,
 			dma_buff->area, dma_buff->addr);
 	dma_buff->area = NULL;
 	return 0;
 }
 
+static const struct of_device_id qca_raw_match_table[] = {
+	{ .compatible = "qca,ipq4019-pcm", .data = (void *)IPQ4019 },
+	{ .compatible = "qca,ipq8074-pcm", .data = (void *)IPQ8074 },
+	{},
+};
+
 /*
- * FUNCTION: ipq40xx_pcm_driver_probe
+ * FUNCTION: ipq_pcm_driver_probe
  *
  * DESCRIPTION: very basic one time activities
  *
  * RETURN VALUE: error if any
  */
-static int ipq40xx_pcm_driver_probe(struct platform_device *pdev)
+static int ipq_pcm_driver_probe(struct platform_device *pdev)
 {
 	uint32_t tx_channel;
 	uint32_t rx_channel;
+	uint32_t single_buf_size_max;
 	struct resource *res;
 	struct device_node *np = NULL;
+	const struct of_device_id *match;
+	int ret;
+
+	match = of_match_device(qca_raw_match_table, &pdev->dev);
+	if (!match)
+		return -ENODEV;
+
+	ipq_hw = (u32)match->data;
 
 	if (!pdev)
 		return -EINVAL;
@@ -580,6 +659,31 @@ static int ipq40xx_pcm_driver_probe(struct platform_device *pdev)
 	rx_dma_buffer->channel_id = rx_channel;
 	tx_dma_buffer->channel_id = tx_channel;
 
+	/* allocate DMA buffers of max size */
+	single_buf_size_max =
+		IPQ_PCM_SAMPLES_PER_10MS(IPQ_PCM_SAMPLING_RATE_MAX) *
+		IPQ_PCM_BYTES_PER_SAMPLE_MAX *
+		IPQ_PCM_MAX_SLOTS;
+
+	rx_dma_buffer->single_buf_size = single_buf_size_max;
+	rx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS;
+	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+	if (ret) {
+		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating rx dma buffer, error %d\n",
+				__func__, __LINE__, ret);
+		return -ENOMEM;
+	}
+
+	tx_dma_buffer->single_buf_size = single_buf_size_max;
+	tx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS;
+	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
+	if (ret) {
+		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating tx dma buffer, error: %d\n",
+				__func__, __LINE__, ret);
+		voice_free_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+		return -ENOMEM;
+	}
+
 	memset(&context, 0, sizeof(struct pcm_context));
 	spin_lock_init(&pcm_lock);
 
@@ -587,16 +691,23 @@ static int ipq40xx_pcm_driver_probe(struct platform_device *pdev)
 }
 
 /*
- * FUNCTION: ipq40xx_pcm_driver_remove
+ * FUNCTION: ipq_pcm_driver_remove
  *
  * DESCRIPTION: clean up
  *
  * RETURN VALUE: error if any
  */
-static int ipq40xx_pcm_driver_remove(struct platform_device *pdev)
+static int ipq_pcm_driver_remove(struct platform_device *pdev)
 {
-	ipq_pcm_deinit();
+	ipq_pcm_deinit(pcm_params);
+
 	devm_clk_put(&pdev->dev, pcm_clk);
+
+	if (tx_dma_buffer)
+		voice_free_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
+	if (rx_dma_buffer)
+		voice_free_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
+
 	kfree(rx_dma_buffer);
 	kfree(tx_dma_buffer);
 	return 0;
@@ -606,23 +717,18 @@ static int ipq40xx_pcm_driver_remove(struct platform_device *pdev)
  * DESCRIPTION OF PCM RAW MODULE
  */
 
-#define DRIVER_NAME "ipq40xx_pcm_raw"
+#define DRIVER_NAME "ipq_pcm_raw"
 
-static const struct of_device_id qca_raw_match_table[] = {
-	{ .compatible = "qca,ipq40xx-pcm", },
-	{},
-};
-
-static struct platform_driver ipq40xx_pcm_raw_driver = {
-	.probe		= ipq40xx_pcm_driver_probe,
-	.remove		= ipq40xx_pcm_driver_remove,
+static struct platform_driver ipq_pcm_raw_driver = {
+	.probe		= ipq_pcm_driver_probe,
+	.remove		= ipq_pcm_driver_remove,
 	.driver		= {
 		.name		= DRIVER_NAME,
 		.of_match_table = qca_raw_match_table,
 	},
 };
 
-module_platform_driver(ipq40xx_pcm_raw_driver);
+module_platform_driver(ipq_pcm_raw_driver);
 
 MODULE_ALIAS(DRIVER_NAME);
 MODULE_LICENSE("Dual BSD/GPL");
