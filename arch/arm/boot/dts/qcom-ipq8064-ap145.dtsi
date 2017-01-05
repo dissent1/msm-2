@@ -325,7 +325,7 @@
 			status = "ok";
 		};
 
-		nand@0x1ac00000 {
+		nand@1ac00000 {
 			status = "ok";
 
 			pinctrl-0 = <&nand_pins>;
