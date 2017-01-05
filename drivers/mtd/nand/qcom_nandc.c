@@ -125,6 +125,11 @@
 
 /* Value for NAND_DEV_CMD_VLD */
 #define NAND_DEV_CMD_VLD_VAL		(0x1D)
+
+#define UD_SIZE_BYTES_MASK	(0x3ff << UD_SIZE_BYTES)
+#define SPARE_SIZE_BYTES_MASK	(0xf << SPARE_SIZE_BYTES)
+#define ECC_NUM_DATA_BYTES_MASK	(0x3ff << ECC_NUM_DATA_BYTES)
+
 /*
  * the NAND controller performs reads/writes with ECC in 516 byte chunks.
  * the driver calls the chunks 'step' or 'codeword' interchangeably
@@ -326,6 +331,9 @@ struct nandc_regs {
  * @bch_enabled:		flag to tell whether BCH or RS ECC mode is used
  * @dma_bam_enabled:		flag to tell whether nand controller is using
  *				bam dma
+ * @create_sys_boot_layout:	create sysfs entry for boot_layout
+ * @boot_layout:		flag to tell whether current layout is boot
+ *				layout
  * @regs_offsets:		register offset mapping array
  */
 struct qcom_nand_controller {
@@ -358,6 +366,8 @@ struct qcom_nand_controller {
 
 	u8		*data_buffer;
 	bool		dma_bam_enabled;
+	bool		create_sys_boot_layout;
+	bool		boot_layout;
 	int		buf_size;
 	int		buf_count;
 	int		buf_start;
@@ -429,11 +439,13 @@ struct qcom_nand_host {
  * @ecc_modes - ecc mode for nand
  * @regs_offsets - contains the register offsets array pointer.
  * @dma_bam_enabled - whether this driver is using bam
+ * @create_sys_boot_layout - create sysfs entry for boot layout
  */
 struct qcom_nand_driver_data {
 	u32 ecc_modes;
 	u32 *regs_offsets;
 	bool dma_bam_enabled;
+	bool create_sys_boot_layout;
 };
 
 /* Mapping tables which contains the actual register offsets */
@@ -1636,7 +1648,7 @@ static int read_page_ecc(struct qcom_nand_host *host, u8 *data_buf,
 	for (i = 0; i < ecc->steps; i++) {
 		int data_size, oob_size;
 
-		if (i == (ecc->steps - 1)) {
+		if ((i == (ecc->steps - 1)) && !nandc->boot_layout) {
 			data_size = ecc->size - ((ecc->steps - 1) << 2);
 			oob_size = (ecc->steps << 2) + host->ecc_bytes_hw +
 				   host->spare_bytes;
@@ -1799,7 +1811,7 @@ static int qcom_nandc_read_page_raw(struct mtd_info *mtd,
 		data_size1 = mtd->writesize - host->cw_size * (ecc->steps - 1);
 		oob_size1 = host->bbm_size;
 
-		if (i == (ecc->steps - 1)) {
+		if ((i == (ecc->steps - 1)) &&  !nandc->boot_layout) {
 			data_size2 = ecc->size - data_size1 -
 				     ((ecc->steps - 1) << 2);
 			oob_size2 = (ecc->steps << 2) + host->ecc_bytes_hw +
@@ -1909,7 +1921,7 @@ static int qcom_nandc_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	for (i = 0; i < ecc->steps; i++) {
 		int data_size, oob_size;
 
-		if (i == (ecc->steps - 1)) {
+		if ((i == (ecc->steps - 1)) && !nandc->boot_layout) {
 			data_size = ecc->size - ((ecc->steps - 1) << 2);
 			oob_size = (ecc->steps << 2) + host->ecc_bytes_hw +
 				   host->spare_bytes;
@@ -1979,7 +1991,7 @@ static int qcom_nandc_write_page_raw(struct mtd_info *mtd,
 		data_size1 = mtd->writesize - host->cw_size * (ecc->steps - 1);
 		oob_size1 = host->bbm_size;
 
-		if (i == (ecc->steps - 1)) {
+		if ((i == (ecc->steps - 1)) && !nandc->boot_layout) {
 			data_size2 = ecc->size - data_size1 -
 				     ((ecc->steps - 1) << 2);
 			oob_size2 = (ecc->steps << 2) + host->ecc_bytes_hw +
@@ -2756,6 +2768,50 @@ static int qcom_nandc_parse_dt(struct platform_device *pdev)
 	return 0;
 }
 
+static ssize_t boot_layout_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct qcom_nand_controller *nandc = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", nandc->boot_layout);
+}
+
+static ssize_t boot_layout_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t n)
+{
+	struct qcom_nand_controller *nandc = dev_get_drvdata(dev);
+	struct qcom_nand_host *host;
+	int ret;
+
+	ret = kstrtobool(buf, &nandc->boot_layout);
+	if (ret) {
+		dev_err(dev, "invalid boot_layout\n");
+		return ret;
+	}
+
+	list_for_each_entry(host, &nandc->host_list, node) {
+		host->cw_data = nandc->boot_layout ? 512 : 516;
+		host->spare_bytes = host->cw_size - host->ecc_bytes_hw -
+				    host->bbm_size - host->cw_data;
+
+		host->cfg0 &= ~(SPARE_SIZE_BYTES_MASK | UD_SIZE_BYTES_MASK);
+		host->cfg0 |= host->spare_bytes << SPARE_SIZE_BYTES |
+			      host->cw_data << UD_SIZE_BYTES;
+
+		host->ecc_bch_cfg &= ~ECC_NUM_DATA_BYTES_MASK;
+		host->ecc_bch_cfg |= host->cw_data << ECC_NUM_DATA_BYTES;
+		host->ecc_buf_cfg = (nandc->boot_layout ? 0x1ff : 0x203) <<
+				     NUM_STEPS;
+	}
+
+	return n;
+}
+
+static const DEVICE_ATTR(boot_layout, 0644, boot_layout_show,
+			 boot_layout_store);
+
 static int qcom_nandc_probe(struct platform_device *pdev)
 {
 	struct qcom_nand_controller *nandc;
@@ -2785,6 +2841,7 @@ static int qcom_nandc_probe(struct platform_device *pdev)
 	nandc->ecc_modes = driver_data->ecc_modes;
 	nandc->dma_bam_enabled = driver_data->dma_bam_enabled;
 	nandc->regs_offsets = driver_data->regs_offsets;
+	nandc->create_sys_boot_layout = driver_data->create_sys_boot_layout;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	nandc->base = devm_ioremap_resource(dev, res);
@@ -2820,6 +2877,13 @@ static int qcom_nandc_probe(struct platform_device *pdev)
 	ret = qcom_nandc_setup(nandc);
 	if (ret)
 		goto err_setup;
+
+	if (nandc->create_sys_boot_layout) {
+		ret = sysfs_create_file(&pdev->dev.kobj,
+					&dev_attr_boot_layout.attr);
+		if (ret)
+			goto err_setup;
+	}
 
 	for_each_available_child_of_node(dn, child) {
 		if (of_device_is_compatible(child, "qcom,nandcs")) {
@@ -2868,6 +2932,9 @@ static int qcom_nandc_remove(struct platform_device *pdev)
 	list_for_each_entry(host, &nandc->host_list, node)
 		nand_release(nand_to_mtd(&host->chip));
 
+	if (nandc->create_sys_boot_layout)
+		sysfs_remove_file(&pdev->dev.kobj, &dev_attr_boot_layout.attr);
+
 	qcom_nandc_unalloc(nandc);
 
 	clk_disable_unprepare(nandc->aon_clk);
@@ -2885,6 +2952,7 @@ struct qcom_nand_driver_data ebi2_nandc_bam_data = {
 struct qcom_nand_driver_data ebi2_nandc_data = {
 	.ecc_modes = (ECC_RS_4BIT | ECC_BCH_8BIT),
 	.dma_bam_enabled = false,
+	.create_sys_boot_layout = true,
 	.regs_offsets = regs_offsets_v1_4_0,
 };
 
