@@ -382,6 +382,15 @@
 	sound: sound@0 {
 		status = "ok";
 	};
+
+	/* Enable VOIP Interfaces */
+	pcm: pcm@7704000 {
+		status = "ok";
+	};
+
+	pcm_lb: pcm_lb@0 {
+		status = "ok";
+	};
 };
 
 &tlmm {
