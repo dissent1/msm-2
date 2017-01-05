@@ -205,7 +205,21 @@ static void ipq_glb_i2s_reset(void)
 		adss_audio_local_base + ipq_cfgs->i2s_reset_val.reg);
 	mdelay(5);
 	writel(0x0, adss_audio_local_base + ADSS_GLB_I2S_RST_REG);
+	mdelay(5);
 }
+
+/*
+ * MBOX Module Reset
+ */
+void ipq_glb_mbox_reset(void)
+{
+	writel(GLB_I2S_RST_MBOX_RESET_MASK,
+		adss_audio_local_base + ipq_cfgs->i2s_reset_val.reg);
+	mdelay(5);
+	writel(0x0, adss_audio_local_base + ADSS_GLB_I2S_RST_REG);
+	mdelay(5);
+}
+EXPORT_SYMBOL(ipq_glb_mbox_reset);
 
 /*
  * Enable I2S/TDM and Playback/Capture Audio Mode
@@ -355,6 +369,56 @@ void ipq_glb_clk_enable_oe(u32 dir)
 	spin_unlock_irqrestore(&i2s_ctrl_lock, flags);
 }
 EXPORT_SYMBOL(ipq_glb_clk_enable_oe);
+
+/* PCM RAW ADSS_GLB_PCM_RST_REG register */
+void ipq_glb_pcm_rst(uint32_t enable)
+{
+	uint32_t reg_val;
+
+	if (enable)
+		reg_val = GLB_PCM_RST_CTRL(1);
+	else
+		reg_val = GLB_PCM_RST_CTRL(0);
+
+	writel(reg_val, adss_audio_local_base + ADSS_GLB_PCM_RST_REG);
+}
+EXPORT_SYMBOL(ipq_glb_pcm_rst);
+
+/* PCM RAW clock configuration */
+void ipq_pcm_clk_cfg(uint32_t rate)
+{
+	uint32_t reg_val;
+	uint32_t div_1, div_2;
+
+	if (rate == 8000) {
+		div_1 = 3; div_2 = 1;
+	} else if (rate == 16000) {
+		div_1 = 3; div_2 = 0;
+	}
+
+	/* set ADSS_AUDIO_PCM_CFG_RCGR_REG as required */
+	reg_val = readl(adss_audio_local_base + ADSS_AUDIO_PCM_CFG_RCGR_REG);
+	reg_val |= AUDIO_PCM_CFG_RCGR_SRC_SEL(1)
+			| AUDIO_PCM_CFG_RGCR_SRC_DIV(div_1);
+	writel(reg_val, adss_audio_local_base + ADSS_AUDIO_PCM_CFG_RCGR_REG);
+
+	/* set ADSS_AUDIO_PCM_MISC_REG  as required */
+	reg_val = AUDIO_PCM_MISC_AUTO_SCALE_DIV(div_2);
+	writel(reg_val, adss_audio_local_base + ADSS_AUDIO_PCM_MISC_REG);
+
+	/* set ADSS_AUDIO_PCM_CMD_RCGR_REG as required */
+	reg_val = 3;
+	writel(reg_val, adss_audio_local_base + ADSS_AUDIO_PCM_CMD_RCGR_REG);
+}
+EXPORT_SYMBOL(ipq_pcm_clk_cfg);
+
+void ipq_pcm_clk_enable(void)
+{
+	/* write ADSS_AUDIO_PCM_CBCR_REG*/
+	writel(0x1, adss_audio_local_base + ADSS_AUDIO_PCM_CBCR_REG);
+	writel(0x1, adss_audio_local_base + ADSS_AUDIO_ZSI_CBCR_REG);
+}
+EXPORT_SYMBOL(ipq_pcm_clk_enable);
 
 void ipq_spdifin_ctrl_spdif_en(uint32_t enable)
 {
