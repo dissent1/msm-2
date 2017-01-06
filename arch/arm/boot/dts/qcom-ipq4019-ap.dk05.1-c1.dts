@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,7 +19,19 @@
 / {
 	model = "Qualcomm Technologies, Inc. IPQ4019/AP-DK05.1-C1";
 
+	aliases {
+		ethernet0 = "/soc/edma/gmac0";
+	};
+
 	soc {
+		mdio@90000 {
+			status = "ok";
+			pinctrl-0 = <&mdio_pins>;
+			pinctrl-names = "default";
+			phy-reset-gpio = <&tlmm 62 0>;
+			bias-disable;
+		};
+
 		spi_0: spi@78b5000 { /* BLSP1 QUP1 */
 			status = "ok";
 			cs-gpios = <&tlmm 54 0>, <&tlmm 59 0>;
@@ -33,6 +45,14 @@
 				spi-max-frequency = <24000000>;
 			};
 
+		};
+
+		edma@c080000 {
+			qcom,num-gmac = <1>;
+			gmac0 {
+				qcom,poll-required = <0>;
+				vlan-tag = <0 0x3e>;
+			};
 		};
 	};
 };
