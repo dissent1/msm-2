@@ -127,10 +127,30 @@
 	};
 };
 
+&tlmm {
+	hsuart_pins: hsuart_pins {
+		mux {
+			pins = "gpio50", "gpio51", "gpio52", "gpio53";
+			function = "blsp3_uart";
+			bias-disable;
+		};
+	};
+};
+
 &qpic_bam {
 	status = "ok";
 };
 
 &nand {
+	status = "ok";
+};
+
+&blsp_bam {
+	status = "ok";
+};
+
+&hsuart {
+	pinctrl-0 = <&hsuart_pins>;
+	pinctrl-names = "default";
 	status = "ok";
 };
