@@ -164,6 +164,7 @@ extern const struct clk_ops clk_dyn_rcg_ops;
  * struct clk_rcg2 - root clock generator
  *
  * @cmd_rcgr: corresponds to *_CMD_RCGR
+ * @cfg_offset: offset of *_CFG_RCGR from *_CMD_RCGR minus 4
  * @mnd_width: number of bits in m/n/d values
  * @hid_width: number of bits in half integer divider
  * @parent_map: map from software's parent index to hardware's src_sel field
@@ -174,6 +175,7 @@ extern const struct clk_ops clk_dyn_rcg_ops;
  */
 struct clk_rcg2 {
 	u32			cmd_rcgr;
+	u8			cfg_offset;
 	u8			mnd_width;
 	u8			hid_width;
 	const struct parent_map	*parent_map;
@@ -188,6 +190,7 @@ struct clk_rcg2 {
  * struct clk_cdiv_rcg2 - cdiv with root clock generator
  *
  * @cmd_rcgr: corresponds to *_CMD_RCGR
+ * @cfg_offset: offset of *_CFG_RCGR from *_CMD_RCGR minus 4
  * @mnd_width: number of bits in m/n/d values
  * @hid_width: number of bits in half integer divider
  * @parent_map: map from software's parent index to hardware's src_sel field
@@ -198,6 +201,7 @@ struct clk_rcg2 {
  */
 struct clk_cdiv_rcg2 {
 	u32		cmd_rcgr;
+	u8		cfg_offset;
 	u8		mnd_width;
 	u8		hid_width;
 	struct c_div	cdiv;
