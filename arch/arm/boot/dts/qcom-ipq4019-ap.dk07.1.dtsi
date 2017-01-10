@@ -268,6 +268,10 @@
 			status = "ok";
 		};
 
+		mhi_wlan: qcom,mhi@1 {
+			status = "ok";
+		};
+
 		gpio_keys {
 			compatible = "gpio-keys";
 
