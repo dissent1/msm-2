@@ -38,6 +38,8 @@ struct mhi_device_driver *mhi_device_drv;
 
 static int mhi_pci_probe(struct pci_dev *pcie_device,
 		const struct pci_device_id *mhi_device_id);
+static void mhi_pci_probe2(struct work_struct *work);
+
 static int __exit mhi_plat_remove(struct platform_device *pdev);
 
 static DEFINE_PCI_DEVICE_TABLE(mhi_pcie_device_id) = {
@@ -47,6 +49,18 @@ static DEFINE_PCI_DEVICE_TABLE(mhi_pcie_device_id) = {
 		PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
 	{ MHI_PCIE_VENDOR_ID, MHI_PCIE_DEVICE_ID_9x55,
 		PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
+	{ 0x168c, 0x003c, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0x168c, 0x003e, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0x168c, 0x0041, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0x168c, 0x0046, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0x168c, 0xabcd, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0x168c, 0x7021, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc0, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc1, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc2, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc3, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc4, PCI_ANY_ID, PCI_ANY_ID},
+	{ 0xbeaf, 0xabc5, PCI_ANY_ID, PCI_ANY_ID},
 	{ 0, },
 };
 
@@ -152,17 +166,12 @@ static struct pci_driver mhi_pcie_driver = {
 static int mhi_pci_probe(struct pci_dev *pcie_device,
 			 const struct pci_device_id *mhi_device_id)
 {
-	int ret_val = 0;
-	struct platform_device *plat_dev;
 	struct mhi_device_ctxt *mhi_dev_ctxt = NULL, *itr;
 	u32 domain = pci_domain_nr(pcie_device->bus);
 	u32 bus = pcie_device->bus->number;
 	u32 dev_id = pcie_device->device;
 	u32 slot = PCI_SLOT(pcie_device->devfn);
 	unsigned long msi_requested, msi_required;
-#ifdef CONFIG_PCI_MSM
-	struct msm_pcie_register_event *mhi_pci_link_event;
-#endif /* CONFIG_PCI_MSM */
 
 	/* Find correct device context based on bdf & dev_id */
 	mutex_lock(&mhi_device_drv->lock);
@@ -181,6 +190,42 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	if (!mhi_dev_ctxt)
 		return -EPROBE_DEFER;
 
+	mhi_dev_ctxt->wq = create_workqueue(__func__);
+	if (!mhi_dev_ctxt->wq) {
+		pr_err("%s: Could not create workqueue\n", __func__);
+		return -ENOMEM;
+	}
+
+	mhi_dev_ctxt->pcie_device = pcie_device;
+	INIT_DELAYED_WORK(&mhi_dev_ctxt->work, mhi_pci_probe2);
+
+	/*
+	 * Postponing the probe activity until the root filesystem
+	 * is ready and OpenWRT's overlay activities are completed.
+	 * Presently, the below duration seems to be ok, may be tweaked
+	 * later.
+	 */
+	queue_delayed_work(mhi_dev_ctxt->wq, &mhi_dev_ctxt->work, 20 * HZ);
+
+	return 0;
+}
+
+static void mhi_pci_probe2(struct work_struct *work)
+{
+	int ret_val;
+	struct mhi_device_ctxt *mhi_dev_ctxt =
+			container_of(work, struct mhi_device_ctxt, work.work);
+	struct pci_dev *pcie_device = mhi_dev_ctxt->pcie_device;
+	u32 domain = pci_domain_nr(pcie_device->bus);
+	u32 bus = pcie_device->bus->number;
+	u32 dev_id = pcie_device->device;
+	u32 slot = PCI_SLOT(pcie_device->devfn);
+	struct platform_device *plat_dev;
+	unsigned long msi_requested, msi_required;
+#ifdef CONFIG_PCI_MSM
+	struct msm_pcie_register_event *mhi_pci_link_event;
+#endif /* CONFIG_PCI_MSM */
+
 	mhi_log(mhi_dev_ctxt, MHI_MSG_INFO,
 		"Processing Domain:%02u Bus:%04u dev:0x%04x slot:%04u\n",
 		domain, bus, dev_id, slot);
@@ -191,7 +236,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	if (ret_val) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_CRITICAL,
 			"Failed to pull ev ring info from DT, %d\n", ret_val);
-		return ret_val;
+		return;
 	}
 
 	plat_dev = mhi_dev_ctxt->plat_dev;
@@ -211,28 +256,27 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	/* Setup bus scale */
 	mhi_dev_ctxt->bus_scale_table = msm_bus_cl_get_pdata(plat_dev);
 	if (!mhi_dev_ctxt->bus_scale_table)
-		return -ENODATA;
+		return;
 	mhi_dev_ctxt->bus_client = msm_bus_scale_register_client
 		(mhi_dev_ctxt->bus_scale_table);
 	if (!mhi_dev_ctxt->bus_client)
-		return -EINVAL;
+		return;
 	mhi_set_bus_request(mhi_dev_ctxt, 1);
 #endif /* CONFIG_MSM_BUS_SCALING */
 
-	mhi_dev_ctxt->pcie_device = pcie_device;
-
+#ifdef CONFIG_PCI_MSM
 	mhi_pci_link_event = &mhi_dev_ctxt->mhi_pci_link_event;
 	mhi_pci_link_event->events =
 		(MSM_PCIE_EVENT_LINKDOWN | MSM_PCIE_EVENT_WAKEUP);
 	mhi_pci_link_event->user = pcie_device;
 	mhi_pci_link_event->callback = mhi_link_state_cb;
 	mhi_pci_link_event->notify.data = mhi_dev_ctxt;
-#ifdef CONFIG_PCI_MSM
+
 	ret_val = msm_pcie_register_event(mhi_pci_link_event);
 	if (ret_val) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 			"Failed to reg for link notifications %d\n", ret_val);
-		return ret_val;
+		return;
 	}
 #endif /* CONFIG_PCI_MSM */
 
@@ -245,7 +289,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 			MHI_MSG_CRITICAL,
 			"Failed to initialize pcie device, ret %d\n",
 			ret_val);
-		return ret_val;
+		return;
 	}
 	pci_set_master(pcie_device);
 	device_disable_async_suspend(&pcie_device->dev);
@@ -266,7 +310,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 			"Failed to enable MSIs for pcie dev ret_val %d.\n",
 			ret_val);
-		return -EIO;
+		return;
 	}
 
 	mhi_dev_ctxt->core.max_nr_msis = msi_requested;
@@ -347,7 +391,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 
 	mutex_unlock(&mhi_dev_ctxt->pm_lock);
 
-	return 0;
+	return;
 
 unlock_pm_lock:
 	mutex_unlock(&mhi_dev_ctxt->pm_lock);
@@ -355,7 +399,7 @@ deregister_pcie:
 #ifdef CONFIG_PCI_MSM
 	msm_pcie_deregister_event(&mhi_dev_ctxt->mhi_pci_link_event);
 #endif /* CONFIG_PCI_MSM */
-	return ret_val;
+	return;
 }
 
 static int mhi_plat_probe(struct platform_device *pdev)
