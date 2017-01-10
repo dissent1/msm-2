@@ -32,6 +32,8 @@
 #include "mhi_hwio.h"
 #include "mhi_bhi.h"
 
+#define MSM_MHI_PM	0
+
 struct mhi_device_driver *mhi_device_drv;
 
 static int mhi_pci_probe(struct pci_dev *pcie_device,
@@ -127,19 +129,23 @@ irq_error:
 	return -EINVAL;
 }
 
+#if MSM_MHI_PM
 static const struct dev_pm_ops pm_ops = {
 	SET_RUNTIME_PM_OPS(mhi_runtime_suspend,
 			   mhi_runtime_resume,
 			   mhi_runtime_idle)
 	SET_SYSTEM_SLEEP_PM_OPS(mhi_pci_suspend, mhi_pci_resume)
 };
+#endif /* MSM_MHI_PM */
 
 static struct pci_driver mhi_pcie_driver = {
 	.name = "mhi_pcie_drv",
 	.id_table = mhi_pcie_device_id,
 	.probe = mhi_pci_probe,
 	.driver = {
+#if MSM_MHI_PM
 		.pm = &pm_ops
+#endif /* MSM_MHI_PM */
 	}
 };
 
@@ -154,7 +160,9 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	u32 dev_id = pcie_device->device;
 	u32 slot = PCI_SLOT(pcie_device->devfn);
 	unsigned long msi_requested, msi_required;
+#ifdef CONFIG_PCI_MSM
 	struct msm_pcie_register_event *mhi_pci_link_event;
+#endif /* CONFIG_PCI_MSM */
 
 	/* Find correct device context based on bdf & dev_id */
 	mutex_lock(&mhi_device_drv->lock);
@@ -199,6 +207,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 
 	mhi_dev_ctxt->flags.link_up = 1;
 
+#ifdef CONFIG_MSM_BUS_SCALING
 	/* Setup bus scale */
 	mhi_dev_ctxt->bus_scale_table = msm_bus_cl_get_pdata(plat_dev);
 	if (!mhi_dev_ctxt->bus_scale_table)
@@ -208,6 +217,7 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	if (!mhi_dev_ctxt->bus_client)
 		return -EINVAL;
 	mhi_set_bus_request(mhi_dev_ctxt, 1);
+#endif /* CONFIG_MSM_BUS_SCALING */
 
 	mhi_dev_ctxt->pcie_device = pcie_device;
 
@@ -217,12 +227,14 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 	mhi_pci_link_event->user = pcie_device;
 	mhi_pci_link_event->callback = mhi_link_state_cb;
 	mhi_pci_link_event->notify.data = mhi_dev_ctxt;
+#ifdef CONFIG_PCI_MSM
 	ret_val = msm_pcie_register_event(mhi_pci_link_event);
 	if (ret_val) {
 		mhi_log(mhi_dev_ctxt, MHI_MSG_ERROR,
 			"Failed to reg for link notifications %d\n", ret_val);
 		return ret_val;
 	}
+#endif /* CONFIG_PCI_MSM */
 
 	dev_set_drvdata(&pcie_device->dev, mhi_dev_ctxt);
 
@@ -270,7 +282,9 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 		goto deregister_pcie;
 	}
 
+#if MSM_MHI_PM
 	mhi_init_pm_sysfs(&pcie_device->dev);
+#endif /* MSM_MHI_PM */
 	mhi_init_debugfs(mhi_dev_ctxt);
 	mhi_reg_notifiers(mhi_dev_ctxt);
 
@@ -338,7 +352,9 @@ static int mhi_pci_probe(struct pci_dev *pcie_device,
 unlock_pm_lock:
 	mutex_unlock(&mhi_dev_ctxt->pm_lock);
 deregister_pcie:
+#ifdef CONFIG_PCI_MSM
 	msm_pcie_deregister_event(&mhi_dev_ctxt->mhi_pci_link_event);
+#endif /* CONFIG_PCI_MSM */
 	return ret_val;
 }
 

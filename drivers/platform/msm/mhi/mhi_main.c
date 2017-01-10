@@ -1221,7 +1221,7 @@ int parse_xfer_event(struct mhi_device_ctxt *mhi_dev_ctxt,
 
 			if (!VALID_BUF(trb_data_loc, xfer_len, mhi_dev_ctxt)) {
 				mhi_log(mhi_dev_ctxt, MHI_MSG_CRITICAL,
-					"Bad buf ptr: %llx.\n", trb_data_loc);
+					"Bad buf ptr: %pad.\n", trb_data_loc);
 				return -EINVAL;
 			}
 			if (local_chan_ctxt->dir == MHI_IN) {
