@@ -276,7 +276,7 @@ void process_read(uint32_t size)
 		return;
 
 	ctx.read_count++;
-	if (ctx.read_count <= LOOPBACK_SKIP_COUNT) {
+	if (ctx.read_count <= LOOPBACK_SKIP_COUNT(ipq_hw)) {
 		/*
 		 * As soon as do pcm init, the DMA would start. So the initial
 		 * few rw till the 1st Rx is called will be 0's, so we skip
@@ -284,7 +284,7 @@ void process_read(uint32_t size)
 		 * Note: our 1st loopback Tx is only after an RX is called.
 		 */
 		return;
-	} else if (ctx.read_count == (LOOPBACK_SKIP_COUNT + 1)) {
+	} else if (ctx.read_count == (LOOPBACK_SKIP_COUNT(ipq_hw) + 1)) {
 		/*
 		 * our loopback should have settled, so start looking for the
 		 * sequence from here. we check only for the data, not for slot
