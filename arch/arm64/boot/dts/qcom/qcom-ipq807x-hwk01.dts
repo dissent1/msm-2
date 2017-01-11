@@ -136,6 +136,61 @@
 		reg = <0x3a000000 0x1000000>;
 		switch_access_mode = "local bus";
 	};
+
+	audio: audio@7700000 {
+		status = "ok";
+	};
+
+	mbox0: mbox@7708000 {
+		status = "ok";
+	};
+
+	mbox3: mbox@770e000 {
+		status = "ok";
+	};
+
+	stereo0: stereo@7709000 {
+		status = "ok";
+	};
+
+	stereo3: stereo@770f000 {
+		status = "ok";
+	};
+
+	/* Enable Audio Interfaces */
+	i2s: ipq8074-pcm-i2s@0 {
+		status = "ok";
+	};
+
+	i2splatform: qca-pcm-i2s@7709000 {
+		status = "ok";
+	};
+
+	tdmplatform: qca-pcm-tdm@7709000 {
+		status = "ok";
+	};
+
+	tdm: tdm@0 {
+		status = "ok";
+	};
+
+	sound: sound@0 {
+		pinctrl-0 = <&audio_gpio_pins>;
+		pinctrl-1 = <&audio_pins>;
+		pinctrl-names = "default", "audio";
+		status = "ok";
+	};
+
+	/* Enable VOIP Interfaces */
+	pcm: pcm@7704000 {
+		status = "ok";
+	};
+
+	pcm_lb: pcm_lb@0 {
+		status = "ok";
+		pinctrl-0 = <&voip_pins>;
+		pinctrl-names = "default";
+	};
 };
 
 &tlmm {
@@ -144,6 +199,140 @@
 			pins = "gpio50", "gpio51", "gpio52", "gpio53";
 			function = "blsp3_uart";
 			bias-disable;
+		};
+	};
+
+	audio_gpio_pins: audio_gpio_pinmux {
+		mux_1 {
+			pins = "gpio25";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_2 {
+			pins = "gpio26";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_3 {
+			pins = "gpio27";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_4 {
+			pins = "gpio28";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_5 {
+			pins = "gpio29";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_6 {
+			pins = "gpio30";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_7 {
+			pins = "gpio31";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+
+		mux_8 {
+			pins = "gpio32";
+			function = "gpio";
+			bias-pull,up;
+			output-high;
+		};
+	};
+
+	audio_pins: audio_pinmux {
+		mux_1 {
+			pins = "gpio25";
+			function = "audio_txmclk";
+			bias-pull,up;
+		};
+
+		mux_2 {
+			pins = "gpio26";
+			function = "audio_txbclk";
+			bias-pull,up;
+		};
+
+		mux_3 {
+			pins = "gpio27";
+			function = "audio_txfsync";
+			bias-pull,up;
+		};
+
+		mux_4 {
+			pins = "gpio28";
+			function = "audio_txd";
+			bias-pull,up;
+		};
+
+		mux_5 {
+			pins = "gpio29";
+			function = "audio_rxmclk";
+			bias-pull,up;
+		};
+
+		mux_6 {
+			pins = "gpio30";
+			function = "audio_rxbclk";
+			bias-pull,up;
+		};
+
+		mux_7 {
+			pins = "gpio31";
+			function = "audio_rxfsync";
+			bias-pull,up;
+		};
+
+		mux_8 {
+			pins = "gpio32";
+			function = "audio_rxd";
+			bias-pull,up;
+		};
+	};
+
+	voip_pins: voip_pinmux {
+		mux_1 {
+			pins = "gpio33";
+			function = "pcm_drx";
+			bias-pull,up;
+		};
+
+		mux_2 {
+			pins = "gpio34";
+			function = "pcm_dtx";
+			bias-pull,up;
+		};
+
+		mux_3 {
+			pins = "gpio35";
+			function = "pcm_fsync";
+			bias-pull,up;
+		};
+
+		mux_4 {
+			pins = "gpio36";
+			function = "pcm_pclk";
+			bias-pull,up;
 		};
 	};
 };
