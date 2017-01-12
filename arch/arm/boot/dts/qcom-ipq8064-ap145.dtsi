@@ -244,7 +244,7 @@
 				clk {
 					pins = "gpio42";
 					drive-strength = <16>;
-					bias-pull-down;
+					bias-disable;
 				};
 			};
 
@@ -566,6 +566,14 @@
                         resets = <&gcc CRYPTO_ENG4_RESET>;
                         reset-names = "rst_eng";
 			qcom,ee = <0>;
+		};
+	};
+	amba {
+		/* eMMC */
+		sdcc@12400000 {
+			status = "ok";
+			pinctrl-0 = <&sdcc1_pins>;
+			pinctrl-names = "default";
 		};
 	};
 };
