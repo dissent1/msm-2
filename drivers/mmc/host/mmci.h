@@ -308,6 +308,8 @@ struct variant_data {
 	unsigned int		fifohalfsize;
 	unsigned int		data_cmd_enable;
 	unsigned int		datactrl_mask_ddrmode;
+	unsigned int		datactrl_mask_sdio;
+	bool			st_sdio;
 	bool			sdio;
 	bool			st_clkdiv;
 	bool			blksz_datactrl16;

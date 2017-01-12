@@ -1040,7 +1040,7 @@
 
 	chosen {
 		bootargs-append = " console=ttyMSM0,115200n8";
-	}
+	};
 
 	amba {
 		compatible = "arm,amba-bus";
