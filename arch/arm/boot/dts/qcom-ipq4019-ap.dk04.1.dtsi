@@ -388,7 +388,7 @@
 		};
 
 		mhi_wlan: qcom,mhi@1 {
-			status = "ok";
+			status = "disabled";
 		};
 
 		gpio_keys {
