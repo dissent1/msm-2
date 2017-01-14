@@ -907,6 +907,7 @@
 			clocks = <&gcc GCC_QPIC_CLK>, <&gcc GCC_QPIC_AHB_CLK>;
 			clock-names = "core", "aon";
 			dmas = <&qpic_bam 6>;
+			dma-names = "chan";
 			status = "disabled";
 		};
 
