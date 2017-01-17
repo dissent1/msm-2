@@ -1,7 +1,7 @@
 /*
  *  Atheros AR71xx SoC specific platform data definitions
  *
- *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2012 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -21,6 +21,7 @@
 struct ag71xx_switch_platform_data {
 	u8		phy4_mii_en:1;
 	u8		phy_poll_mask;
+	u8		phy_classab_en;
 };
 
 struct ag71xx_platform_data {

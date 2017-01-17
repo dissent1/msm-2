@@ -1,6 +1,6 @@
 /*
  *  Driver for the built-in ethernet switch of the Atheros AR7240 SoC
- *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
  *  Copyright (c) 2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (c) 2010 Felix Fietkau <nbd@openwrt.org>
  *
@@ -35,9 +35,10 @@
 
 #define AR7240_REG_FLOOD_MASK		0x2c
 #define AR7240_FLOOD_MASK_BROAD_TO_CPU	BIT(26)
+#define AR7240_FLOOD_MASK_UNICAST_TO_CPU	BIT(0)
 
 #define AR7240_REG_GLOBAL_CTRL		0x30
-#define AR7240_GLOBAL_CTRL_MTU_M	BITM(11)
+#define AR7240_GLOBAL_CTRL_MTU_M	BITM(14)
 #define AR9340_GLOBAL_CTRL_MTU_M	BITM(14)
 
 #define AR7240_REG_VTU			0x0040
@@ -148,7 +149,6 @@
 #define AR7240_PORT_VLAN_MODE_VLAN_ONLY	2
 #define AR7240_PORT_VLAN_MODE_SECURE	3
 
-
 #define AR7240_REG_STATS_BASE(_port)	(0x20000 + (_port) * 0x100)
 
 #define AR7240_STATS_RXBROAD		0x00
@@ -197,6 +197,9 @@
 #define AR7240_PHY_ID1		0x004d
 #define AR7240_PHY_ID2		0xd041
 
+#define AR7240_PHY_SYS_CTRL_MODE	0x5
+#define AR7240_PHY_CLASS_MODE		BIT(1)
+
 #define AR934X_PHY_ID1		0x004d
 #define AR934X_PHY_ID2		0xd042
 
@@ -210,11 +213,17 @@
 #define   AR934X_REG_OPER_MODE1_PHY4_MII_EN	BIT(28)
 
 #define AR934X_REG_FLOOD_MASK		0x2c
+#define   AR934X_IGMP_JOIN_LEAVE_DP	BIT(8)
 #define   AR934X_FLOOD_MASK_MC_DP(_p)	BIT(16 + (_p))
+#define   AR934X_FLOOD_MASK_MC		BITS(16, 7)
 #define   AR934X_FLOOD_MASK_BC_DP(_p)	BIT(25 + (_p))
+#define   AR934X_FLOOD_MASK_UC_DP(_p)	BIT(0 + (_p))
 
 #define AR934X_REG_QM_CTRL		0x3c
+#define   AR934X_IGMP_COPY_EN		BIT(11)
 #define   AR934X_QM_CTRL_ARP_EN		BIT(15)
+#define   AR934X_IGMP_V3_EN		BIT(19)
+#define   AR934X_IGMP_JOIN_NEW_EN	BIT(22)
 
 #define AR934X_REG_AT_CTRL		0x5c
 #define   AR934X_AT_CTRL_AGE_TIME	BITS(0, 15)
@@ -225,9 +234,14 @@
 
 #define AR934X_REG_PORT_BASE(_port)	(0x100 + (_port) * 0x100)
 
+#define AR934X_REG_PORT_CONTROL(_port)	(AR934X_REG_PORT_BASE((_port)) + 0x04)
+#define   AR934X_PORT_CONTROL_IGMP_MLD_EN		BIT(10)
+#define   AR934X_PORT_CONTROL_IGMP_JOIN_EN		BIT(20)
+#define   AR934X_PORT_CONTROL_IGMP_LEAVE_EN		BIT(21)
+
 #define AR934X_REG_PORT_VLAN1(_port)	(AR934X_REG_PORT_BASE((_port)) + 0x08)
 #define   AR934X_PORT_VLAN1_DEFAULT_SVID_S		0
-#define   AR934X_PORT_VLAN1_FORCE_DEFAULT_VID_EN 	BIT(12)
+#define   AR934X_PORT_VLAN1_FORCE_DEFAULT_VID_EN	BIT(12)
 #define   AR934X_PORT_VLAN1_PORT_TLS_MODE		BIT(13)
 #define   AR934X_PORT_VLAN1_PORT_VLAN_PROP_EN		BIT(14)
 #define   AR934X_PORT_VLAN1_PORT_CLONE_EN		BIT(15)
@@ -293,6 +307,7 @@ struct ar7240sw {
 	struct ag71xx_switch_platform_data *swdata;
 	struct switch_dev swdev;
 	int num_ports;
+	int num_ports_linkup;
 	u8 ver;
 	bool vlan;
 	u16 vlan_id[AR7240_MAX_VLANS];
@@ -366,8 +381,8 @@ static u32 __ar7240sw_reg_read(struct mii_bus *mii, u32 reg)
 
 	local_irq_save(flags);
 	ag71xx_mdio_mii_write(mii->priv, 0x1f, 0x10, mk_high_addr(reg));
-	lo = (u32) ag71xx_mdio_mii_read(mii->priv, phy_addr, phy_reg);
-	hi = (u32) ag71xx_mdio_mii_read(mii->priv, phy_addr, phy_reg + 1);
+	lo = (u32)ag71xx_mdio_mii_read(mii->priv, phy_addr, phy_reg);
+	hi = (u32)ag71xx_mdio_mii_read(mii->priv, phy_addr, phy_reg + 1);
 	local_irq_restore(flags);
 
 	return (hi << 16) | lo;
@@ -582,15 +597,15 @@ static void ar7240sw_setup(struct ar7240sw *as)
 		/* Enable ARP frame acknowledge */
 		ar7240sw_reg_set(mii, AR934X_REG_QM_CTRL,
 				 AR934X_QM_CTRL_ARP_EN);
-		/* Enable Broadcast/Multicast frames transmitted to the CPU */
+		/* Enable Broadcast frames transmitted to the CPU */
 		ar7240sw_reg_set(mii, AR934X_REG_FLOOD_MASK,
-				 AR934X_FLOOD_MASK_BC_DP(0) |
+				 AR934X_FLOOD_MASK_BC_DP(0));
+		/* Enable Multicast frames transmitted to the CPU */
+		ar7240sw_reg_set(mii, AR934X_REG_FLOOD_MASK,
 				 AR934X_FLOOD_MASK_MC_DP(0));
-
-		/* setup MTU */
-		ar7240sw_reg_rmw(mii, AR7240_REG_GLOBAL_CTRL,
-				 AR9340_GLOBAL_CTRL_MTU_M,
-				 AR9340_GLOBAL_CTRL_MTU_M);
+		/* Enable Unicast frames transmitted to the CPU */
+		ar7240sw_reg_set(mii, AR934X_REG_FLOOD_MASK,
+				 AR934X_FLOOD_MASK_UC_DP(0));
 
 		/* Enable MIB counters */
 		ar7240sw_reg_set(mii, AR7240_REG_MIB_FUNCTION0,
@@ -607,12 +622,14 @@ static void ar7240sw_setup(struct ar7240sw *as)
 		/* Enable Broadcast frames transmitted to the CPU */
 		ar7240sw_reg_set(mii, AR7240_REG_FLOOD_MASK,
 				 AR7240_FLOOD_MASK_BROAD_TO_CPU);
-
-		/* setup MTU */
-		ar7240sw_reg_rmw(mii, AR7240_REG_GLOBAL_CTRL,
-				 AR7240_GLOBAL_CTRL_MTU_M,
-				 AR7240_GLOBAL_CTRL_MTU_M);
+		/* Enable Unicast frames transmitted to the CPU */
+		ar7240sw_reg_set(mii, AR7240_REG_FLOOD_MASK,
+				 AR7240_FLOOD_MASK_UNICAST_TO_CPU);
 	}
+
+	/* setup MTU */
+	ar7240sw_reg_rmw(mii, AR7240_REG_GLOBAL_CTRL, AR7240_GLOBAL_CTRL_MTU_M,
+			 1536);
 
 	/* setup Service TAG */
 	ar7240sw_reg_rmw(mii, AR7240_REG_SERVICE_TAG, AR7240_SERVICE_TAG_M, 0);
@@ -648,6 +665,9 @@ static int ar7240sw_reset(struct ar7240sw *as)
 	struct mii_bus *mii = as->mii_bus;
 	int ret;
 	int i;
+	u8 mask;
+
+	mask = ~as->swdata->phy_poll_mask;
 
 	/* Set all ports to disabled state. */
 	for (i = 0; i < AR7240_NUM_PORTS; i++)
@@ -665,6 +685,8 @@ static int ar7240sw_reset(struct ar7240sw *as)
 
 	/* setup PHYs */
 	for (i = 0; i < AR7240_NUM_PHYS; i++) {
+		if (!(mask & BIT(i)))
+			continue;
 		ar7240sw_phy_write(mii, i, MII_ADVERTISE,
 				   ADVERTISE_ALL | ADVERTISE_PAUSE_CAP |
 				   ADVERTISE_PAUSE_ASYM);
@@ -674,6 +696,19 @@ static int ar7240sw_reset(struct ar7240sw *as)
 	ret = ar7240sw_phy_poll_reset(mii);
 	if (ret)
 		return ret;
+
+	/* set up class mode */
+	if (as->swdata->phy_classab_en) {
+		u16 val;
+
+		for (i = 0; i < AR7240_NUM_PHYS; i++) {
+			ar7240sw_phy_write(mii, i, 0x1d,
+				AR7240_PHY_SYS_CTRL_MODE);
+			val = ar7240sw_phy_read(mii, i, 0x1e);
+			val &= ~(AR7240_PHY_CLASS_MODE);
+			ar7240sw_phy_write(mii, i, 0x1e, val);
+		}
+	}
 
 	ar7240sw_setup(as);
 	return ret;
@@ -731,7 +766,8 @@ static void ar7240sw_setup_port(struct ar7240sw *as, unsigned port, u8 portmask)
 
 	/* allow the port to talk to all other ports, but exclude its
 	 * own ID to prevent frames from being reflected back to the
-	 * port that they came from */
+	 * port that they came from
+	 */
 	portmask &= ar7240sw_port_mask_but(as, port);
 
 	ar7240sw_reg_write(mii, AR7240_REG_PORT_CTRL(port), ctrl);
@@ -772,6 +808,7 @@ ar7240_set_vid(struct switch_dev *dev, const struct switch_attr *attr,
 		struct switch_val *val)
 {
 	struct ar7240sw *as = sw_to_ar7240(dev);
+
 	as->vlan_id[val->port_vlan] = val->value.i;
 	return 0;
 }
@@ -781,6 +818,7 @@ ar7240_get_vid(struct switch_dev *dev, const struct switch_attr *attr,
 		struct switch_val *val)
 {
 	struct ar7240sw *as = sw_to_ar7240(dev);
+
 	val->value.i = as->vlan_id[val->port_vlan];
 	return 0;
 }
@@ -849,7 +887,8 @@ ar7240_set_ports(struct switch_dev *dev, struct switch_val *val)
 			as->pvid[p->id] = val->port_vlan;
 
 			/* make sure that an untagged port does not
-			 * appear in other vlans */
+			 * appear in other vlans
+			 */
 			for (j = 0; j < AR7240_MAX_VLANS; j++) {
 				if (j == val->port_vlan)
 					continue;
@@ -867,6 +906,7 @@ ar7240_set_vlan(struct switch_dev *dev, const struct switch_attr *attr,
 		struct switch_val *val)
 {
 	struct ar7240sw *as = sw_to_ar7240(dev);
+
 	as->vlan = !!val->value.i;
 	return 0;
 }
@@ -876,7 +916,93 @@ ar7240_get_vlan(struct switch_dev *dev, const struct switch_attr *attr,
 		struct switch_val *val)
 {
 	struct ar7240sw *as = sw_to_ar7240(dev);
+
 	val->value.i = as->vlan;
+	return 0;
+}
+
+static int
+ar7240_set_max_frame_size(struct switch_dev *dev,
+		const struct switch_attr *attr,
+		struct switch_val *val)
+{
+	struct ar7240sw *as = sw_to_ar7240(dev);
+	struct mii_bus *mii = as->mii_bus;
+
+	ar7240sw_reg_rmw(mii, AR7240_REG_GLOBAL_CTRL,
+			AR7240_GLOBAL_CTRL_MTU_M,
+			val->value.i + 8 + 2);
+	return 0;
+}
+
+static int
+ar7240_get_max_frame_size(struct switch_dev *dev,
+		const struct switch_attr *attr,
+		struct switch_val *val)
+{
+	u32 v = 0;
+	struct ar7240sw *as = sw_to_ar7240(dev);
+	struct mii_bus *mii = as->mii_bus;
+
+	v = ar7240sw_reg_read(mii, AR7240_REG_GLOBAL_CTRL);
+	v &= AR7240_GLOBAL_CTRL_MTU_M;
+	val->value.i = v;
+	return 0;
+}
+
+static int
+ar7240_igmp_snooping(struct switch_dev *dev, const struct switch_attr *attr,
+		struct switch_val *val)
+{
+	u32 v = 0, i;
+	struct ar7240sw *as = sw_to_ar7240(dev);
+	struct mii_bus *mii = as->mii_bus;
+
+	if (!sw_is_ar934x(as))
+		return 0;
+
+	if (val->value.i) {
+		printk(KERN_INFO "ar934x build in switch(s27): Enable igmp snooping function.\n");
+		for (i = 0; i < as->swdev.ports; i++) {
+			v = ar7240sw_reg_read(mii, AR934X_REG_PORT_CONTROL(i));
+			v |= AR934X_PORT_CONTROL_IGMP_MLD_EN |
+					AR934X_PORT_CONTROL_IGMP_JOIN_EN |
+					AR934X_PORT_CONTROL_IGMP_LEAVE_EN;
+			ar7240sw_reg_write(mii, AR934X_REG_PORT_CONTROL(i), v);
+		}
+
+		v = ar7240sw_reg_read(mii, AR934X_REG_QM_CTRL);
+		v |= AR934X_IGMP_COPY_EN | AR934X_IGMP_V3_EN |
+			AR934X_IGMP_JOIN_NEW_EN;
+		ar7240sw_reg_write(mii, AR934X_REG_QM_CTRL, v);
+
+		v = ar7240sw_reg_read(mii, AR934X_REG_FLOOD_MASK);
+		v |= AR934X_IGMP_JOIN_LEAVE_DP;
+		v &= ~(AR934X_FLOOD_MASK_MC);
+		ar7240sw_reg_write(mii, AR934X_REG_FLOOD_MASK, v);
+	} else {
+		printk(KERN_INFO
+			"ar934x build in switch(s27): Disable igmp snooping.\n");
+		for (i = 0; i < as->swdev.ports; i++) {
+			v = ar7240sw_reg_read(mii, AR934X_REG_PORT_CONTROL(i));
+			v &= ~(AR934X_PORT_CONTROL_IGMP_MLD_EN |
+					AR934X_PORT_CONTROL_IGMP_JOIN_EN |
+					AR934X_PORT_CONTROL_IGMP_LEAVE_EN);
+			ar7240sw_reg_write(mii,
+				AR934X_REG_PORT_CONTROL(i), v);
+		}
+
+		v = ar7240sw_reg_read(mii, AR934X_REG_QM_CTRL);
+		v &= ~(AR934X_IGMP_COPY_EN | AR934X_IGMP_V3_EN |
+			AR934X_IGMP_JOIN_NEW_EN);
+		ar7240sw_reg_write(mii, AR934X_REG_QM_CTRL, v);
+
+		v = ar7240sw_reg_read(mii, AR934X_REG_FLOOD_MASK);
+		v &= ~(AR934X_IGMP_JOIN_LEAVE_DP);
+		v |= AR934X_FLOOD_MASK_MC;
+		ar7240sw_reg_write(mii, AR934X_REG_FLOOD_MASK, v);
+	}
+
 	return 0;
 }
 
@@ -910,7 +1036,8 @@ ar7240_hw_apply(struct switch_dev *dev)
 	memset(portmask, 0, sizeof(portmask));
 	if (as->vlan) {
 		/* calculate the port destination masks and load vlans
-		 * into the vlan translation unit */
+		 * into the vlan translation unit
+		 */
 		for (j = 0; j < AR7240_MAX_VLANS; j++) {
 			u8 vp = as->vlan_table[j];
 
@@ -919,6 +1046,7 @@ ar7240_hw_apply(struct switch_dev *dev)
 
 			for (i = 0; i < as->swdev.ports; i++) {
 				u8 mask = (1 << i);
+
 				if (vp & mask)
 					portmask[i] |= vp & ~mask;
 			}
@@ -930,7 +1058,8 @@ ar7240_hw_apply(struct switch_dev *dev)
 		}
 	} else {
 		/* vlan disabled:
-		 * isolate all ports, but connect them to the cpu port */
+		 * isolate all ports, but connect them to the cpu port
+		 */
 		for (i = 0; i < as->swdev.ports; i++) {
 			if (i == AR7240_PORT_CPU)
 				continue;
@@ -951,6 +1080,7 @@ static int
 ar7240_reset_switch(struct switch_dev *dev)
 {
 	struct ar7240sw *as = sw_to_ar7240(dev);
+
 	ar7240sw_reset(as);
 	return 0;
 }
@@ -1021,6 +1151,20 @@ static struct switch_attr ar7240_globals[] = {
 		.set = ar7240_set_vlan,
 		.get = ar7240_get_vlan,
 		.max = 1
+	},
+	{
+		.type = SWITCH_TYPE_INT,
+		.name = "max_frame_size",
+		.description = "Max frame size can be rx and tx by mac",
+		.set = ar7240_set_max_frame_size,
+		.get = ar7240_get_max_frame_size,
+		.max = 9018
+	},
+	{
+		.type = SWITCH_TYPE_INT,
+		.name = "igmp_snooping",
+		.description = "Enable/Disable igmp snooping func on switch",
+		.set = ar7240_igmp_snooping
 	},
 };
 
@@ -1147,13 +1291,14 @@ err_free:
 	return NULL;
 }
 
-static void link_function(struct work_struct *work) {
+static void link_function(struct work_struct *work)
+{
 	struct ag71xx *ag = container_of(work, struct ag71xx, link_work.work);
 	struct ar7240sw *as = ag->phy_priv;
 	unsigned long flags;
 	u8 mask;
 	int i;
-	int status = 0;
+	int status = 0, link_up_count = 0;
 
 	mask = ~as->swdata->phy_poll_mask;
 	for (i = 0; i < AR7240_NUM_PHYS; i++) {
@@ -1165,8 +1310,22 @@ static void link_function(struct work_struct *work) {
 		link = ar7240sw_phy_read(ag->mii_bus, i, MII_BMSR);
 		if (link & BMSR_LSTATUS) {
 			status = 1;
-			break;
+			link_up_count++;
 		}
+	}
+
+	if (link_up_count != 0 && as->num_ports_linkup != link_up_count) {
+
+		/* Set flowcontrol threshold based on linkup count */
+
+		if (link_up_count == 1)
+			ar7240sw_reg_write(as->mii_bus, 0x34, 0x16602090);
+		else if (link_up_count == 2)
+			ar7240sw_reg_write(as->mii_bus, 0x34, 0x90bcc0ff);
+		else if (link_up_count > 2)
+			ar7240sw_reg_write(as->mii_bus, 0x34, 0xb0c0c0ff);
+
+		as->num_ports_linkup = link_up_count;
 	}
 
 	spin_lock_irqsave(&ag->lock, flags);
