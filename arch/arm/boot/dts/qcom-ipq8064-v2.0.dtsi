@@ -17,12 +17,12 @@
 #include "qcom-ipq8064.dtsi"
 
 &soc {
-	ss_phy_1: phy@110f8830 {
+	ss_phy_0: phy@110f8830 {
 		rx_eq = <2>;
 		tx_deamp_3_5db = <32>;
 		mpll = <0xa0>;
 	};
-	ss_phy_0: phy@100f8830 {
+	ss_phy_1: phy@100f8830 {
 		rx_eq = <2>;
 		tx_deamp_3_5db = <32>;
 		mpll = <0xa0>;
