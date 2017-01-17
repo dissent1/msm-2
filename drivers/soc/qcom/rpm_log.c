@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, 2013-2014, The Linux Foundation.
+/* Copyright (c) 2010-2011, 2013-2014, 2016. The Linux Foundation.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -68,6 +68,17 @@ msm_rpm_log_read(const struct msm_rpm_log_platform_data *pdata, u32 page,
 				+ reg * 4);
 }
 
+static inline u32
+msm_rpm_pb_read(const struct msm_rpm_log_platform_data *pdata, u32 reg)
+{
+	reg %= pdata->log_len;
+	reg &= ~3u;
+	return readl_relaxed(pdata->reg_base +
+				pdata->reg_offsets[MSM_RPM_LOG_PAGE_BUFFER] +
+				reg);
+}
+
+
 /*
  * msm_rpm_log_copy() - Copies messages from a volatile circular buffer in
  *			the RPM's shared memory into a private local buffer
@@ -129,7 +140,11 @@ static u32 msm_rpm_log_copy(const struct msm_rpm_log_platform_data *pdata,
 		if (!IS_ALIGNED((tail_idx | head_idx | *read_idx), 4))
 			break;
 
-		msg_len = msm_rpm_log_read(pdata, MSM_RPM_LOG_PAGE_BUFFER,
+		if (!pdata->version)
+			msg_len = msm_rpm_pb_read(pdata, *read_idx);
+		else
+			msg_len = msm_rpm_log_read(pdata,
+				MSM_RPM_LOG_PAGE_BUFFER,
 				((*read_idx) & pdata->log_len_mask) >> 2);
 
 		/* Message length for 8974 is first 2 bytes.
@@ -155,11 +170,16 @@ static u32 msm_rpm_log_copy(const struct msm_rpm_log_platform_data *pdata,
 		/* copy message payload to local buffer */
 		for (i = 0; i < msg_len; i++) {
 			/* read from shared memory 4 bytes at a time */
-			if (IS_ALIGNED(i, 4))
-				*((u32 *)temp) = msm_rpm_log_read(pdata,
+			if (IS_ALIGNED(i, 4)) {
+				if (!pdata->version)
+					*((u32 *)temp) = msm_rpm_pb_read(pdata,
+							(*read_idx + 4 + i));
+				else
+					*((u32 *)temp) = msm_rpm_log_read(pdata,
 						MSM_RPM_LOG_PAGE_BUFFER,
 						((*read_idx + 4 + i) &
 						pdata->log_len_mask) >> 2);
+			}
 
 			pos += scnprintf(msg_buffer + pos, buf_len - pos,
 					 "0x%02X, ", temp[i & 0x03]);
@@ -457,8 +477,26 @@ static int msm_rpm_log_probe(struct platform_device *pdev)
 			pdata->reg_offsets[MSM_RPM_LOG_PAGE_INDICES] =
 						val;
 		} else{
-			ret = -EINVAL;
-			goto fail;
+			key = "qcom,reg-offsets";
+			ret = of_property_read_u32_array(node, key,
+					pdata->reg_offsets,
+					MSM_RPM_LOG_PAGE_COUNT);
+			if (ret) {
+				pr_err("%s: Error in name %s key %s\n",
+					__func__, node->full_name, key);
+				ret = -EFAULT;
+				goto fail;
+			}
+
+			key = "qcom,rpm-log-len";
+			ret = of_property_read_u32(node, key,
+				&pdata->log_len);
+			if (ret) {
+				pr_err("%s: Error in name %s key %s\n",
+					 __func__, node->full_name, key);
+				ret = -EFAULT;
+				goto fail;
+			}
 		}
 
 	} else{

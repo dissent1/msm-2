@@ -34,17 +34,16 @@ The required properties for rpm-log are:
 				log length mask is stored.
 - qcom,offset-page-indices: Offset from the start of the phy_addr_base where
 				index to the writer is stored.
+- qcom,reg-offsets: Offset index to the writer.
+- qcom,rpm-log-len: Log buffer length.
 
 Example 1:
-qcom,rpm-log@fc19dc00 {
+qcom,rpm-log@10c0c8 {
 	compatible = "qcom,rpm-log";
-	reg = <0xfc19dc00 0x2000>;
-	qcom,offset-rpm-addr = <0xfc000000>;
+	reg = <0x0010c0c8 0x00002000>;
 	qcom,offset-version = <4>;
-	qcom,offset-page-buffer-addr = <36>;
-	qcom,offset-log-len = <40>;
-	qcom,offset-log-len-mask = <44>;
-	qcom,offset-page-indices = <56>;
+	qcom,reg-offsets = <0x00000080 0x000000A0>;
+	qcom,rpm-log-len = <0x1800>;
 };
 
 Example 2:

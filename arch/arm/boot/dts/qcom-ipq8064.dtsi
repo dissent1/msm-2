@@ -296,6 +296,14 @@
 			};
 		};
 
+		qcom,rpm-log@10c0c8 {
+			compatible = "qcom,rpm-log";
+			reg = <0x0010c0c8 0x00002000>;
+			qcom,offset-version = <4>;
+			qcom,reg-offsets = <0x00000080 0x000000A0>;
+			qcom,rpm-log-len = <0x1800>;
+		};
+
 		qcom_pinmux: pinmux@800000 {
 			compatible = "qcom,ipq8064-pinctrl";
 			reg = <0x800000 0x4000>;
