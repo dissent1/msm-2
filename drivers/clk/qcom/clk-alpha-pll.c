@@ -62,6 +62,26 @@
 #define ALPHA_BITWIDTH		32
 #define ALPHA_16BIT_MASK	0xffff
 
+#define PLL_MODE_REG(pll)	(pll->offset + PLL_MODE)
+#define PLL_L_REG(pll)		(pll->offset + PLL_L_VAL + pll->l_offset)
+#define PLL_ALPHA_REG(pll)	(pll->offset + PLL_ALPHA_VAL + \
+				 pll->alpha_offset)
+#define PLL_ALPHA_U_REG(pll)	(pll->offset + PLL_ALPHA_VAL_U + \
+				 pll->alpha_offset)
+#define PLL_USER_CTL_REG(pll)	(pll->offset + PLL_USER_CTL + \
+				 pll->alpha_offset)
+#define PLL_USER_CTL_U_REG(pll)	(pll->offset + PLL_USER_CTL_U + \
+				 pll->alpha_offset)
+#define PLL_CONFIG_CTL_REG(pll)	(pll->offset + PLL_CONFIG_CTL + \
+				 pll->alpha_offset)
+#define PLL_TEST_CTL_REG(pll)	(pll->offset + PLL_TEST_CTL + \
+				 pll->alpha_offset)
+#define PLL_TEST_CTL_U_REG(pll)	(pll->offset + PLL_TEST_U_CTL + \
+				 pll->alpha_offset)
+#define PLL_STATUS_REG(pll)	(pll->offset + PLL_STATUS + pll->alpha_offset)
+#define PLL_CONFIG_CTL_U_REG(pll)	(pll->offset + PLL_CONFIG_CTL_U + \
+					 pll->alpha_offset)
+
 #define to_clk_alpha_pll(_hw) container_of(to_clk_regmap(_hw), \
 					   struct clk_alpha_pll, clkr)
 
@@ -71,18 +91,17 @@
 static int wait_for_pll(struct clk_alpha_pll *pll, u32 mask, bool inverse,
 			const char *action)
 {
-	u32 val, off;
+	u32 val;
 	int count;
 	int ret;
 	const char *name = clk_hw_get_name(&pll->clkr.hw);
 
-	off = pll->offset;
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return ret;
 
 	for (count = 100; count > 0; count--) {
-		ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+		ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 		if (ret)
 			return ret;
 		if (inverse && !(val & mask))
@@ -113,12 +132,12 @@ void clk_alpha_pll_configure(struct clk_alpha_pll *pll, struct regmap *regmap,
 			     const struct alpha_pll_config *config)
 {
 	u32 val, mask;
-	u32 off = pll->offset;
 
-	regmap_write(regmap, off + PLL_L_VAL, config->l);
-	regmap_write(regmap, off + PLL_ALPHA_VAL, config->alpha);
-	regmap_write(regmap, off + PLL_CONFIG_CTL, config->config_ctl_val);
-	regmap_write(regmap, off + PLL_CONFIG_CTL_U, config->config_ctl_hi_val);
+	regmap_write(regmap, PLL_L_REG(pll), config->l);
+	regmap_write(regmap, PLL_ALPHA_REG(pll), config->alpha);
+	regmap_write(regmap, PLL_CONFIG_CTL_REG(pll), config->config_ctl_val);
+	regmap_write(regmap, PLL_CONFIG_CTL_U_REG(pll),
+		     config->config_ctl_hi_val);
 
 	val = config->main_output_mask;
 	val |= config->aux_output_mask;
@@ -136,20 +155,19 @@ void clk_alpha_pll_configure(struct clk_alpha_pll *pll, struct regmap *regmap,
 	mask |= config->post_div_mask;
 	mask |= config->vco_mask;
 
-	regmap_update_bits(regmap, off + PLL_USER_CTL, mask, val);
+	regmap_update_bits(regmap, PLL_USER_CTL_REG(pll), mask, val);
 
 	if (pll->flags & SUPPORTS_FSM_MODE)
-		qcom_pll_set_fsm_mode(regmap, off + PLL_MODE, 6, 0);
+		qcom_pll_set_fsm_mode(regmap, PLL_MODE_REG(pll), 6, 0);
 }
 
 static int clk_alpha_pll_hwfsm_enable(struct clk_hw *hw)
 {
 	int ret;
-	u32 val, off;
+	u32 val;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 
-	off = pll->offset;
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return ret;
 
@@ -158,7 +176,7 @@ static int clk_alpha_pll_hwfsm_enable(struct clk_hw *hw)
 	if (pll->flags & SUPPORTS_OFFLINE_REQ)
 		val &= ~PLL_OFFLINE_REQ;
 
-	ret = regmap_write(pll->clkr.regmap, off + PLL_MODE, val);
+	ret = regmap_write(pll->clkr.regmap, PLL_MODE_REG(pll), val);
 	if (ret)
 		return ret;
 
@@ -175,12 +193,12 @@ static void clk_alpha_pll_hwfsm_disable(struct clk_hw *hw)
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 
 	off = pll->offset;
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return;
 
 	if (pll->flags & SUPPORTS_OFFLINE_REQ) {
-		ret = regmap_update_bits(pll->clkr.regmap, off + PLL_MODE,
+		ret = regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll),
 					 PLL_OFFLINE_REQ, PLL_OFFLINE_REQ);
 		if (ret)
 			return;
@@ -191,7 +209,7 @@ static void clk_alpha_pll_hwfsm_disable(struct clk_hw *hw)
 	}
 
 	/* Disable hwfsm */
-	ret = regmap_update_bits(pll->clkr.regmap, off + PLL_MODE,
+	ret = regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll),
 				 PLL_FSM_ENA, 0);
 	if (ret)
 		return;
@@ -202,11 +220,10 @@ static void clk_alpha_pll_hwfsm_disable(struct clk_hw *hw)
 static int pll_is_enabled(struct clk_hw *hw, u32 mask)
 {
 	int ret;
-	u32 val, off;
+	u32 val;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 
-	off = pll->offset;
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return ret;
 
@@ -227,12 +244,10 @@ static int clk_alpha_pll_enable(struct clk_hw *hw)
 {
 	int ret;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 val, mask, off;
-
-	off = pll->offset;
+	u32 val, mask;
 
 	mask = PLL_OUTCTRL | PLL_RESET_N | PLL_BYPASSNL;
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return ret;
 
@@ -248,7 +263,7 @@ static int clk_alpha_pll_enable(struct clk_hw *hw)
 	if ((val & mask) == mask)
 		return 0;
 
-	ret = regmap_update_bits(pll->clkr.regmap, off + PLL_MODE,
+	ret = regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll),
 				 PLL_BYPASSNL, PLL_BYPASSNL);
 	if (ret)
 		return ret;
@@ -260,7 +275,7 @@ static int clk_alpha_pll_enable(struct clk_hw *hw)
 	mb();
 	udelay(5);
 
-	ret = regmap_update_bits(pll->clkr.regmap, off + PLL_MODE,
+	ret = regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll),
 				 PLL_RESET_N, PLL_RESET_N);
 	if (ret)
 		return ret;
@@ -269,7 +284,7 @@ static int clk_alpha_pll_enable(struct clk_hw *hw)
 	if (ret)
 		return ret;
 
-	ret = regmap_update_bits(pll->clkr.regmap, off + PLL_MODE,
+	ret = regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll),
 				 PLL_OUTCTRL, PLL_OUTCTRL);
 
 	/* Ensure that the write above goes through before returning. */
@@ -281,11 +296,9 @@ static void clk_alpha_pll_disable(struct clk_hw *hw)
 {
 	int ret;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 val, mask, off;
+	u32 val, mask;
 
-	off = pll->offset;
-
-	ret = regmap_read(pll->clkr.regmap, off + PLL_MODE, &val);
+	ret = regmap_read(pll->clkr.regmap, PLL_MODE_REG(pll), &val);
 	if (ret)
 		return;
 
@@ -296,14 +309,14 @@ static void clk_alpha_pll_disable(struct clk_hw *hw)
 	}
 
 	mask = PLL_OUTCTRL;
-	regmap_update_bits(pll->clkr.regmap, off + PLL_MODE, mask, 0);
+	regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll), mask, 0);
 
 	/* Delay of 2 output clock ticks required until output is disabled */
 	mb();
 	udelay(1);
 
 	mask = PLL_RESET_N | PLL_BYPASSNL;
-	regmap_update_bits(pll->clkr.regmap, off + PLL_MODE, mask, 0);
+	regmap_update_bits(pll->clkr.regmap, PLL_MODE_REG(pll), mask, 0);
 }
 
 static unsigned long alpha_pll_calc_rate(u64 prate, u32 l, u32 a)
@@ -356,17 +369,16 @@ clk_alpha_pll_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 	u32 l, low, high, ctl;
 	u64 a = 0, prate = parent_rate;
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
-	u32 off = pll->offset;
 
-	regmap_read(pll->clkr.regmap, off + PLL_L_VAL, &l);
+	regmap_read(pll->clkr.regmap, PLL_L_REG(pll), &l);
 
-	regmap_read(pll->clkr.regmap, off + PLL_USER_CTL, &ctl);
+	regmap_read(pll->clkr.regmap, PLL_USER_CTL_REG(pll), &ctl);
 	if (ctl & PLL_ALPHA_EN) {
-		regmap_read(pll->clkr.regmap, off + PLL_ALPHA_VAL, &low);
+		regmap_read(pll->clkr.regmap, PLL_ALPHA_REG(pll), &low);
 		if (pll->flags & SUPPORTS_16BIT_ALPHA) {
 			a = low & ALPHA_16BIT_MASK;
 		} else {
-			regmap_read(pll->clkr.regmap, off + PLL_ALPHA_VAL_U,
+			regmap_read(pll->clkr.regmap, PLL_ALPHA_U_REG(pll),
 				    &high);
 			a = (u64)high << 32 | low;
 			a >>= ALPHA_REG_BITWIDTH - ALPHA_BITWIDTH;
@@ -381,7 +393,7 @@ static int clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct clk_alpha_pll *pll = to_clk_alpha_pll(hw);
 	const struct pll_vco *vco;
-	u32 l, off = pll->offset;
+	u32 l;
 	u64 a;
 
 	rate = alpha_pll_round_rate(rate, prate, &l, &a);
@@ -391,22 +403,22 @@ static int clk_alpha_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		return -EINVAL;
 	}
 
-	regmap_write(pll->clkr.regmap, off + PLL_L_VAL, l);
+	regmap_write(pll->clkr.regmap, PLL_L_REG(pll), l);
 
 	if (pll->flags & SUPPORTS_16BIT_ALPHA) {
-		regmap_write(pll->clkr.regmap, off + PLL_ALPHA_VAL,
+		regmap_write(pll->clkr.regmap, PLL_ALPHA_REG(pll),
 			     a & ALPHA_16BIT_MASK);
 	} else {
 		a <<= (ALPHA_REG_BITWIDTH - ALPHA_BITWIDTH);
-		regmap_write(pll->clkr.regmap, off + PLL_ALPHA_VAL_U, a >> 32);
+		regmap_write(pll->clkr.regmap, PLL_ALPHA_U_REG(pll), a >> 32);
 	}
 
-	regmap_update_bits(pll->clkr.regmap, off + PLL_USER_CTL,
+	regmap_update_bits(pll->clkr.regmap, PLL_USER_CTL_REG(pll),
 			   PLL_VCO_MASK << PLL_VCO_SHIFT,
 			   vco->val << PLL_VCO_SHIFT);
 
-	regmap_update_bits(pll->clkr.regmap, off + PLL_USER_CTL, PLL_ALPHA_EN,
-			   PLL_ALPHA_EN);
+	regmap_update_bits(pll->clkr.regmap, PLL_USER_CTL_REG(pll),
+			   PLL_ALPHA_EN, PLL_ALPHA_EN);
 
 	return 0;
 }
@@ -455,7 +467,7 @@ clk_alpha_pll_postdiv_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
 	struct clk_alpha_pll_postdiv *pll = to_clk_alpha_pll_postdiv(hw);
 	u32 ctl;
 
-	regmap_read(pll->clkr.regmap, pll->offset + PLL_USER_CTL, &ctl);
+	regmap_read(pll->clkr.regmap, PLL_USER_CTL_REG(pll), &ctl);
 
 	ctl >>= PLL_POST_DIV_SHIFT;
 	ctl &= PLL_POST_DIV_MASK;
@@ -491,7 +503,7 @@ static int clk_alpha_pll_postdiv_set_rate(struct clk_hw *hw, unsigned long rate,
 	/* 16 -> 0xf, 8 -> 0x7, 4 -> 0x3, 2 -> 0x1, 1 -> 0x0 */
 	div = DIV_ROUND_UP_ULL((u64)parent_rate, rate) - 1;
 
-	return regmap_update_bits(pll->clkr.regmap, pll->offset + PLL_USER_CTL,
+	return regmap_update_bits(pll->clkr.regmap, PLL_USER_CTL_REG(pll),
 				  PLL_POST_DIV_MASK << PLL_POST_DIV_SHIFT,
 				  div << PLL_POST_DIV_SHIFT);
 }

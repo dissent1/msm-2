@@ -28,6 +28,8 @@ struct pll_vco {
  * @offset: base address of registers
  * @vco_table: array of VCO settings
  * @clkr: regmap clock handle
+ * @l_offset: PLL_L_VAL from PLL_MODE minus 4
+ * @alpha_offset: PLL_ALPHA_VAL from PLL_MODE minus 8
  */
 struct clk_alpha_pll {
 	u32 offset;
@@ -38,6 +40,8 @@ struct clk_alpha_pll {
 #define SUPPORTS_16BIT_ALPHA	BIT(1)
 #define SUPPORTS_FSM_MODE	BIT(2)
 	u8 flags;
+	u8 l_offset;
+	u8 alpha_offset;
 
 	struct clk_regmap clkr;
 };
@@ -47,10 +51,14 @@ struct clk_alpha_pll {
  * @offset: base address of registers
  * @width: width of post-divider
  * @clkr: regmap clock handle
+ * @l_offset: PLL_L_VAL from PLL_MODE minus 4
+ * @alpha_offset: PLL_ALPHA_VAL from PLL_MODE minus 8
  */
 struct clk_alpha_pll_postdiv {
 	u32 offset;
 	u8 width;
+	u8 l_offset;
+	u8 alpha_offset;
 
 	struct clk_regmap clkr;
 };
