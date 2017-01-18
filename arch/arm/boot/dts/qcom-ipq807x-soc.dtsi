@@ -437,6 +437,19 @@
 			qcom,fragmented-data;
 		};
 
+		qcom,msm-imem@8600000 {
+			compatible = "qcom,msm-imem";
+			reg = <0x08600000 0x1000>;
+			ranges = <0x0 0x08600000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			mem_dump_table@10 {
+				compatible = "qcom,msm-imem-mem_dump_table";
+				reg = <0x10 8>;
+			};
+		};
+
 		cryptobam: dma@8e04000 {
 			compatible = "qcom,bam-v1.7.0";
 			reg = <0x00704000 0x20000>;
@@ -1264,3 +1277,5 @@
 		};
 	};
 };
+
+#include "qcom-ipq807x-coresight.dtsi"
