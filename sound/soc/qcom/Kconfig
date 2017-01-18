@@ -49,13 +49,19 @@ config SND_SOC_IPQ
 	select SND_SOC_IPQ_STEREO
 	select SND_SOC_IPQ_MBOX
 	select SND_SOC_IPQ_PCM_I2S
-	select SND_SOC_IPQ_CODEC
 	select SND_SOC_IPQ_PCM_TDM
 	select SND_SOC_IPQ_PCM_SPDIF
 	select SND_SOC_IPQ_PCM_RAW
 	help
 	Say Y or M to if you want to add support for SoC audio on
 	Qualcomm Atheros IPQ based board.
+
+config SND_SOC_IPQ_CODEC
+	tristate "SoC Audio CODEC support for IPQ platforms"
+	depends on ARCH_QCOM && SND_SOC_QCOM
+	help
+	Say Y or M if you want to add CODEC support for IPQ
+	based platforms.
 
 config SND_SOC_IPQ_ADSS
 	tristate
@@ -74,10 +80,6 @@ config SND_SOC_IPQ_MBOX
 	depends on SND_SOC_IPQ
 
 config SND_SOC_IPQ_PCM_I2S
-	tristate
-	depends on SND_SOC_IPQ
-
-config SND_SOC_IPQ_CODEC
 	tristate
 	depends on SND_SOC_IPQ
 
