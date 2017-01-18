@@ -141,6 +141,15 @@ config MSM_RPM_GLINK
 	 Say M here if you want to include support for the QCA RPM as a
 	 module. This will build a module called "qcom-rpm-glink".
 
+config MSM_RPM_LOG
+	tristate "QCOM Resource Power Manager Log Driver"
+	depends on MFD_QCOM_RPM
+	help
+	 This option enables a driver which can read from a circular buffer
+	 of messages produced by the RPM. These messages provide diagnostic
+	 information about RPM operation. The driver outputs the messages
+	 via a debugfs node.
+
 config QCOM_RESTART_REASON
 	bool "Write restart reason on reboot"
 	depends on ARCH_QCOM

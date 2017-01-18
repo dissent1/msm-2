@@ -14,6 +14,7 @@ obj-$(CONFIG_MSM_IPC_ROUTER_GLINK_XPRT)	+=	ipc_router_glink_xprt.o
 obj-$(CONFIG_IPC_ROUTER)	+=	ipc_router/
 obj-$(CONFIG_MSM_QMI_INTERFACE)	+=	qmi_interface.o
 obj-$(CONFIG_MSM_RPM_GLINK)	+=	rpm-glink.o
+obj-$(CONFIG_MSM_RPM_LOG)	+=	rpm_log.o
 obj-$(CONFIG_QCOM_RESTART_REASON) += restart_reason.o
 
 ifdef CONFIG_QCOM_SCM
