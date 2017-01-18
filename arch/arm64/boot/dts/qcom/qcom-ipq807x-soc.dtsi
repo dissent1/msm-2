@@ -118,6 +118,14 @@
 			#gpio-cells = <0x2>;
 			interrupt-controller;
 			#interrupt-cells = <0x2>;
+
+			spi_0_pins: spi_0_pinmux {
+				mux {
+					pins = "gpio0", "gpio1", "gpio2", "gpio3";
+					function = "blsp_spi1";
+					bias-disable;
+				};
+			};
 		};
 
 		intc: interrupt-controller@b000000 {
@@ -174,6 +182,21 @@
 			clock-names = "core", "iface";
 			dmas = <&blsp_bam 6>,
 				 <&blsp_bam 7>;
+			dma-names = "tx", "rx";
+			status = "disabled";
+		};
+
+		spi_0: spi@78b5000 { /* BLSP1 QUP1 */
+			compatible = "qcom,spi-qup-v2.2.1";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x78b5000 0x600>;
+			interrupts = <0 95 0>;
+			spi-max-frequency = <24000000>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>;
+			clock-names = "core", "iface";
+			dmas = <&blsp_bam 12>, <&blsp_bam 13>;
 			dma-names = "tx", "rx";
 			status = "disabled";
 		};
