@@ -36,7 +36,6 @@
 #include <linux/of_device.h>
 
 #include "ipq-pcm-raw.h"
-#include "ipq-adss.h"
 #include "ipq-mbox.h"
 
 /*
@@ -108,7 +107,7 @@ static irqreturn_t pcm_rx_irq_handler(int intrsrc, void *data)
 	 * ring buffer in picture.
 	 */
 	dma_at = rx_size / (rx_dma_buffer->single_buf_size);
-	dma_at = (dma_at + NUM_BUFFERS - 1) % NUM_BUFFERS;
+	dma_at = (dma_at + NUM_BUFFERS(ipq_hw) - 1) % NUM_BUFFERS(ipq_hw);
 
 	atomic_set(&data_at, dma_at);
 	atomic_set(&data_avail, 1);
@@ -278,7 +277,8 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	/* write ADSS_PCM_OFFSET_REG */
 	writel(PCM_OFFSET_VAL, adss_pcm_base + AADSS_PCM_OFFSET_REG);
 
-	ipq_pcm_clk_enable();
+	if (ipq_hw == IPQ8074)
+		ipq_pcm_clk_enable();
 
 	/* write ADSS_PCM_BITMAP_REG */
 	reg_val = 0;
@@ -332,7 +332,7 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 			tx_dma_buffer->addr,
 			tx_dma_buffer->area,
 			single_buf_size,
-			(single_buf_size * NUM_BUFFERS),
+			(single_buf_size * NUM_BUFFERS(ipq_hw)),
 			SET_DESC_OWN);
 	if (ret) {
 		pr_err("\n%s: %d: Error dma form ring for playback, error %d\n",
@@ -363,7 +363,7 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 			rx_dma_buffer->addr,
 			rx_dma_buffer->area,
 			single_buf_size,
-			(single_buf_size * NUM_BUFFERS),
+			(single_buf_size * NUM_BUFFERS(ipq_hw)),
 			SET_DESC_OWN);
 	if (ret) {
 		pr_err("\n %s: %d: Error dma form ring for capture, error: %d\n",
@@ -406,7 +406,7 @@ static void ipq4019_pcm_init_tx_data(struct ipq_pcm_params *params)
 
 	buffer = (uint32_t *)tx_dma_buffer->area;
 
-	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS) / 4);
+	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS(ipq_hw)) / 4);
 
 	for (i = 0; i < size_act; ) {
 		for (slot = 0; slot < params->active_slot_count; slot++) {
@@ -431,7 +431,7 @@ static void ipq8074_pcm_init_tx_data(struct ipq_pcm_params *params)
 	buffer_32 = (uint32_t *)tx_dma_buffer->area;
 	buffer_16 = (uint16_t *)tx_dma_buffer->area;
 
-	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS)/
+	size_act = ((tx_dma_buffer->single_buf_size * NUM_BUFFERS(ipq_hw))/
 			((params->bit_width == IPQ_PCM_BIT_WIDTH_16) ?
 				sizeof(*buffer_32) : sizeof(*buffer_16)));
 
@@ -550,7 +550,7 @@ static int voice_allocate_dma_buffer(struct device *dev,
 	int size;
 	int ndescs;
 
-	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS);
+	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS(ipq_hw));
 	size = (dma_buffer->size_max) + (ndescs *
 				sizeof(struct ipq_mbox_desc));
 
@@ -579,7 +579,7 @@ static int voice_free_dma_buffer(struct device *dev,
 	if (!dma_buff->area)
 		return 0;
 
-	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS);
+	ndescs = ipq_get_mbox_descs_duplicate(NUM_BUFFERS(ipq_hw));
 	size = (dma_buff->size_max) + (ndescs *
 				sizeof(struct ipq_mbox_desc));
 
@@ -666,7 +666,7 @@ static int ipq_pcm_driver_probe(struct platform_device *pdev)
 		IPQ_PCM_MAX_SLOTS;
 
 	rx_dma_buffer->single_buf_size = single_buf_size_max;
-	rx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS;
+	rx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS(ipq_hw);
 	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, rx_dma_buffer);
 	if (ret) {
 		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating rx dma buffer, error %d\n",
@@ -675,7 +675,7 @@ static int ipq_pcm_driver_probe(struct platform_device *pdev)
 	}
 
 	tx_dma_buffer->single_buf_size = single_buf_size_max;
-	tx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS;
+	tx_dma_buffer->size_max = single_buf_size_max * NUM_BUFFERS(ipq_hw);
 	ret = voice_allocate_dma_buffer(&pcm_pdev->dev, tx_dma_buffer);
 	if (ret) {
 		dev_err(&pcm_pdev->dev, "\n%s: %d:Error in allocating tx dma buffer, error: %d\n",

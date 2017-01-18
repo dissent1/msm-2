@@ -18,9 +18,11 @@
 #define _IPQ_PCM_RAW_H
 
 #include "ipq-mbox.h"
-#define NUM_BUFFERS		40
-#define LOOPBACK_SKIP_COUNT	\
-		(ipq_get_mbox_descs_duplicate(NUM_BUFFERS) * 3)
+#include "ipq-adss.h"
+
+#define NUM_BUFFERS(hw)		(hw == IPQ4019 ? 2 : 40)
+#define LOOPBACK_SKIP_COUNT(hw)	\
+		(ipq_get_mbox_descs_duplicate(NUM_BUFFERS(hw)) * 3)
 
 #define IPQ_PCM_SAMPLES_PER_10MS(rate) ((rate / 1000) * 10)
 
