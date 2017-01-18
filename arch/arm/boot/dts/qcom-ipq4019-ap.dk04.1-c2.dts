@@ -15,82 +15,179 @@
  */
 
 #include "qcom-ipq4019-ap.dk04.1.dtsi"
+#include "qcom-ipq4019-audio.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ4019/AP-DK04.1-C2";
 
 	soc {
 		pinctrl@0x01000000 {
+			audio_gpio_pins: audio_gpio_pinmux {
+				mux_1 {
+					pins = "gpio53";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_2 {
+					pins = "gpio54";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_3 {
+					pins = "gpio55";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_4 {
+					pins = "gpio56";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_5 {
+					pins = "gpio52";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_6 {
+					pins = "gpio57";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_7 {
+					pins = "gpio63";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_8 {
+					pins = "gpio58";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_9 {
+					pins = "gpio60";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_10 {
+					pins = "gpio61";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_11 {
+					pins = "gpio59";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+
+				mux_12 {
+					pins = "gpio62";
+					function = "gpio";
+					bias-pull,up;
+					output-high;
+				};
+			};
+
 			audio_pins: audio_pinmux {
 				mux_1 {
-					pins = "gpio25", "gpio53", "gpio60";
+					pins = "gpio53";
 					function = "i2s_tx_bclk";
 					bias-pull,up;
 				};
 
 				mux_2 {
-					pins = "gpio27", "gpio54", "gpio63";
-					function = "i2s_txd1";
+					pins = "gpio54";
+					function = "i2s_td1";
 					bias-pull,up;
 				};
 
 				mux_3 {
-					pins = "gpio28", "gpio55";
-					function = "i2s_txd2";
+					pins = "gpio55";
+					function = "i2s_td2";
 					bias-pull,up;
 				};
 
 				mux_4 {
-					pins = "gpio29", "gpio56";
-					function = "i2s_txd3";
+					pins = "gpio56";
+					function = "i2s_td3";
 					bias-pull,up;
 				};
 
 				mux_5 {
-					pins = "gpio24", "gpio52";
+					pins = "gpio52";
 					function = "i2s_tx_mclk";
 					bias-pull,up;
 				};
 
 				mux_6 {
-					pins = "gpio26", "gpio57", "gpio61";
+					pins = "gpio57";
 					function = "i2s_tx_fsync";
 					bias-pull,up;
 				};
 
 				mux_7 {
-					pins = "gpio2", "gpio23", "gpio63";
+					pins = "gpio63";
 					function = "i2s_rxd";
 					bias-pull,up;
 				};
 
 				mux_8 {
-					pins = "gpio20", "gpio58";
+					pins = "gpio58";
 					function = "i2s_rx_mclk";
 					bias-pull,up;
 				};
 
 				mux_9 {
-					pins = "gpio0", "gpio21", "gpio60";
+					pins = "gpio60";
 					function = "i2s_rx_bclk";
 					bias-pull,up;
 				};
 
 				mux_10 {
-					pins = "gpio1", "gpio22", "gpio61";
+					pins = "gpio61";
 					function = "i2s_rx_fsync";
 					bias-pull,up;
 				};
 
 				mux_11 {
-					pins = "gpio34", "gpio59", "gpio63";
+					pins = "gpio59";
 					function = "i2s_spdif_in";
 					bias-pull,up;
 				};
 
 				mux_12 {
-					pins = "gpio35", "gpio62", "gpio63";
+					pins = "gpio62";
 					function = "i2s_spdif_out";
+					bias-pull,up;
+				};
+
+			};
+
+			voip_pins: voip_pinmux {
+				mux_1 {
+					pins = "gpio48", "gpio49",
+						"gpio50", "gpio51";
+					function = "aud_pin";
 					bias-pull,up;
 				};
 			};
@@ -190,8 +287,9 @@
 		};
 
 		sound: sound@0 {
-			pinctrl-0 = <&audio_pins>;
-			pinctrl-names = "default";
+			pinctrl-0 = <&audio_gpio_pins>;
+			pinctrl-1 = <&audio_pins>;
+			pinctrl-names = "default", "audio";
 			status = "ok";
 		};
 
@@ -203,6 +301,17 @@
 				reg = <0x12>;
 				status = "ok";
 			};
+		};
+
+		/* Enable VOIP Interfaces */
+		pcm: pcm@7704000 {
+			status = "ok";
+			pinctrl-0 = <&voip_pins>;
+			pinctrl-names = "default";
+		};
+
+		pcm_lb: pcm_lb@0 {
+			status = "ok";
 		};
 	};
 };
