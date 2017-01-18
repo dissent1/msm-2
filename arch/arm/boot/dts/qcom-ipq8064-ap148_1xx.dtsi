@@ -112,7 +112,7 @@
 			};
 			buttons_pins: buttons_pinmux {
 				mux {
-					pins = "gpio54";
+					pins = "gpio54", "gpio65";
 					drive-strength = <2>;
 					bias-pull-up;
 				};
