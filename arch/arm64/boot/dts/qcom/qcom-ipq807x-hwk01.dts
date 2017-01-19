@@ -174,5 +174,36 @@
 &hsuart {
 	pinctrl-0 = <&hsuart_pins>;
 	pinctrl-names = "default";
+};
+
+&ssphy_0 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&qusb_phy_0 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&ssphy_1 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&qusb_phy_1 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&dwc_0 {
+	dr_mode = "peripheral";
+};
+
+&usb3_0 {
+	status = "ok";
+};
+
+&usb3_1 {
 	status = "ok";
 };

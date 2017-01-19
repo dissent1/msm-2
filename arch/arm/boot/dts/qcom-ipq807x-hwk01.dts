@@ -332,16 +332,6 @@
 		qcom,vlan-enabled;
 	};
 
-	ssphy: ssphy@78000 {
-		qcom,emulation = <1>;
-		status = "ok";
-	};
-
-	qusb_phy: qusb@79000 {
-		qcom,emulation = <1>;
-		status = "ok";
-	};
-
 	audio: audio@7700000 {
 		status = "ok";
 	};
@@ -584,7 +574,27 @@
 	status = "ok";
 };
 
-&dwc_1 {
+&ssphy_0 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&qusb_phy_0 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&ssphy_1 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&qusb_phy_1 {
+	qcom,emulation = <1>;
+	status = "ok";
+};
+
+&dwc_0 {
 	dr_mode = "peripheral";
 };
 
