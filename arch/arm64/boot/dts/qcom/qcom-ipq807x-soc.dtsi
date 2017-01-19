@@ -768,6 +768,97 @@
 			};
 		};
 
+		sdhc_1: sdhci@7824900 {
+			compatible = "qcom,sdhci-msm";
+			reg = <0x7824900 0x500>, <0x7824000 0x800>;
+			reg-names = "hc_mem", "core_mem";
+
+			interrupts = <0 123 0>, <0 138 0>;
+			interrupt-names = "hc_irq", "pwr_irq";
+
+			qcom,bus-width = <8>;
+
+			qcom,dedicated-io = <1>;
+
+			/* device core power supply */
+			qcom,vdd-voltage-level = <2900000 2900000>;
+			qcom,vdd-current-level = <200 570000>;
+
+			/* device communication power supply */
+			qcom,vdd-io-lpm-sup;
+			qcom,vdd-io-voltage-level = <1800000 1800000>;
+			qcom,vdd-io-current-level = <200 325000>;
+			qcom,vdd-io-always-on;
+
+			qcom,cpu-dma-latency-us = <701>;
+			qcom,msm-bus,name = "sdhc1";
+			qcom,msm-bus,num-cases = <9>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps = <78 512 0 0>, /* No vote */
+				<78 512 1046 3200>,    /* 400 KB/s*/
+				<78 512 52286 160000>, /* 20 MB/s */
+				<78 512 65360 200000>, /* 25 MB/s */
+				<78 512 130718 400000>, /* 50 MB/s */
+				<78 512 261438 800000>, /* 100 MB/s */
+				<78 512 261438 800000>, /* 200 MB/s */
+				<78 512 261438 800000>, /* 400 MB/s */
+				<78 512 1338562 4096000>; /* Max. bandwidth */
+			qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 \
+						50000000 100000000 200000000 \
+						400000000 4294967295>;
+
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				 <&gcc GCC_DUMMY_CLK>;
+			clock-names = "iface_clk", "core_clk";
+			qcom,large-address-bus;
+
+			status = "disabled";
+		};
+
+		sdhc_2: sdhci@7864900 {
+			compatible = "qcom,sdhci-msm";
+			reg = <0x7864900 0x500>, <0x7864000 0x800>;
+			reg-names = "hc_mem", "core_mem";
+
+			interrupts = <0 125 0>, <0 221 0>;
+			interrupt-names = "hc_irq", "pwr_irq";
+
+			qcom,bus-width = <4>;
+			qcom,dedicated-io = <1>;
+
+			/* device core power supply */
+			qcom,vdd-voltage-level = <2950000 2950000>;
+			qcom,vdd-current-level = <15000 400000>;
+
+			/* device communication power supply */
+			qcom,vdd-io-lpm-sup;
+			qcom,vdd-io-voltage-level = <1800000 2950000>;
+			qcom,vdd-io-current-level = <200 22000>;
+			qcom,vdd-io-always-on;
+
+			qcom,cpu-dma-latency-us = <701>;
+			qcom,msm-bus,name = "sdhc2";
+			qcom,msm-bus,num-cases = <8>;
+			qcom,msm-bus,num-paths = <1>;
+			qcom,msm-bus,vectors-KBps = <81 512 0 0>, /* No vote */
+				<81 512 1046 3200>,    /* 400 KB/s*/
+				<81 512 52286 160000>, /* 20 MB/s */
+				<81 512 65360 200000>, /* 25 MB/s */
+				<81 512 130718 400000>, /* 50 MB/s */
+				<81 512 261438 800000>, /* 100 MB/s */
+				<81 512 261438 800000>, /* 200 MB/s */
+				<81 512 1338562 4096000>; /* Max. bandwidth */
+			qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 \
+						50000000 100000000 200000000 \
+						4294967295>;
+
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				 <&gcc GCC_DUMMY_CLK>;
+			clock-names = "iface_clk", "core_clk";
+			qcom,large-address-bus;
+
+			status = "disabled";
+		};
 
 		pcie0: pci@20000000 {
 			compatible = "qcom,pcie-ipq807x";
