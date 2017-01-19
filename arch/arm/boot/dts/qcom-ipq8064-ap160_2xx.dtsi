@@ -466,6 +466,35 @@
 			};
 		};
 
+		aq-phy {
+			compatible = "qcom,aq-phy";
+			qcom,phy-addr = <0x10>;
+			mdiobus = <&mdio1>;
+		};
+
+		 qca-85xx-sw {
+			compatible = "qcom,qca-85xx-sw";
+			qcom,sgmii-plus-if-phy-addr = <0x10>;
+			qcom,chip-id = <1>;
+			qcom,qsgmii-cfg-port-mode = <1>;
+			qcom,qsgmii-cfg-port-base = <1>;
+			qcom,qsgmii-cfg-is-speed-forced = <1>;
+			qcom,qsgmii-cfg-forced-speed = <1000>;
+			qcom,qsgmii-cfg-forced-duplex = <1>;
+			qcom,port-26-cfg-port-mode = <2>;
+			qcom,port-26-cfg-is-speed-forced = <0>;
+			qcom,port-27-cfg-port-mode = <3>;
+			qcom,port-27-cfg-is-speed-forced = <1>;
+			qcom,port-27-cfg-forced-speed = <2500>;
+			qcom,port-27-cfg-forced-duplex = <1>;
+			qcom,trunk-cfg-is-trunk-enabled = <1>;
+			qcom,trunk-cfg-trunk-id = <0>;
+			qcom,trunk-cfg-trunk-hash-policy = <0x6c>;
+			qcom,trunk-cfg-trunk-ports-bit-map = <0x1c>;
+			mdiobus = <&mdio0>;
+			sgmii-plus-if-phy-mdiobus = <&mdio1>;
+		};
+
 		crypto1: crypto@38000000 {
 			compatible = "qcom,nss-crypto";
 			reg-names = "crypto_pbase", "bam_base";

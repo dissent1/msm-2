@@ -47,7 +47,7 @@ config MARVELL_PHY
 	tristate "Drivers for Marvell PHYs"
 	---help---
 	  Currently has a driver for the 88E1011S
-	
+
 config DAVICOM_PHY
 	tristate "Drivers for Davicom PHYs"
 	---help---
@@ -335,6 +335,8 @@ config RTL8367B_PHY
 endif # RTL8366_SMI
 
 source "drivers/net/phy/b53/Kconfig"
+
+source "drivers/net/phy/qca_85xx/Kconfig"
 
 endif # PHYLIB
 
