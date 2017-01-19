@@ -268,9 +268,11 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	if (params->bit_width == IPQ_PCM_BIT_WIDTH_16)
 		reg_val |= PCM_CTRL_PCM_SLOT_MODE(1);
 
-	reg_val &= ~PCM_CTRL_PCM_PHASE_MASK;
-	reg_val |= PCM_CTRL_PCM_TX_PHASE(PCM_PHASE_NEG_EDGE);
-	reg_val |= PCM_CTRL_PCM_RX_PHASE(PCM_PHASE_POS_EDGE);
+	if (ipq_hw == IPQ8074) {
+		reg_val &= ~PCM_CTRL_PCM_PHASE_MASK;
+		reg_val |= PCM_CTRL_PCM_TX_PHASE(PCM_PHASE_NEG_EDGE);
+		reg_val |= PCM_CTRL_PCM_RX_PHASE(PCM_PHASE_POS_EDGE);
+	}
 
 	writel(reg_val, adss_pcm_base + AADSS_PCM_CTRL_REG);
 
@@ -286,9 +288,6 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 		reg_val |= (1 << params->tx_slots[i]);
 
 	writel(reg_val, adss_pcm_base + AADSS_PCM_BITMAP_REG);
-
-	writel((PCM_TH_PCM_TX_THRESH(160) | PCM_TH_PCM_RX_THRESH(160)),
-					adss_pcm_base + AADSS_PCM_TH_REG);
 
 	/* allocate DMA buffers */
 	if (ipq_hw == IPQ4019)
@@ -310,11 +309,18 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	else
 		ipq8074_pcm_init_tx_data(params);
 
-	ipq_mbox_fifo_reset(rx_dma_buffer->channel_id);
-	ipq_mbox_fifo_reset(tx_dma_buffer->channel_id);
+	/*
+	 * MBOX fifo reset order is critical
+	 * IPQ8074 requires fifo reset to be done
+	 * before initializing dma
+	 */
+	if (ipq_hw == IPQ8074) {
+		ipq_mbox_fifo_reset(rx_dma_buffer->channel_id);
+		ipq_mbox_fifo_reset(tx_dma_buffer->channel_id);
 
-	/* Give delay for the fifo reset to reflect */
-	mdelay(20);
+		/* Give delay for the fifo reset to reflect */
+		mdelay(20);
+	}
 
 	/* initialize mbox here*/
 	/* first for QCM_PCM_STREAM_PLAYBACK */
@@ -383,6 +389,18 @@ int ipq_pcm_init(struct ipq_pcm_params *params)
 	context.needs_deinit = 1;
 	context.pcm_started = 1;
 	rx_size_count = 0;
+
+	/*
+	 * IPQ4019 requires fifo reset to be done
+	 * after initializing dma
+	 */
+	if (ipq_hw == IPQ4019) {
+		ipq_mbox_fifo_reset(rx_dma_buffer->channel_id);
+		ipq_mbox_fifo_reset(tx_dma_buffer->channel_id);
+
+		/* Give delay for the fifo reset to reflect */
+		mdelay(20);
+	}
 
 	ipq_mbox_dma_start(rx_dma_buffer->channel_id);
 	ipq_mbox_dma_start(tx_dma_buffer->channel_id);
