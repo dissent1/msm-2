@@ -38,7 +38,7 @@ static struct proc_dir_entry *boot_info_dir;
 static struct proc_dir_entry *partname_dir[NUM_ALT_PARTITION];
 
 static unsigned int num_parts;
-static unsigned int flash_type;
+static unsigned int flash_type_emmc;
 
 struct sbl_if_dualboot_info_type_v2 *bootconfig1;
 struct sbl_if_dualboot_info_type_v2 *bootconfig2;
@@ -48,7 +48,6 @@ static int getbinary_show(struct seq_file *m, void *v)
 	struct sbl_if_dualboot_info_type_v2 *sbl_info_v2;
 
 	sbl_info_v2 = m->private;
-	sbl_info_v2->age++;
 	memcpy(m->buf + m->count, sbl_info_v2,
 		sizeof(struct sbl_if_dualboot_info_type_v2));
 	m->count += sizeof(struct sbl_if_dualboot_info_type_v2);
@@ -83,7 +82,7 @@ static int part_upgradepartition_show(struct seq_file *m, void *v)
 	 * we will take care of it here.
 	 */
 
-	if (flash_type && (part_info_t->primaryboot))
+	if (flash_type_emmc && (part_info_t->primaryboot))
 		seq_printf(m, "%s\n", part_info_t->name);
 	else
 		seq_printf(m, "%s_1\n", part_info_t->name);
@@ -167,6 +166,14 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_mtd(
 	struct sbl_if_dualboot_info_type_v2 *bootconfig_mtd;
 	int ret;
 
+	while (mtd_block_isbad(master, offset)) {
+		offset += master->erasesize;
+		if (offset >= master->size) {
+			pr_alert("Bad blocks occurred while reading from \"%s\"\n",
+					master->name);
+			return NULL;
+		}
+	}
 	bootconfig_mtd = kmalloc(sizeof(struct sbl_if_dualboot_info_type_v2),
 				   GFP_ATOMIC);
 
@@ -229,11 +236,18 @@ struct sbl_if_dualboot_info_type_v2 *read_bootconfig_emmc(struct gendisk *disk,
 
 	memcpy(bootconfig_emmc, data, 512);
 
+	if (bootconfig_emmc->magic_start != SMEM_DUAL_BOOTINFO_MAGIC_START) {
+		pr_alert("Magic not found\n");
+		kfree(bootconfig_emmc);
+		return NULL;
+	}
+
 	return bootconfig_emmc;
 }
 
 #define BOOTCONFIG_PARTITION	"0:BOOTCONFIG"
 #define BOOTCONFIG_PARTITION1	"0:BOOTCONFIG1"
+#define ROOTFS_PARTITION	"rootfs"
 
 static int __init bootconfig_partition_init(void)
 {
@@ -245,6 +259,16 @@ static int __init bootconfig_partition_init(void)
 	struct mtd_info *mtd;
 	int partno;
 
+	/*
+	 * In case of NOR\NAND boot, there is a chance that emmc
+	 * might have bootconfig paritions. This will try to read
+	 * the bootconfig partitions and create a proc entry which
+	 * is not correct since it is not booting from emmc.
+	 */
+
+	mtd = get_mtd_device_nm(ROOTFS_PARTITION);
+	if (IS_ERR(mtd))
+		flash_type_emmc = 1;
 	mtd = get_mtd_device_nm(BOOTCONFIG_PARTITION);
 	if (!IS_ERR(mtd)) {
 
@@ -257,7 +281,8 @@ static int __init bootconfig_partition_init(void)
 		}
 
 		bootconfig2 = read_bootconfig_mtd(mtd, 0);
-	} else {
+	} else if (flash_type_emmc == 1) {
+		flash_type_emmc = 0;
 		disk = get_gendisk(MKDEV(MMC_BLOCK_MAJOR, 0), &partno);
 		if (!disk)
 			return 0;
@@ -276,7 +301,7 @@ static int __init bootconfig_partition_init(void)
 						BOOTCONFIG_PARTITION1)) {
 					bootconfig2 = read_bootconfig_emmc(disk,
 									 part);
-					flash_type = 1;
+					flash_type_emmc = 1;
 				}
 			}
 		}
@@ -284,32 +309,40 @@ static int __init bootconfig_partition_init(void)
 
 	}
 
-	if (!bootconfig1)
-		return 0;
-
-	if (!bootconfig2)
-		return 0;
-
-	if (bootconfig1->age > bootconfig2->age) {
-		part_info = (struct per_part_info *)bootconfig1->per_part_entry;
-		bootconfig2->age ^= bootconfig1->age;
-		bootconfig1->age ^= bootconfig2->age;
-		bootconfig2->age ^= bootconfig1->age;
-		num_parts = bootconfig1->numaltpart;
-	} else {
-		part_info = (struct per_part_info *)bootconfig2->per_part_entry;
-		bootconfig1->age ^= bootconfig2->age;
-		bootconfig2->age ^= bootconfig1->age;
-		bootconfig1->age ^= bootconfig2->age;
-		num_parts = bootconfig2->numaltpart;
+	if (!bootconfig1) {
+		if (bootconfig2)
+			bootconfig1 = bootconfig2;
+		else
+			return 0;
 	}
 
+	if (!bootconfig2) {
+		if (bootconfig1)
+			bootconfig2 = bootconfig1;
+		else
+			return 0;
+	}
+/*
+ * The following check is to handle the case when an image without
+ * apps upgrade support is upgraded to the image that supports APPS
+ * upgrade. Earlier, the bootconfig file will be chosen based on age,
+ * but now bootconfig1 only is considered and bootconfig2 is a backup.
+ * When bootconfig2 is active in the older image and sysupgrade
+ * is done to it, we copy the bootconfig2 to bootconfig1 so that the
+ * failsafe parameters can be retained.
+ */
+	if (bootconfig2->age > bootconfig1->age)
+		bootconfig1 = bootconfig2;
+
+	num_parts = bootconfig1->numaltpart;
+	bootconfig1->age++;
+	part_info = (struct per_part_info *)bootconfig1->per_part_entry;
 	boot_info_dir = proc_mkdir("boot_info", NULL);
 	if (!boot_info_dir)
 		return 0;
 
 	for (i = 0; i < num_parts; i++) {
-		if (!flash_type &&
+		if (!flash_type_emmc &&
 				(strncmp(part_info[i].name, "kernel",
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
@@ -330,7 +363,7 @@ static int __init bootconfig_partition_init(void)
 	proc_create_data("getbinary_bootconfig", S_IRUGO, boot_info_dir,
 			&getbinary_ops, bootconfig1);
 	proc_create_data("getbinary_bootconfig1", S_IRUGO, boot_info_dir,
-			&getbinary_ops, bootconfig2);
+			&getbinary_ops, bootconfig1);
 
 	return 0;
 }
@@ -349,7 +382,7 @@ static void __exit bootconfig_partition_exit(void)
 
 	part_info = (struct per_part_info *)bootconfig1->per_part_entry;
 	for (i = 0; i < num_parts; i++) {
-		if (!flash_type &&
+		if (!flash_type_emmc &&
 				(strncmp(part_info[i].name, "kernel",
 					ALT_PART_NAME_LENGTH) == 0))
 			continue;
