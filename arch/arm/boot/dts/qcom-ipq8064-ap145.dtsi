@@ -51,36 +51,6 @@
 			compatible = "qcom,krait";
 			enable-method = "qcom,kpss-acc-v1";
 			device_type = "cpu";
-
-			operating-points-0-0 = <
-				/* kHz      uV */
-				1000000 1100000
-				800000  1050000
-				600000  1000000
-				384000  950000
-			>;
-			operating-points-0-1 = <
-				/* kHz      uV */
-				1000000 1050000
-				800000  1000000
-				600000  950000
-				384000  900000
-			>;
-			operating-points-0-2 = <
-				/* kHz      uV */
-				1000000 1000000
-				800000  950000
-				600000  900000
-				384000  850000
-			>;
-			operating-points-0-3 = <
-				/* kHz      uV */
-				1000000  950000
-				800000   900000
-				600000   850000
-				384000   800000
-			>;
-
 			clock-latency = <100000>;
 			voltage-tolerance = <5>;
 
@@ -99,36 +69,6 @@
 			core-supply = <&smb208_s2b>;
 			clocks = <&kraitcc 1>;
 			clock-names = "cpu";
-
-			operating-points-0-0 = <
-				/* kHz      uV */
-				1000000 1100000
-				800000  1050000
-				600000  1000000
-				384000  950000
-			>;
-			operating-points-0-1 = <
-				/* kHz      uV */
-				1000000 1050000
-				800000  1000000
-				600000  950000
-				384000  900000
-			>;
-			operating-points-0-2 = <
-				/* kHz      uV */
-				1000000 1000000
-				800000  950000
-				600000  900000
-				384000  850000
-			>;
-			operating-points-0-3 = <
-				/* kHz      uV */
-				1000000  950000
-				800000   900000
-				600000   850000
-				384000   800000
-			>;
-
 			clock-latency = <100000>;
 
 			cooling-min-state = <0>;
