@@ -1,7 +1,7 @@
 /*
  *  Atheros AR71xx built-in ethernet mac driver
  *
- *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -435,6 +435,9 @@ typedef enum {
 #define AG71XX_PLL_10 0x1313
 
 #define AG71XX_INTF_CTRL_SPEED			BIT(16)
+
+#define AG71XX_MAC0_OFFSET		0
+#define AG71XX_MAC1_OFFSET		6
 
 static inline void ag71xx_check_reg_offset(struct ag71xx *ag, unsigned reg)
 {

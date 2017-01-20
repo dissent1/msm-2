@@ -51,6 +51,10 @@ struct ag71xx_platform_data {
 	u32		fifo_cfg2;
 	u32		fifo_cfg3;
 
+	u32		pll_10;
+	u32		pll_100;
+	u32		pll_1000;
+
 	unsigned int	max_frame_len;
 	unsigned int	desc_pktlen_mask;
 };
@@ -63,6 +67,7 @@ struct ag71xx_mdio_platform_data {
 	u8		is_ar934x:1;
 	unsigned long	mdio_clock;
 	unsigned long	ref_clock;
+	u32		reset_bit;
 
 	void		(*reset)(struct mii_bus *bus);
 };

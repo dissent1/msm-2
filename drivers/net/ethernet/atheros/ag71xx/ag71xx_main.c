@@ -1,7 +1,7 @@
 /*
  *  Atheros AR71xx built-in ethernet mac driver
  *
- *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -13,6 +13,10 @@
  */
 
 #include "ag71xx.h"
+#ifdef CONFIG_OF
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#endif
 
 #ifndef UNUSED
 #define UNUSED(__x)	(void)(__x)
@@ -804,6 +808,42 @@ static void ag71xx_hw_start(struct ag71xx *ag)
 	ag71xx_wr(ag, AG71XX_REG_MAC_CFG1, MAC_CFG1_INIT);
 }
 
+#ifdef CONFIG_OF
+static void ag71xx_set_speed(struct ag71xx *ag)
+{
+	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
+	void __iomem *base;
+	u32 pll_val;
+	u32 reg = 0;
+
+	switch (ag->speed) {
+	case SPEED_10:
+		pll_val = pdata->pll_10;
+		break;
+	case SPEED_100:
+		pll_val = pdata->pll_100;
+		break;
+	case SPEED_1000:
+		pll_val = pdata->pll_1000;
+		break;
+	default:
+		BUG();
+	}
+
+	if (pll_val == 0)
+		return;
+
+	if (pdata->phy_if_mode == PHY_INTERFACE_MODE_RGMII)
+		reg = QCA955X_PLL_ETH_XMII_CONTROL_REG;
+	else if (pdata->phy_if_mode == PHY_INTERFACE_MODE_SGMII)
+		reg = QCA955X_PLL_ETH_SGMII_CONTROL_REG;
+
+	base = ioremap_nocache(AR71XX_PLL_BASE, AR71XX_PLL_SIZE);
+	__raw_writel(pll_val, base + reg);
+	iounmap(base);
+}
+#endif
+
 void ag71xx_link_adjust(struct ag71xx *ag)
 {
 	struct ag71xx_platform_data *pdata = ag71xx_get_pdata(ag);
@@ -865,8 +905,12 @@ void ag71xx_link_adjust(struct ag71xx *ag)
 			  AG71XX_FIFO_TH_HD_FULL_VAL);
 	}
 #ifndef CONFIG_AG71XX_FULLOFFLOAD_TARGET
+#ifdef CONFIG_OF
+	ag71xx_set_speed(ag);
+#else
 	if (pdata->set_speed)
 		pdata->set_speed(ag->speed);
+#endif
 #endif
 	ag71xx_wr(ag, AG71XX_REG_MAC_CFG2, cfg2);
 	ag71xx_wr(ag, AG71XX_REG_FIFO_CFG5, fifo5);
@@ -1284,7 +1328,8 @@ static int ag71xx_rx_packets(struct ag71xx *ag,
 		 */
 		desc_ctrl = desc->ctrl;
 		if (unlikely(desc_ctrl & DESC_EMPTY)) {
-			pdata->ddr_flush();
+			if (pdata->ddr_flush)
+				pdata->ddr_flush();
 			desc_ctrl = desc->ctrl;
 			if (unlikely(desc_ctrl & DESC_EMPTY))
 				break;
@@ -1411,7 +1456,8 @@ static int ag71xx_poll(struct napi_struct *napi, int limit)
 	int tx_done;
 	int rx_done;
 
-	pdata->ddr_flush();
+	if (pdata->ddr_flush)
+		pdata->ddr_flush();
 
 	/* First empty any packets that we have transmitted!  In theory it might
 	 * seem better to handle packets that we've received but we
@@ -1542,6 +1588,165 @@ static const struct net_device_ops ag71xx_netdev_ops = {
 #endif
 };
 
+#ifdef CONFIG_OF
+static void ag71xx_init_mac(unsigned char *dst, const unsigned char *src,
+			    int offset)
+{
+	int t;
+
+	if (!dst)
+		return;
+
+	if (!src || !is_valid_ether_addr(src)) {
+		memset(dst, '\0', ETH_ALEN);
+		return;
+	}
+
+	t = (((u32)src[3]) << 16) + (((u32)src[4]) << 8) + ((u32)src[5]);
+	t += offset;
+
+	dst[0] = src[0];
+	dst[1] = src[1];
+	dst[2] = src[2];
+	dst[3] = (t >> 16) & 0xff;
+	dst[4] = (t >> 8) & 0xff;
+	dst[5] = t & 0xff;
+}
+
+static void ag71xx_of_gmac_setup(struct platform_device *pdev, u32 mask)
+{
+	struct resource *res;
+	void __iomem *cfg_base;
+
+	res = platform_get_resource_byname(pdev,
+			IORESOURCE_MEM, "cfg_base");
+	if (!res)
+		return;
+
+	cfg_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!cfg_base) {
+		dev_err(&pdev->dev, "unable to ioremap cfg_base\n");
+		return;
+	}
+
+	__raw_writel(__raw_readl(cfg_base) | mask, cfg_base);
+	/* flush write */
+	(void)__raw_readl(cfg_base);
+
+	iounmap(cfg_base);
+}
+
+static int ag71xx_of_pdata_update(
+		struct platform_device *pdev,
+		struct ag71xx_platform_data *pdata)
+{
+	u32 value[5];
+	struct device_node *mdio;
+	struct platform_device *pdev_mdio;
+	u32 offset;
+	const phandle *ph;
+	u8 *art = (u8 *)KSEG1ADDR(0x1fff0000);
+
+	if (!pdev->dev.of_node)
+		return -EINVAL;
+
+	if (!of_property_read_u32(pdev->dev.of_node, "reset-bit", &value[0])) {
+		/*reset gmac firstly*/
+		ath79_device_reset_set(pdata->reset_bit);
+		msleep(100);
+
+		ath79_device_reset_clear(pdata->reset_bit);
+		msleep(100);
+	}
+
+	ph = of_get_property(pdev->dev.of_node, "mdio-handle", NULL);
+	if (!ph) {
+		dev_err(&pdev->dev, "No mdio-handle in dtb\n");
+		return -EINVAL;
+	}
+
+	mdio = of_find_node_by_phandle(*ph);
+	if (!mdio) {
+		dev_err(&pdev->dev, "No mdio device found by phandle\n");
+		return -EINVAL;
+	}
+
+	pdev_mdio = of_find_device_by_node(mdio);
+	pdata->mii_bus_dev = &pdev_mdio->dev;
+	of_node_put(mdio);
+
+	if (!of_property_read_u32(pdev->dev.of_node, "phy-mode",
+			&pdata->phy_if_mode)) {
+		if (pdata->phy_if_mode == PHY_INTERFACE_MODE_RGMII)
+			value[0] = 1;
+		if (!of_property_read_u32(pdev->dev.of_node,
+				"eth-cfg", &value[4]))
+			value[0] |= value[4];
+
+		if (value[0] != 0)
+			ag71xx_of_gmac_setup(pdev, value[0]);
+
+	}
+
+	if (!of_property_read_u32_array(pdev->dev.of_node,
+			"fifo-cfg", value, 3)) {
+		pdata->fifo_cfg1 = value[0];
+		pdata->fifo_cfg2 = value[1];
+		pdata->fifo_cfg3 = value[2];
+	}
+
+	of_property_read_u32(pdev->dev.of_node, "phy-mask", &pdata->phy_mask);
+	of_property_read_u32(pdev->dev.of_node, "force-speed", &pdata->speed);
+	of_property_read_u32(pdev->dev.of_node, "force-duplex", &pdata->duplex);
+
+	if (!of_property_read_u32_array(pdev->dev.of_node,
+			"eth-pll-data", value, 3)) {
+		pdata->pll_10 = value[0];
+		pdata->pll_100 = value[1];
+		pdata->pll_1000 = value[2];
+	}
+
+	if (!of_property_read_u32_array(pdev->dev.of_node,
+			"builtin-switch", value, 2)) {
+		struct ag71xx_switch_platform_data *pswitch;
+
+		pswitch = devm_kzalloc(&pdev->dev,
+				sizeof(struct ag71xx_switch_platform_data),
+			GFP_KERNEL);
+		if (!pswitch)
+			return -ENOMEM;
+		pswitch->phy4_mii_en = value[0];
+		pswitch->phy_poll_mask = value[1];
+		pdata->switch_data = pswitch;
+	}
+
+	of_property_read_u32(pdev->dev.of_node, "max-frame-len",
+			&pdata->max_frame_len);
+	of_property_read_u32(pdev->dev.of_node, "desc-pktlen-mask",
+			&pdata->desc_pktlen_mask);
+	of_property_read_u32(pdev->dev.of_node, "has-gbit", &value[0]);
+	pdata->has_gbit = value[0];
+	of_property_read_u32(pdev->dev.of_node, "ar724x-support", &value[0]);
+	pdata->is_ar724x = value[0];
+	of_property_read_u32(pdev->dev.of_node, "qca955x-support", &value[0]);
+	pdata->is_qca955x = value[0];
+
+	if (ag71xx_gmac_num == 0)
+		offset = AG71XX_MAC0_OFFSET;
+	else
+		offset = AG71XX_MAC1_OFFSET;
+	ag71xx_init_mac(pdata->mac_addr, art + offset, 0);
+	if (!is_valid_ether_addr(pdata->mac_addr)) {
+		random_ether_addr(pdata->mac_addr);
+		printk(KERN_DEBUG
+			"ar71xx: using random MAC address for %x\n",
+			ag71xx_gmac_num);
+	}
+
+	return 0;
+}
+#endif
+
 static int ag71xx_probe(struct platform_device *pdev)
 {
 	struct net_device *dev;
@@ -1551,6 +1756,18 @@ static int ag71xx_probe(struct platform_device *pdev)
 	struct ag71xx_platform_data *pdata;
 	int err;
 
+#ifdef CONFIG_OF
+	pdata = devm_kzalloc(&pdev->dev, sizeof(struct ag71xx_platform_data),
+			GFP_KERNEL);
+	if (!pdata)
+		return -ENOMEM;
+	if (ag71xx_of_pdata_update(pdev, pdata)) {
+		kfree(pdata);
+		err = -EINVAL;
+		goto err_out;
+	}
+	pdev->dev.platform_data = pdata;
+#else
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "no platform data specified\n");
@@ -1563,6 +1780,7 @@ static int ag71xx_probe(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_out;
 	}
+#endif
 
 	dev = alloc_etherdev(sizeof(*ag));
 	if (!dev) {
@@ -1709,11 +1927,23 @@ static int ag71xx_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id ag71xx_of_match_table[] = {
+	{.compatible = "qca,ag71xx-eth"},
+	{}
+};
+#else
+#define ag71xx_of_match_table NULL
+#endif
+
 static struct platform_driver ag71xx_driver = {
 	.probe		= ag71xx_probe,
 	.remove		= ag71xx_remove,
 	.driver = {
 		.name	= AG71XX_DRV_NAME,
+#ifdef CONFIG_OF
+		.of_match_table = ag71xx_of_match_table,
+#endif
 	}
 };
 
