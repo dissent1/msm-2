@@ -30,6 +30,7 @@
 
 	aliases {
 		spi0 = &spi_0;
+		spi1 = &spi_1;
 		i2c0 = &i2c_0;
 		ethernet0 = "/soc/edma/gmac0";
 		ethernet1 = "/soc/edma/gmac1";
@@ -167,6 +168,20 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			dmas = <&blsp_dma 5>, <&blsp_dma 4>;
+			dma-names = "rx", "tx";
+			status = "disabled";
+		};
+
+		spi_1: spi@78b6000 { /* BLSP1 QUP2 */
+			compatible = "qcom,spi-qup-v2.2.1";
+			reg = <0x78b6000 0x600>;
+			interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&gcc GCC_BLSP1_QUP2_SPI_APPS_CLK>,
+				<&gcc GCC_BLSP1_AHB_CLK>;
+			clock-names = "core", "iface";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			dmas = <&blsp_dma 7>, <&blsp_dma 6>;
 			dma-names = "rx", "tx";
 			status = "disabled";
 		};
