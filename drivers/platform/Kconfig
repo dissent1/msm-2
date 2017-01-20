@@ -10,3 +10,7 @@ endif
 
 source "drivers/platform/chrome/Kconfig"
 source "drivers/platform/msm/Kconfig"
+
+if ARCH_QCOM
+source "drivers/platform/ipq/Kconfig"
+endif

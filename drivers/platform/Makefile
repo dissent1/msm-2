@@ -8,3 +8,4 @@ obj-$(CONFIG_OLPC)		+= olpc/
 obj-$(CONFIG_GOLDFISH)		+= goldfish/
 obj-$(CONFIG_CHROME_PLATFORMS)	+= chrome/
 obj-$(CONFIG_MSM_MHI)		+= msm/
+obj-$(CONFIG_ARCH_QCOM)		+= ipq/
