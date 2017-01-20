@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -438,7 +438,6 @@
 			qcom,num-irq = <2>;
 			qcom,num-queue = <2>;
 			qcom,load-addr = <0x40000000>;
-
 			qcom,low-frequency = <110000000>;
 			qcom,mid-frequency = <275000000>;
 			qcom,max-frequency = <550000000>;
@@ -472,7 +471,6 @@
 			qcom,num-irq = <2>;
 			qcom,num-queue = <2>;
 			qcom,load-addr = <0x40800000>;
-
 			qcom,low-frequency = <110000000>;
 			qcom,mid-frequency = <275000000>;
 			qcom,max-frequency = <550000000>;
