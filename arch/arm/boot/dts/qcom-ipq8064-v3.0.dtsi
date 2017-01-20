@@ -79,12 +79,14 @@
 
 	soc: soc {
 		rpm@108000 {
-			s2a {
-				regulator-max-microvolt = <1275000>;
-			};
+			regulators {
+				s2a {
+					regulator-max-microvolt = <1275000>;
+				};
 
-			s2b {
-				regulator-max-microvolt = <1275000>;
+				s2b {
+					regulator-max-microvolt = <1275000>;
+				};
 			};
 		};
 	};
