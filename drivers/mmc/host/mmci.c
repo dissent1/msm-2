@@ -22,6 +22,7 @@
 #include <linux/highmem.h>
 #include <linux/log2.h>
 #include <linux/mmc/pm.h>
+#include <linux/mmc/mmc.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/slot-gpio.h>
@@ -44,67 +45,17 @@
 
 #include "mmci.h"
 #include "mmci_qcom_dml.h"
+#ifdef CONFIG_MMC_QCOM_TUNING
+#include "mmci_qcom_tuning.h"
+#endif
 
 #define DRIVER_NAME "mmci-pl18x"
 
-static unsigned int fmax = 515633;
+#define MMCI_DMA_CTRL_NONE	0x00
+#define MMCI_DMA_CTRL_RELEASE	0x01
+#define MMCI_DMA_CTRL_RESET	0x02
 
-/**
- * struct variant_data - MMCI variant-specific quirks
- * @clkreg: default value for MCICLOCK register
- * @clkreg_enable: enable value for MMCICLOCK register
- * @clkreg_8bit_bus_enable: enable value for 8 bit bus
- * @clkreg_neg_edge_enable: enable value for inverted data/cmd output
- * @datalength_bits: number of bits in the MMCIDATALENGTH register
- * @fifosize: number of bytes that can be written when MMCI_TXFIFOEMPTY
- *	      is asserted (likewise for RX)
- * @fifohalfsize: number of bytes that can be written when MCI_TXFIFOHALFEMPTY
- *		  is asserted (likewise for RX)
- * @data_cmd_enable: enable value for data commands.
- * @st_sdio: enable ST specific SDIO logic
- * @st_clkdiv: true if using a ST-specific clock divider algorithm
- * @datactrl_mask_ddrmode: ddr mode mask in datactrl register.
- * @blksz_datactrl16: true if Block size is at b16..b30 position in datactrl register
- * @blksz_datactrl4: true if Block size is at b4..b16 position in datactrl
- *		     register
- * @datactrl_mask_sdio: SDIO enable mask in datactrl register
- * @pwrreg_powerup: power up value for MMCIPOWER register
- * @f_max: maximum clk frequency supported by the controller.
- * @signal_direction: input/out direction of bus signals can be indicated
- * @pwrreg_clkgate: MMCIPOWER register must be used to gate the clock
- * @busy_detect: true if busy detection on dat0 is supported
- * @pwrreg_nopower: bits in MMCIPOWER don't controls ext. power supply
- * @explicit_mclk_control: enable explicit mclk control in driver.
- * @qcom_fifo: enables qcom specific fifo pio read logic.
- * @qcom_dml: enables qcom specific dma glue for dma transfers.
- * @reversed_irq_handling: handle data irq before cmd irq.
- */
-struct variant_data {
-	unsigned int		clkreg;
-	unsigned int		clkreg_enable;
-	unsigned int		clkreg_8bit_bus_enable;
-	unsigned int		clkreg_neg_edge_enable;
-	unsigned int		datalength_bits;
-	unsigned int		fifosize;
-	unsigned int		fifohalfsize;
-	unsigned int		data_cmd_enable;
-	unsigned int		datactrl_mask_ddrmode;
-	unsigned int		datactrl_mask_sdio;
-	bool			st_sdio;
-	bool			st_clkdiv;
-	bool			blksz_datactrl16;
-	bool			blksz_datactrl4;
-	u32			pwrreg_powerup;
-	u32			f_max;
-	bool			signal_direction;
-	bool			pwrreg_clkgate;
-	bool			busy_detect;
-	bool			pwrreg_nopower;
-	bool			explicit_mclk_control;
-	bool			qcom_fifo;
-	bool			qcom_dml;
-	bool			reversed_irq_handling;
-};
+static unsigned int fmax = 515633;
 
 static struct variant_data variant_arm = {
 	.fifosize		= 16 * 4,
@@ -218,6 +169,9 @@ static struct variant_data variant_qcom = {
 	.explicit_mclk_control	= true,
 	.qcom_fifo		= true,
 	.qcom_dml		= true,
+#ifdef CONFIG_MMC_QCOM_TUNING
+	.qcom_tuning		= true,
+#endif /* CONFIG_MMC_QCOM_TUNING */
 };
 
 static int mmci_card_busy(struct mmc_host *mmc)
@@ -364,8 +318,34 @@ static void mmci_set_clkreg(struct mmci_host *host, unsigned int desired)
 		clk |= variant->clkreg_8bit_bus_enable;
 
 	if (host->mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
-	    host->mmc->ios.timing == MMC_TIMING_MMC_DDR52)
+	    host->mmc->ios.timing == MMC_TIMING_MMC_DDR52) {
+#ifndef CONFIG_MMC_QCOM_TUNING
 		clk |= variant->clkreg_neg_edge_enable;
+#else
+		clk |= variant->datactrl_mask_ddrmode;
+		mmci_qcom_ddr_tuning(host);
+#endif
+	}
+
+#ifdef CONFIG_MMC_QCOM_TUNING
+	/*
+	 * Select the controller timing mode according
+	 * to current bus speed mode
+	 */
+	if ((desired > (100 * 1000 * 1000)) &&
+	     (host->mmc->ios.timing == MMC_TIMING_UHS_SDR104)) {
+		/* Card clock frequency must be > 100MHz to enable tuning */
+		clk &= (~(MCI_QCOM_CLK_SELECT_IN_MASK));
+		clk |= MCI_QCOM_CLK_SELECT_IN_UHS;
+	}
+
+	/* Select free running MCLK as input clock of cm_dll_sdc4 */
+	clk &= (~(MCI_QCOM_CLK_SDC4_MCLK_SEL_MASK));
+	clk |= MCI_QCOM_CLK_SDC4_MCLK_SEL_FMCLK;
+
+	if (variant->qcom_uhs_gpio >= 0)
+		clk |= MCI_QCOM_IO_PAD_PWR_SWITCH;
+#endif /* CONFIG_MMC_QCOM_TUNING */
 
 	mmci_write_clkreg(host, clk);
 }
@@ -521,6 +501,28 @@ static void mmci_dma_unmap(struct mmci_host *host, struct mmc_data *data)
 	dma_unmap_sg(chan->device->dev, data->sg, data->sg_len, dir);
 }
 
+/**
+ *
+ * This function resets & restores DMA.
+ *
+ * This function should be called to recover from error
+ * conditions encountered during CMD/DATA tranfsers with card.
+ *
+ * @host - Pointer to driver's host structure
+ *
+ */
+static void mmci_dma_reset_and_restore(struct mmci_host *host)
+{
+	dev_dbg(mmc_dev(host->mmc), "Trying to reset & restore dma.\n");
+
+	if (host->dma_control)
+		mmci_dma_release(host);
+	if (host->dma_control == MMCI_DMA_CTRL_RESET)
+		mmci_dma_setup(host);
+
+	host->dma_control = MMCI_DMA_CTRL_NONE;
+}
+
 static void mmci_dma_finalize(struct mmci_host *host, struct mmc_data *data)
 {
 	u32 status;
@@ -555,7 +557,7 @@ static void mmci_dma_finalize(struct mmci_host *host, struct mmc_data *data)
 	 */
 	if (status & MCI_RXDATAAVLBLMASK) {
 		dev_err(mmc_dev(host->mmc), "buggy DMA detected. Taking evasive action.\n");
-		mmci_dma_release(host);
+		host->dma_control = MMCI_DMA_CTRL_RELEASE;
 	}
 
 	host->dma_current = NULL;
@@ -794,7 +796,17 @@ static void mmci_start_data(struct mmci_host *host, struct mmc_data *data)
 	host->size = data->blksz * data->blocks;
 	data->bytes_xfered = 0;
 
+#ifdef CONFIG_MMC_QCOM_TUNING
+	if ((host->mmc->ios.timing == MMC_TIMING_UHS_DDR50) ||
+		(host->mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+		clks = (unsigned long long)data->timeout_ns *
+			(host->cclk / 2);
+	else
+		clks = (unsigned long long)data->timeout_ns * host->cclk;
+#else
 	clks = (unsigned long long)data->timeout_ns * host->cclk;
+#endif
+
 	do_div(clks, NSEC_PER_SEC);
 
 	timeout = data->timeout_clks + (unsigned int)clks;
@@ -837,9 +849,11 @@ static void mmci_start_data(struct mmci_host *host, struct mmc_data *data)
 		mmci_write_clkreg(host, clk);
 	}
 
+#ifndef CONFIG_MMC_QCOM_TUNING
 	if (host->mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
 	    host->mmc->ios.timing == MMC_TIMING_MMC_DDR52)
 		datactrl |= variant->datactrl_mask_ddrmode;
+#endif
 
 	/*
 	 * Attempt to use DMA operation mode, if this
@@ -887,6 +901,33 @@ mmci_start_command(struct mmci_host *host, struct mmc_command *cmd, u32 c)
 		mmci_reg_delay(host);
 	}
 
+#ifdef CONFIG_MMC_QCOM_TUNING
+	/*
+	 * For open ended block read operation (without CMD23),
+	 * AUTO_CMD19 bit should be set while sending the READ command.
+	 * For close ended block read operation (with CMD23),
+	 * AUTO_CMD19 bit should be set while sending CMD23.
+	 */
+	if (host->mmc->ios.timing == MMC_TIMING_UHS_SDR104) {
+		if ((cmd->opcode == MMC_SET_BLOCK_COUNT &&
+		   host->mrq->cmd->opcode == MMC_READ_MULTIPLE_BLOCK) ||
+		   (!host->mrq->sbc && (cmd->opcode == MMC_READ_SINGLE_BLOCK ||
+		   cmd->opcode == MMC_READ_MULTIPLE_BLOCK))) {
+			mmci_enable_cdr_cm_sdc4_dll(host);
+			c |= cmd->opcode | MCI_CSPM_AUTO_CMD19;
+		}
+	}
+	if (cmd->mrq && cmd->mrq->data &&
+	    (cmd->mrq->data->flags & MMC_DATA_READ))
+		writel((readl(base + MCIDLL_CONFIG) | MCI_CDR_EN),
+		       base + MCIDLL_CONFIG);
+	else
+		/* Clear CDR_EN bit for non read operations */
+		writel((readl(base + MCIDLL_CONFIG) & ~MCI_CDR_EN),
+		       base + MCIDLL_CONFIG);
+	mmci_reg_delay(host);
+#endif
+
 	c |= cmd->opcode | MCI_CPSM_ENABLE;
 	if (cmd->flags & MMC_RSP_PRESENT) {
 		if (cmd->flags & MMC_RSP_136)
@@ -922,6 +963,13 @@ mmci_data_irq(struct mmci_host *host, struct mmc_data *data,
 		if (dma_inprogress(host)) {
 			mmci_dma_data_error(host);
 			mmci_dma_unmap(host, data);
+
+			/*
+			 * Delay the dma reset in thread context as
+			 * dma channel release APIs can be called
+			 * only from non-atomic context.
+			 */
+			host->dma_control = MMCI_DMA_CTRL_RESET;
 		}
 
 		/*
@@ -1033,6 +1081,7 @@ mmci_cmd_irq(struct mmci_host *host, struct mmc_command *cmd,
 			if (dma_inprogress(host)) {
 				mmci_dma_data_error(host);
 				mmci_dma_unmap(host, host->data);
+				host->dma_control = MMCI_DMA_CTRL_RESET;
 			}
 			mmci_stop_data(host);
 		}
@@ -1284,6 +1333,10 @@ static void mmci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	WARN_ON(host->mrq != NULL);
 
+	/* check if dma needs to be reset */
+	if (host->dma_control)
+		mmci_dma_reset_and_restore(host);
+
 	mrq->cmd->error = mmci_validate_data(host, mrq->data);
 	if (mrq->cmd->error) {
 		mmc_request_done(mmc, mrq);
@@ -1396,6 +1449,18 @@ static void mmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	if (!ios->clock && variant->pwrreg_clkgate)
 		pwr &= ~MCI_PWR_ON;
 
+	if (host->mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+			host->mmc->ios.timing == MMC_TIMING_MMC_DDR52) {
+		u32 clk;
+
+		clk = readl(host->base + MMCICLOCK);
+		clk &= ~(0x7 << 14); /* clear SELECT_IN field */
+		clk |= (3 << 14); /* set DDR timing mode */
+		writel_relaxed(clk, host->base + MMCICLOCK);
+		mmci_reg_delay(host);
+		if (mmc->f_max < (ios->clock * 2))
+			ios->clock = mmc->f_max;
+	}
 	if (host->variant->explicit_mclk_control &&
 	    ios->clock != host->clock_cache) {
 		ret = clk_set_rate(host->clk, ios->clock);
@@ -1436,19 +1501,25 @@ static int mmci_get_cd(struct mmc_host *mmc)
 
 static int mmci_sig_volt_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 {
+	struct mmci_host *host = mmc_priv(mmc);
 	int ret = 0;
-
 	if (!IS_ERR(mmc->supply.vqmmc)) {
 
 		pm_runtime_get_sync(mmc_dev(mmc));
 
 		switch (ios->signal_voltage) {
 		case MMC_SIGNAL_VOLTAGE_330:
-			ret = regulator_set_voltage(mmc->supply.vqmmc,
+			if (gpio_is_valid(host->variant->qcom_uhs_gpio))
+				ret = mmci_qcom_set_uhs_gpio(mmc, 0);
+			else
+				ret = regulator_set_voltage(mmc->supply.vqmmc,
 						2700000, 3600000);
 			break;
 		case MMC_SIGNAL_VOLTAGE_180:
-			ret = regulator_set_voltage(mmc->supply.vqmmc,
+			if (gpio_is_valid(host->variant->qcom_uhs_gpio))
+				ret = mmci_qcom_set_uhs_gpio(mmc, 1);
+			else
+				ret = regulator_set_voltage(mmc->supply.vqmmc,
 						1700000, 1950000);
 			break;
 		case MMC_SIGNAL_VOLTAGE_120:
@@ -1502,6 +1573,10 @@ static int mmci_of_parse(struct device_node *np, struct mmc_host *mmc)
 		mmc->caps |= MMC_CAP_MMC_HIGHSPEED;
 	if (of_get_property(np, "mmc-cap-sd-highspeed", NULL))
 		mmc->caps |= MMC_CAP_SD_HIGHSPEED;
+	if (of_get_property(np, "sd-uhs-sdr104", NULL))
+		mmc->caps |= MMC_CAP_UHS_SDR104;
+	if (of_get_property(np, "mmc-ddr-1_8v", NULL))
+		mmc->caps |= MMC_CAP_1_8V_DDR;
 
 	return 0;
 }
@@ -1640,6 +1715,13 @@ static int mmci_probe(struct amba_device *dev,
 	}
 
 	mmc->ops = &mmci_ops;
+
+#ifdef CONFIG_MMC_QCOM_TUNING
+	if (variant->qcom_tuning) {
+		mmci_qtune_init(host, np);
+		mmci_ops.execute_tuning = mmci_qtune_execute_tuning;
+	}
+#endif /* CONFIG_MMC_QCOM_TUNING */
 
 	/* We support these PM capabilities. */
 	mmc->pm_caps |= MMC_PM_KEEP_POWER;

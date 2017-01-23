@@ -45,10 +45,17 @@
 #define MCI_QCOM_CLK_WIDEBUS_8	(BIT(10) | BIT(11))
 #define MCI_QCOM_CLK_FLOWENA	BIT(12)
 #define MCI_QCOM_CLK_INVERTOUT	BIT(13)
+#define MCI_QCOM_IO_PAD_PWR_SWITCH	BIT(21)
 
 /* select in latch data and command in */
+#define MCI_QCOM_CLK_SELECT_IN_MASK	(BIT(16) | BIT(15) | BIT(14))
 #define MCI_QCOM_CLK_SELECT_IN_FBCLK	BIT(15)
 #define MCI_QCOM_CLK_SELECT_IN_DDR_MODE	(BIT(14) | BIT(15))
+#define MCI_QCOM_CLK_SELECT_IN_UHS	BIT(16)
+
+/* Select SDC4_MCLK_SEL */
+#define MCI_QCOM_CLK_SDC4_MCLK_SEL_MASK		(BIT(24) | BIT(23))
+#define MCI_QCOM_CLK_SDC4_MCLK_SEL_FMCLK	BIT(24)
 
 #define MMCIARGUMENT		0x008
 #define MMCICOMMAND		0x00c
@@ -57,6 +64,7 @@
 #define MCI_CPSM_INTERRUPT	(1 << 8)
 #define MCI_CPSM_PENDING	(1 << 9)
 #define MCI_CPSM_ENABLE		(1 << 10)
+#define MCI_CSPM_AUTO_CMD19     (1 << 16)
 /* Argument flag extenstions in the ST Micro versions */
 #define MCI_ST_SDIO_SUSP	(1 << 11)
 #define MCI_ST_ENCMD_COMPL	(1 << 12)
@@ -171,6 +179,21 @@
 
 #define MMCIMASK1		0x040
 #define MMCIFIFOCNT		0x048
+#define MMCIVERSION		0x050
+#define MCIDLL_CONFIG		0x060
+#define MCI_DLL_EN		(1 << 16)
+#define MCI_CDR_EN		(1 << 17)
+#define MCI_CK_OUT_EN		(1 << 18)
+#define MCI_CDR_EXT_EN		(1 << 19)
+#define MCI_DLL_PDN		(1 << 29)
+#define MCI_DLL_RST		(1 << 30)
+
+#define MCI_DLL_STATUS		0x068
+#define MCI_DLL_LOCK		(1 << 7)
+
+#define MMCISTATUS2		0x06C
+#define MCI_MCLK_REG_WR_ACTIVE	(1 << 0)
+
 #define MMCIFIFO		0x080 /* to 0x0bc */
 
 #define MCI_IRQENABLE	\
@@ -225,6 +248,7 @@ struct mmci_host {
 
 	struct timer_list	timer;
 	unsigned int		oldstat;
+	unsigned int		dma_control;
 
 	/* pio stuff */
 	struct sg_mapping_iter	sg_miter;
@@ -245,3 +269,67 @@ struct mmci_host {
 #endif
 };
 
+/**
+ * struct variant_data - MMCI variant-specific quirks
+ * @clkreg: default value for MCICLOCK register
+ * @clkreg_enable: enable value for MMCICLOCK register
+ * @clkreg_8bit_bus_enable: enable value for 8 bit bus
+ * @clkreg_neg_edge_enable: enable value for inverted data/cmd output
+ * @datalength_bits: number of bits in the MMCIDATALENGTH register
+ * @fifosize: number of bytes that can be written when MMCI_TXFIFOEMPTY
+ *	      is asserted (likewise for RX)
+ * @fifohalfsize: number of bytes that can be written when MCI_TXFIFOHALFEMPTY
+ *		  is asserted (likewise for RX)
+ * @data_cmd_enable: enable value for data commands.
+ * @sdio: variant supports SDIO
+ * @st_clkdiv: true if using a ST-specific clock divider algorithm
+ * @datactrl_mask_ddrmode: ddr mode mask in datactrl register.
+ * @blksz_datactrl16: true if Block size is at b16..b30 position in datactrl register
+ * @blksz_datactrl4: true if Block size is at b4..b16 position in datactrl
+ *		     register
+ * @pwrreg_powerup: power up value for MMCIPOWER register
+ * @f_max: maximum clk frequency supported by the controller.
+ * @signal_direction: input/out direction of bus signals can be indicated
+ * @pwrreg_clkgate: MMCIPOWER register must be used to gate the clock
+ * @busy_detect: true if busy detection on dat0 is supported
+ * @pwrreg_nopower: bits in MMCIPOWER don't controls ext. power supply
+ * @explicit_mclk_control: enable explicit mclk control in driver.
+ * @qcom_fifo: enables qcom specific fifo pio read logic.
+ * @qcom_dml: enables qcom specific dma glue for dma transfers.
+ * @reversed_irq_handling: handle data irq before cmd irq.
+ */
+struct variant_data {
+	unsigned int		clkreg;
+	unsigned int		clkreg_enable;
+	unsigned int		clkreg_8bit_bus_enable;
+	unsigned int		clkreg_neg_edge_enable;
+	unsigned int		datalength_bits;
+	unsigned int		fifosize;
+	unsigned int		fifohalfsize;
+	unsigned int		data_cmd_enable;
+	unsigned int		datactrl_mask_ddrmode;
+	unsigned int		datactrl_mask_sdio;
+	bool			st_sdio;
+	bool			sdio;
+	bool			st_clkdiv;
+	bool			blksz_datactrl16;
+	bool			blksz_datactrl4;
+	u32			pwrreg_powerup;
+	u32			f_max;
+	bool			signal_direction;
+	bool			pwrreg_clkgate;
+	bool			busy_detect;
+	bool			pwrreg_nopower;
+	bool			explicit_mclk_control;
+	bool			qcom_fifo;
+	bool			qcom_dml;
+#ifdef CONFIG_MMC_QCOM_TUNING
+	bool			qcom_tuning;
+	int			qcom_uhs_gpio;
+	unsigned int		qcom_hw_caps;
+	int			saved_tuning_phase;
+	bool			tuning_in_progress;
+	bool			tuning_done;
+#endif /* CONFIG_MMC_QCOM_TUNING */
+	bool			reversed_irq_handling;
+};
