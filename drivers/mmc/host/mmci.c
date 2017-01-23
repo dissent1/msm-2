@@ -1625,6 +1625,12 @@ static int mmci_probe(struct amba_device *dev,
 		goto host_free;
 	}
 
+	/*
+	 * Set clock to zero. This is to avoid garbage values in MND counters
+	 * when enabling the clocks
+	 */
+	clk_set_rate(host->clk, 0);
+
 	ret = clk_prepare_enable(host->clk);
 	if (ret)
 		goto host_free;
