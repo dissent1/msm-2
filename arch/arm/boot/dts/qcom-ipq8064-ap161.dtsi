@@ -32,6 +32,7 @@
 		ethernet1 = &gmac1;
 		ethernet2 = &gmac2;
 		serial0 = &uart4;
+		serial1 = &uart2;
 	};
 
 	chosen {
@@ -114,6 +115,16 @@
 				};
 			};
 
+			hs_uart_pins: hs_uart_pins {
+				mux {
+					pins = "gpio22", "gpio23", "gpio24",
+						 "gpio25" ;
+					function = "gsbi2";
+					drive-strength = <12>;
+					bias-disable;
+				};
+			};
+
 			rgmii2_pins: rgmii2_pins {
 				mux {
 					pins = "gpio2", "gpio27", "gpio28",
@@ -141,6 +152,20 @@
 			 * RPM usage. Turning this on in kernel manifests as
 			 * i2c failure for the RPM.
 			 */
+		};
+
+		gsbi2: gsbi@12480000 {
+			qcom,mode = <GSBI_PROT_UART_W_FC>;
+			status = "ok";
+			uart2: serial@12490000 {
+
+				serial_clk = <1843200>;
+
+				pinctrl-0 = <&hs_uart_pins>;
+				pinctrl-names = "default";
+
+				status = "ok";
+			};
 		};
 
 		gsbi5: gsbi@1a200000 {
