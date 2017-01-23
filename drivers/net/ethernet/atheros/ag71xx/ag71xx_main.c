@@ -833,9 +833,13 @@ static void ag71xx_set_speed(struct ag71xx *ag)
 	if (pll_val == 0)
 		return;
 
-	if (pdata->phy_if_mode == PHY_INTERFACE_MODE_RGMII)
-		reg = QCA955X_PLL_ETH_XMII_CONTROL_REG;
-	else if (pdata->phy_if_mode == PHY_INTERFACE_MODE_SGMII)
+	if (pdata->phy_if_mode == PHY_INTERFACE_MODE_RGMII ||
+		pdata->phy_if_mode == PHY_INTERFACE_MODE_MII) {
+		if (pdata->is_qca955x)
+			reg = QCA955X_PLL_ETH_XMII_CONTROL_REG;
+		else
+			reg = AR934X_PLL_ETH_XMII_CONTROL_REG;
+	} else if (pdata->phy_if_mode == PHY_INTERFACE_MODE_SGMII)
 		reg = QCA955X_PLL_ETH_SGMII_CONTROL_REG;
 
 	base = ioremap_nocache(AR71XX_PLL_BASE, AR71XX_PLL_SIZE);
@@ -1640,7 +1644,7 @@ static int ag71xx_of_pdata_update(
 		struct platform_device *pdev,
 		struct ag71xx_platform_data *pdata)
 {
-	u32 value[5];
+	u32 value[5] = {0};
 	struct device_node *mdio;
 	struct platform_device *pdev_mdio;
 	u32 offset;
@@ -1675,6 +1679,7 @@ static int ag71xx_of_pdata_update(
 	pdata->mii_bus_dev = &pdev_mdio->dev;
 	of_node_put(mdio);
 
+	value[0] = 0;
 	if (!of_property_read_u32(pdev->dev.of_node, "phy-mode",
 			&pdata->phy_if_mode)) {
 		if (pdata->phy_if_mode == PHY_INTERFACE_MODE_RGMII)
@@ -1685,7 +1690,6 @@ static int ag71xx_of_pdata_update(
 
 		if (value[0] != 0)
 			ag71xx_of_gmac_setup(pdev, value[0]);
-
 	}
 
 	if (!of_property_read_u32_array(pdev->dev.of_node,
