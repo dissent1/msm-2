@@ -170,7 +170,7 @@
 				clk {
 					pins = "gpio42";
 					drive-strength = <16>;
-					bias-pull-down;
+					bias-disable;
 				};
 			};
 
@@ -336,7 +336,7 @@
 
 		amba {
 			/* eMMC */
-			sdcc1: sdcc@12400000 {
+			sdcc@12400000 {
 				status = "ok";
 				pinctrl-0 = <&sdcc1_pins>;
 				pinctrl-names = "default";
