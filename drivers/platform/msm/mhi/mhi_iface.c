@@ -49,18 +49,6 @@ static DEFINE_PCI_DEVICE_TABLE(mhi_pcie_device_id) = {
 		PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
 	{ MHI_PCIE_VENDOR_ID, MHI_PCIE_DEVICE_ID_9x55,
 		PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0},
-	{ 0x168c, 0x003c, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0x168c, 0x003e, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0x168c, 0x0041, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0x168c, 0x0046, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0x168c, 0xabcd, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0x168c, 0x7021, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc0, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc1, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc2, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc3, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc4, PCI_ANY_ID, PCI_ANY_ID},
-	{ 0xbeaf, 0xabc5, PCI_ANY_ID, PCI_ANY_ID},
 	{ 0, },
 };
 
