@@ -352,7 +352,6 @@
 			pinctrl-names = "active", "sleep";
 			cd-gpios = <&tlmm 22 0x1>;
 			sd-ldo-gpios = <&tlmm 33 0x1>;
-			qcom,nonremovable;
 		};
 
 		tcsr: tcsr@194b000 {
