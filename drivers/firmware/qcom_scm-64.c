@@ -358,3 +358,8 @@ int __qcom_scm_pas_mss_reset(struct device *dev, bool reset)
 
 	return ret ? : res.a1;
 }
+
+int __qcom_scm_regsave(struct device *dev, u32 svc_id, u32 cmd_id)
+{
+	return -ENOTSUPP;
+}

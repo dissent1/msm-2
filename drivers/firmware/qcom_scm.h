@@ -37,6 +37,7 @@ extern int __qcom_scm_is_call_available(struct device *dev, u32 svc_id,
 #define QCOM_SCM_CMD_HDCP		0x01
 extern int __qcom_scm_hdcp_req(struct device *dev,
 		struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp);
+extern int __qcom_scm_regsave(struct device *dev, u32 svc_id, u32 cmd_id);
 
 extern void __qcom_scm_init(void);
 

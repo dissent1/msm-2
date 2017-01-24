@@ -1,4 +1,4 @@
-/* Copyright (c) 2010,2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010,2015-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2015 Linaro Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -453,6 +453,29 @@ int __qcom_scm_hdcp_req(struct device *dev, struct qcom_scm_hdcp_req *req,
 
 	return qcom_scm_call(dev, QCOM_SCM_SVC_HDCP, QCOM_SCM_CMD_HDCP,
 		req, req_cnt * sizeof(*req), resp, sizeof(*resp));
+}
+
+int __qcom_scm_regsave(struct device *dev, u32 svc_id, u32 cmd_id)
+{
+	long ret;
+	struct {
+		unsigned addr;
+		int len;
+	} cmd_buf;
+	/* Area for context dump in secure mode */
+	void *scm_regsave;
+
+	sec_regsave = (void *)__get_free_page(GFP_KERNEL);
+	if (scm_regsave) {
+		cmd_buf.addr = virt_to_phys(scm_regsave);
+		cmd_buf.len = PAGE_SIZE;
+		ret = qcom_scm_call(dev, svc_id, cmd_id, &cmd_buf,
+				sizeof(cmd_buf), NULL, 0);
+	} else {
+		ret = -ENOMEM;
+	}
+
+	return ret;
 }
 
 void __qcom_scm_init(void)
