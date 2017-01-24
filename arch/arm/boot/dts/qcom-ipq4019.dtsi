@@ -107,6 +107,12 @@
 		};
 	};
 
+	firmware {
+		scm {
+			compatible = "qcom,scm-ipq40xx";
+		};
+	};
+
 	soc {
 		#address-cells = <1>;
 		#size-cells = <1>;
