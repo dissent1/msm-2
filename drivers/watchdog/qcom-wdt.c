@@ -65,13 +65,6 @@ struct qcom_wdt_scm_tlv_msg {
 	unsigned int len;
 };
 
-struct qcom_crashdump_tlv_info {
-	unsigned int tlv_base;
-	unsigned int tlv_size;
-};
-
-struct qcom_crashdump_tlv_info ipq40xx_tlv = { 0x87B70000u, 0x10000u };
-
 #define CFG_TLV_MSG_OFFSET 2048
 #define QCOM_WDT_SCM_TLV_TYPE_SIZE 1
 #define QCOM_WDT_SCM_TLV_LEN_SIZE 2
@@ -153,13 +146,7 @@ static struct notifier_block panic_blk = {
 static long qcom_wdt_configure_bark_dump(void *arg)
 {
 	void *scm_regsave;
-	unsigned int tlv_base;
-	unsigned int tlv_size;
-	struct resource *res;
-	void *tlv_ptr;
 
-	struct qcom_crashdump_tlv_info *tlv_info =
-					(struct qcom_crashdump_tlv_info *)arg;
 	long ret = -ENOMEM;
 
 	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
@@ -181,38 +168,8 @@ static long qcom_wdt_configure_bark_dump(void *arg)
 
 	ret = qcom_wdt_scm_fill_log_dump_tlv(&tlv_msg);
 
-	/* if failed, we still return 0 because it should not
-	 * affect the boot flow. The return value 0 does not
-	 * necessarily indicate success in this function.
-	 */
-	if (ret) {
+	if (ret)
 		pr_err("log dump initialization failed\n");
-		return 0;
-	}
-
-	if (arg) {
-		tlv_base = tlv_info->tlv_base;
-		tlv_size = tlv_info->tlv_size;
-
-		res = request_mem_region(tlv_base, tlv_size, "tlv_dump");
-
-		if (!res) {
-			pr_err("requesting memory region failed\n");
-			return 0;
-		}
-
-		tlv_ptr = ioremap(tlv_base, tlv_size);
-
-		if (!tlv_ptr) {
-			pr_err("mapping physical mem failed\n");
-			release_mem_region(tlv_base, tlv_size);
-			return 0;
-		}
-
-		memcpy_toio(tlv_ptr, tlv_msg.msg_buffer, tlv_msg.len);
-		iounmap(tlv_ptr);
-		release_mem_region(tlv_base, tlv_size);
-	}
 
 	return 0;
 }
