@@ -168,10 +168,12 @@ static long qcom_wdt_configure_bark_dump(void *arg)
 
 	ret = qcom_wdt_scm_fill_log_dump_tlv(&tlv_msg);
 
-	if (ret)
-		pr_err("log dump initialization failed\n");
+	if (ret) {
+		pr_err("log dump initialization failed");
+		return ret;
+	}
 
-	return 0;
+	return ret;
 }
 
 static int qcom_wdt_start_secure(struct watchdog_device *wdd)
