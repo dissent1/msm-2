@@ -65,10 +65,17 @@ struct qcom_wdt_scm_tlv_msg {
 	unsigned int len;
 };
 
-#define CFG_TLV_MSG_OFFSET	2048
-#define QCOM_WDT_SCM_TLV_TYPE_SIZE	1
-#define QCOM_WDT_SCM_TLV_LEN_SIZE	2
-#define QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE	(QCOM_WDT_SCM_TLV_TYPE_SIZE +\
+struct qcom_crashdump_tlv_info {
+	unsigned int tlv_base;
+	unsigned int tlv_size;
+};
+
+struct qcom_crashdump_tlv_info ipq40xx_tlv = { 0x87B70000u, 0x10000u };
+
+#define CFG_TLV_MSG_OFFSET 2048
+#define QCOM_WDT_SCM_TLV_TYPE_SIZE 1
+#define QCOM_WDT_SCM_TLV_LEN_SIZE 2
+#define QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE (QCOM_WDT_SCM_TLV_TYPE_SIZE +\
 						QCOM_WDT_SCM_TLV_LEN_SIZE)
 enum {
 	QCOM_WDT_LOG_DUMP_TYPE_INVALID,
@@ -146,12 +153,13 @@ static struct notifier_block panic_blk = {
 static long qcom_wdt_configure_bark_dump(void *arg)
 {
 	void *scm_regsave;
-	struct qcom_wdt_scm_tlv_msg tlv_msg;
+	unsigned int tlv_base;
+	unsigned int tlv_size;
+	struct resource *res;
 	void *tlv_ptr;
-	resource_size_t tlv_base;
-	resource_size_t tlv_size;
 
-	struct resource *res = (struct resource *)arg;
+	struct qcom_crashdump_tlv_info *tlv_info =
+					(struct qcom_crashdump_tlv_info *)arg;
 	long ret = -ENOMEM;
 
 	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
@@ -182,9 +190,10 @@ static long qcom_wdt_configure_bark_dump(void *arg)
 		return 0;
 	}
 
-	if (res) {
-		tlv_base = res->start;
-		tlv_size = resource_size(res);
+	if (arg) {
+		tlv_base = tlv_info->tlv_base;
+		tlv_size = tlv_info->tlv_size;
+
 		res = request_mem_region(tlv_base, tlv_size, "tlv_dump");
 
 		if (!res) {
@@ -374,7 +383,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	if (!wdt)
 		return -ENOMEM;
 	irq = platform_get_irq_byname(pdev, "bark_irq");
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "kpss_wdt");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	/* We use CPU0's DGT for the watchdog */
 	if (of_property_read_u32(np, "cpu-offset", &percpu_offset))
@@ -386,8 +395,6 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	wdt->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(wdt->base))
 		return PTR_ERR(wdt->base);
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tlv");
 
 	id = of_match_device(qcom_wdt_of_table, &pdev->dev);
 	if (!id)
@@ -427,7 +434,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 		goto err_clk_unprepare;
 	}
 
-	ret = work_on_cpu(0, qcom_wdt_configure_bark_dump, res);
+	ret = work_on_cpu(0, qcom_wdt_configure_bark_dump, NULL);
 	if (ret)
 		wdt->wdd.ops = &qcom_wdt_ops_nonsecure;
 	else
