@@ -106,6 +106,51 @@
 				};
 			};
 
+			sdcc1_pins: sdcc1_pinmux {
+				mux {
+					pins = "gpio38", "gpio39", "gpio40",
+					       "gpio41", "gpio42", "gpio43",
+					       "gpio44", "gpio45", "gpio46",
+					       "gpio47";
+					function = "sdc1";
+				};
+				cmd {
+					pins = "gpio45";
+					drive-strength = <10>;
+					bias-pull-up;
+				};
+				data {
+					pins = "gpio38", "gpio39", "gpio40",
+					       "gpio41", "gpio43", "gpio44",
+					       "gpio46", "gpio47";
+					drive-strength = <10>;
+					bias-pull-up;
+				};
+				clk {
+					pins = "gpio42";
+					drive-strength = <16>;
+					bias-pull-down;
+				};
+				card_det {
+					pins = "gpio51";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+
+			sdcc3_pins: sdcc3_pinmux {
+				mux {
+					pins = "gpio52";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+				card_det {
+					pins = "gpio61";
+					drive-strength = <16>;
+					bias-pull-none;
+				};
+			};
+
 			buttons_pins: buttons_pinmux {
 				mux {
 					pins = "gpio26";
@@ -237,6 +282,18 @@
 				linux,input-type = <1>;
 				debounce-interval = <60>;
 			};
+		};
+
+		vcc_sdc3: regulator@0 {
+			compatible = "regulator-gpio";
+			regulator-name = "SDC3 GPIO Regulator";
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <3000000>;
+
+			gpios = <&qcom_pinmux 61 0>;
+			states = <3000000 0
+				1800000 1>;
+			enable-active-high;
 		};
 
 		mdio0: mdio {
@@ -471,6 +528,26 @@
 			resets = <&gcc CRYPTO_ENG4_RESET>;
 			reset-names = "rst_eng";
 			qcom,ee = <0>;
+		};
+	};
+
+	amba {
+		/* eMMC */
+		sdcc@12400000 {
+			status = "disabled";
+			pinctrl-0 = <&sdcc1_pins>;
+			pinctrl-names = "default";
+		};
+
+		/* External micro SD card */
+		sdcc@12180000 {
+			status = "ok";
+			pinctrl-0 = <&sdcc3_pins>;
+			pinctrl-names = "default";
+			vmmc-supply = <&vcc_sdc3>;
+			cd-gpios  = <&qcom_pinmux 52 0>;
+			cd-inverted;
+			qcom-uhs-gpio = <61>;
 		};
 	};
 };
