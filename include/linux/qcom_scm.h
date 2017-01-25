@@ -51,4 +51,8 @@ extern int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
 
 extern s32 qcom_scm_pinmux_read(u32 arg1);
 extern s32 qcom_scm_pinmux_write(u32 arg1, u32 arg2);
+
+extern int qcom_scm_cache_dump(u32 cpu);
+extern int qcom_scm_get_cache_dump_size(u32 cmd_id, void *cmd_buf, u32 size);
+extern int qcom_scm_send_cache_dump_addr(u32 cmd_id, void *cmd_buf, u32 size);
 #endif

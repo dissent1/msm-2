@@ -19,11 +19,10 @@
 #include <linux/platform_device.h>
 #include <linux/notifier.h>
 #include <linux/dma-mapping.h>
-#include <soc/qcom/scm.h>
 #include <linux/slab.h>
+#include <linux/qcom_scm.h>
 
 #define SCM_CMD_L1C_BUFFER_SET		0x4
-#define SCM_CMD_CACHE_BUFFER_DUMP	0x5
 #define SCM_CMD_L2C_BUFFER_SET		0x7
 #define SCM_CMD_QUERY_L1C_SIZE		0x6
 #define SCM_CMD_QUERY_L2C_SIZE		0x8
@@ -37,8 +36,9 @@ static int qcom_cache_dump_panic(struct notifier_block *this,
 	 * Clear the bootloader magic so the dumps aren't overwritten
 	 */
 	writel_relaxed(0, l2_dump_offset);
-	scm_call_atomic1(SCM_SVC_UTIL, SCM_CMD_CACHE_BUFFER_DUMP, 2);
-	scm_call_atomic1(SCM_SVC_UTIL, SCM_CMD_CACHE_BUFFER_DUMP, 1);
+	qcom_scm_cache_dump(2);
+	qcom_scm_cache_dump(1);
+
 #endif
 	return 0;
 }
@@ -87,8 +87,8 @@ static int qcom_cache_dump_probe(struct platform_device *pdev)
 	/*
 	 * Get L1 Dump Size from TZ
 	 */
-	ret = scm_call(SCM_SVC_UTIL, SCM_CMD_QUERY_L1C_SIZE,
-			NULL, 0, cache_size_p, sizeof(*cache_size_p));
+	ret = qcom_scm_get_cache_dump_size(SCM_CMD_QUERY_L1C_SIZE, cache_size_p,
+						sizeof(*cache_size_p));
 	if (ret == 0) {
 		/*
 		 * This should be page aligned since L2 dump address
@@ -100,8 +100,9 @@ static int qcom_cache_dump_probe(struct platform_device *pdev)
 	/*
 	 * Get L2 Dump Size from TZ
 	 */
-	ret = scm_call(SCM_SVC_UTIL, SCM_CMD_QUERY_L2C_SIZE,
-			NULL, 0, cache_size_p, sizeof(*cache_size_p));
+	ret = qcom_scm_get_cache_dump_size(SCM_CMD_QUERY_L2C_SIZE, cache_size_p,
+						sizeof(*cache_size_p));
+
 	if (ret == 0)
 		l2_size = *cache_size_p;
 
@@ -141,8 +142,8 @@ of_read:
 	if (l1_size) {
 		cache_data.buf = qcom_cache_dump_addr;
 		cache_data.size = l1_size;
-		ret = scm_call(SCM_SVC_UTIL, SCM_CMD_L1C_BUFFER_SET,
-			&cache_data, sizeof(cache_data), NULL, 0);
+		ret = qcom_scm_send_cache_dump_addr(SCM_CMD_L1C_BUFFER_SET,
+					&cache_data, sizeof(cache_data));
 
 		if (ret)
 			pr_err("%s: could not register L1 buffer ret = %d.\n",
@@ -156,8 +157,8 @@ of_read:
 	if (l2_size) {
 		cache_data.buf = qcom_cache_dump_addr + l1_size;
 		cache_data.size = l2_size;
-		ret = scm_call(SCM_SVC_UTIL, SCM_CMD_L2C_BUFFER_SET,
-			&cache_data, sizeof(cache_data), NULL, 0);
+		ret = qcom_scm_send_cache_dump_addr(SCM_CMD_L2C_BUFFER_SET,
+					&cache_data, sizeof(cache_data));
 
 		if (ret)
 			pr_err("%s: could not register L2 buffer ret = %d.\n",
