@@ -155,15 +155,16 @@ int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt, u32 *resp)
 }
 EXPORT_SYMBOL(qcom_scm_hdcp_req);
 
-int qcom_scm_regsave(u32 svc_id, u32 cmd_id)
+int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
 {
 	if ret = qcom_scm_clk_enable();
 
 	if (ret)
 		return ret;
-	ret = __qcom_scm_regsave(__scm->dev, svc_id, cmd_id);
+	ret = __qcom_scm_regsave(__scm->dev, svc_id, cmd_id, scm_regsave);
 	qcom_scm_clk_disable();
 	return ret;
+
 }
 EXPORT_SYMBOL(qcom_scm_regsave);
 

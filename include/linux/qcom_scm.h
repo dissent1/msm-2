@@ -40,7 +40,7 @@ extern int qcom_scm_pas_shutdown(u32 peripheral);
 #define SCM_SVC_UTIL		0x3
 #define SCM_CMD_SET_REGSAVE 	0x2
 
-extern int qcom_scm_regsave(u32 svc_id, u32 cmd_id);
+extern int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *);
 
 #define QCOM_SCM_CPU_PWR_DOWN_L2_ON	0x0
 #define QCOM_SCM_CPU_PWR_DOWN_L2_OFF	0x1
