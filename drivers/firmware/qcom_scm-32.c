@@ -581,3 +581,40 @@ int __qcom_scm_pas_mss_reset(struct device *dev, bool reset)
 
 	return ret ? : le32_to_cpu(out);
 }
+
+int __qcom_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf)
+{
+	long ret;
+
+	if (cmd_buf)
+		ret = qcom_scm_call(dev, svc_id, cmd_id, &cmd_buf,
+				sizeof(cmd_buf), NULL, 0);
+	else
+		ret = qcom_scm_call(dev, svc_id, cmd_id, NULL, 0, NULL, 0);
+
+	return ret;
+}
+
+int __qcom_scm_sdi(struct device *dev, u32 svc_id, u32 cmd_id)
+{
+	long ret;
+	unsigned int clear_info[] = {
+		1 /* Disable wdog debug */, 0 /* SDI enable*/, };
+
+	ret = qcom_scm_call(dev, svc_id, cmd_id, &clear_info,
+				sizeof(clear_info), NULL, 0);
+
+	return ret;
+}
+
+int __qcom_scm_tzsched(struct device *dev,
+			u32 svc_id, u32 cmd_id, const void *req,
+			size_t req_size, void *resp, size_t resp_size)
+{
+	int ret;
+
+	ret = qcom_scm_call(dev, svc_id, cmd_id, req,
+				req_size, resp, resp_size);
+
+	return ret;
+}

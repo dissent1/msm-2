@@ -364,3 +364,20 @@ int __qcom_scm_regsave(struct device *dev, u32 svc_id, u32 cmd_id,
 {
 	return -ENOTSUPP;
 }
+
+int __qcom_scm_dload(struct device *dev, u32 svc_id, u32 cmd_id, void *cmd_buf)
+{
+	return -ENOTSUPP;
+}
+
+int __qcom_scm_sdi(struct device *dev, u32 svc_id, u32 cmd_id)
+{
+	return -ENOTSUPP;
+}
+
+int __qcom_scm_tzsched(struct device *dev, u32 svc_id, u32 cmd_id,
+			const void *req, size_t req_size, void *resp,
+			size_t resp_size)
+{
+	return -ENOTSUPP;
+}

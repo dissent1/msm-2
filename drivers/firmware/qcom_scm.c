@@ -429,3 +429,52 @@ static int __init qcom_scm_init(void)
 	return platform_driver_register(&qcom_scm_driver);
 }
 subsys_initcall(qcom_scm_init);
+
+int qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf)
+{
+	int ret;
+
+	ret = qcom_scm_clk_enable();
+	if (ret)
+		return ret;
+
+	ret = __qcom_scm_dload(__scm->dev, svc_id, cmd_id, cmd_buf);
+
+	qcom_scm_clk_disable();
+
+	return ret;
+
+}
+EXPORT_SYMBOL(qcom_scm_dload);
+
+int qcom_scm_sdi(u32 svc_id, u32 cmd_id)
+{
+	int ret;
+
+	ret = qcom_scm_clk_enable();
+	if (ret)
+		return ret;
+	ret = __qcom_scm_sdi(__scm->dev, svc_id, cmd_id);
+
+	qcom_scm_clk_disable();
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_sdi);
+
+int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
+			size_t req_size, void *resp, size_t resp_size)
+{	int ret;
+
+	ret = qcom_scm_clk_enable();
+	if (ret)
+		return ret;
+
+	ret = __qcom_scm_tzsched(__scm->dev, svc_id, cmdid, req, req_size,
+				resp, resp_size);
+
+	qcom_scm_clk_disable();
+
+	return ret;
+}
+EXPORT_SYMBOL(qcom_scm_tzsched);
