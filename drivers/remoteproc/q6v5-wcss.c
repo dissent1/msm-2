@@ -26,8 +26,13 @@
 #include "remoteproc_internal.h"
 #include <linux/soc/qcom/smem.h>
 #include <linux/soc/qcom/smem_state.h>
+#include <linux/qcom_scm.h>
+#include <linux/elf.h>
 
 #define WCSS_CRASH_REASON_SMEM 421
+#define WCNSS_PAS_ID		6
+#define QCOM_MDT_TYPE_MASK      (7 << 24)
+#define QCOM_MDT_TYPE_HASH      (2 << 24)
 
 struct q6v5_rtable {
 	struct resource_table rtable;
@@ -54,6 +59,7 @@ struct q6v5_rproc_pdata {
 	unsigned shutdown_bit;
 	bool running;
 	int emulation;
+	int secure;
 };
 
 static struct q6v5_rproc_pdata *q6v5_rproc_pdata;
@@ -94,7 +100,13 @@ static int q6_rproc_stop(struct rproc *rproc)
 
 	qcom_smem_state_update_bits(pdata->state, BIT(pdata->stop_bit), 0);
 
-	return 0;
+	if (pdata->secure) {
+		ret = qcom_scm_pas_shutdown(WCNSS_PAS_ID);
+		if (ret)
+			dev_err(dev, "failted to shutdown %d\n", ret);
+	}
+
+	return ret;
 }
 
 static int q6_rproc_start(struct rproc *rproc)
@@ -106,6 +118,15 @@ static int q6_rproc_start(struct rproc *rproc)
 	unsigned long val = 0;
 	unsigned int nretry = 0;
 	int ret = 0;
+
+	if (pdata->secure) {
+		ret = qcom_scm_pas_auth_and_reset(WCNSS_PAS_ID);
+		if (ret) {
+			dev_err(dev, "q6-wcss reset failed\n");
+			return ret;
+		}
+		goto skip_reset;
+	}
 
 #define QDSP6SS_RST_EVB 0x10
 #define QDSP6SS_RESET 0x14
@@ -172,10 +193,13 @@ static int q6_rproc_start(struct rproc *rproc)
 	/* Enable QDSP6SS Sleep clock */
 	writel(0x1, pdata->q6_base + QDSP6SS_SLEEP_CBCR);
 
+skip_reset:
 	ret = wait_for_completion_timeout(&pdata->start_done,
 					msecs_to_jiffies(10000));
 	if (ret == 0) {
 		pr_err("Handover message not received\n");
+		if (pdata->secure)
+			qcom_scm_pas_shutdown(WCNSS_PAS_ID);
 		return -ETIMEDOUT;
 	}
 
@@ -328,6 +352,96 @@ static struct notifier_block panic_nb = {
 	.notifier_call  = wcss_panic_handler,
 };
 
+static int q6v5_load(struct rproc *rproc, const struct firmware *fw)
+{
+	int ret = 0;
+	const char *name = rproc->firmware;
+	size_t name_len;
+	char *segment_name;
+	struct device *dev_rproc = rproc->dev.parent;
+	struct elf32_hdr *ehdr;
+	int i = 0;
+	const u8 *elf_data = fw->data;
+	struct elf32_phdr *phdr;
+	struct platform_device *pdev = to_platform_device(dev_rproc);
+	struct q6v5_rproc_pdata *pdata = platform_get_drvdata(pdev);
+
+	name_len = strlen(name);
+	if (name_len <= 4) {
+		dev_err(dev_rproc, "Firmware name should be >4bytes (*.mdt)\n");
+		return -EINVAL;
+	}
+
+	segment_name = kstrdup(name, GFP_KERNEL);
+	if (!segment_name)
+		return -ENOMEM;
+
+	if (!fw) {
+		dev_err(dev_rproc, "failed to load %s\n", name);
+		return -EINVAL;
+	}
+
+	ehdr = (struct elf32_hdr *)fw->data;
+	phdr = (struct elf32_phdr *)(elf_data + ehdr->e_phoff);
+
+	if (pdata->secure) {
+		ret = qcom_scm_pas_init_image(WCNSS_PAS_ID, fw->data, fw->size);
+		if (ret) {
+			dev_err(dev_rproc, "image authentication failed\n");
+			return ret;
+		}
+	}
+	pr_info("Sanity check passed for the image\n");
+
+	/* go through the available ELF segments and load it */
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		u32 pa = phdr->p_paddr;
+		u32 memsz = phdr->p_memsz;
+		u32 filesz = phdr->p_filesz;
+		void *ptr;
+
+		if ((phdr->p_type != PT_LOAD) ||
+				((phdr->p_flags & QCOM_MDT_TYPE_MASK)
+				 == QCOM_MDT_TYPE_HASH) || (!phdr->p_memsz))
+			continue;
+
+		/* grab the kernel address for this device address */
+		ptr = rproc_da_to_va(rproc, pa, memsz);
+		if (!ptr) {
+			dev_err(dev_rproc, "bad phdr pa 0x%x mem 0x%x\n", pa,
+					memsz);
+			ret = -EINVAL;
+			return ret;
+		}
+
+		/* put the segment where the remote processor expects it */
+		if (phdr->p_filesz) {
+			/* The firmware file has <name>.mdt as the ELF header +
+			 * hash segment, followed by <name>.b00, <name>.b01, etc
+			 * for every ELF segment of the firmware file. The
+			 * rproc loads the first <name>.mdt file, and for the
+			 * ELF segments that we need to load, we make the
+			 * filename as <name>.b"segment_number"
+			 */
+			sprintf(segment_name + name_len - 3,  "b%02d", i);
+			ret = request_firmware(&fw, segment_name, dev_rproc);
+			if (ret) {
+				dev_err(dev_rproc, "can't to load %s\n",
+						segment_name);
+				break;
+			}
+			memcpy(ptr, fw->data, fw->size);
+			release_firmware(fw);
+		}
+
+		/* for .bss and sections that needs to be memset to zero */
+		if (memsz > filesz)
+			memset(ptr + filesz, 0, memsz - filesz);
+
+	}
+	kfree(segment_name);
+	return ret;
+}
 
 static int q6_rproc_probe(struct platform_device *pdev)
 {
@@ -360,11 +474,14 @@ static int q6_rproc_probe(struct platform_device *pdev)
 	q6v5_rproc_pdata->rproc = rproc;
 	q6v5_rproc_pdata->emulation = of_property_read_bool(pdev->dev.of_node,
 					"qca,emulation");
+	q6v5_rproc_pdata->secure = of_property_read_bool(pdev->dev.of_node,
+					"qca,secure");
 	rproc->has_iommu = false;
 
 	q6_fw_ops = *(rproc->fw_ops);
 	q6_fw_ops.find_rsc_table = q6v5_find_rsc_table;
 	q6_fw_ops.find_loaded_rsc_table = q6v5_find_loaded_rsc_table;
+	q6_fw_ops.load = q6v5_load;
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (unlikely(!resource))
