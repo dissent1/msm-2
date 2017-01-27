@@ -179,6 +179,14 @@ config PWM_IMX
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-imx.
 
+config PWM_IPQ4019
+	tristate "IPQ4019 PWM support"
+	depends on ARCH_QCOM
+	help
+	 Generic PWM framework driver for IPQ4019 PWM block which supports
+	 4 pwm channels. Each of the these channels can be configured
+	 independent of each other.
+
 config PWM_JZ4740
 	tristate "Ingenic JZ4740 PWM support"
 	depends on MACH_JZ4740

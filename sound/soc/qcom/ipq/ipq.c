@@ -150,8 +150,12 @@ static int ipq_audio_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-	if (ret)
+	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card() failed:%d\n", ret);
+		return ret;
+	}
+
+	ipq_audio_adss_init();
 
 	pinctrl_select_state(pins->p, pin_state);
 

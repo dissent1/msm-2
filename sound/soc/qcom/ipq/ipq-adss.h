@@ -76,6 +76,11 @@
 #define GLB_TDM_CTRL_TX_DELAY			BIT(25)
 #define GLB_TDM_CTRL_RX_DELAY			BIT(26)
 
+#define ADSS_GLB_PWM0_CTRL_REG		0x20
+#define ADSS_GLB_PWM1_CTRL_REG		0x24
+#define ADSS_GLB_PWM2_CTRL_REG		0x28
+#define ADSS_GLB_PWM3_CTRL_REG		0x2C
+
 #define ADSS_GLB_AUDIO_MODE_REG		0x30
 #define GLB_AUDIO_MODE_RECV_MASK	BIT(2)
 #define GLB_AUDIO_MODE_XMIT_MASK	BIT(0)
@@ -466,6 +471,11 @@ extern void ipq_glb_pcm_rst(uint32_t enable);
 extern void ipq_pcm_clk_cfg(uint32_t rate);
 extern void ipq_pcm_clk_enable(void);
 extern void ipq_glb_mbox_reset(void);
+
+extern void ipq_audio_adss_init(void);
+/* APIs to read/write ADSS registers */
+extern void ipq_audio_adss_writel(uint32_t val, uint32_t offset);
+extern uint32_t ipq_audio_adss_readl(uint32_t offset);
 
 /* Stereo APIs */
 extern void ipq_stereo_config_reset(uint32_t reset, uint32_t stereo_offset);
