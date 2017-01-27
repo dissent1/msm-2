@@ -53,15 +53,6 @@
 				     &leds_pins>;
 			pinctrl-names = "default";
 
-			i2c4_pins: i2c4_pinmux {
-				mux {
-					pins = "gpio12", "gpio13";
-					function = "gsbi4";
-					drive-strength = <12>;
-					bias-disable;
-				};
-			};
-
 			pcie_2g_pwrdwn: pcie_2g_pwrdwn {
 				mux {
 					pins = "gpio9";
@@ -168,6 +159,12 @@
 			serial@16340000 {
 				status = "ok";
 			};
+			/*
+			 * The i2c device on gsbi4 should not be enabled.
+			 * On ipq806x designs gsbi4 i2c is meant for exclusive
+			 * RPM usage. Turning this on in kernel manifests as
+			 * i2c failure for the RPM.
+			 */
 		};
 
 		gsbi5: gsbi@1a200000 {

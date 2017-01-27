@@ -54,12 +54,6 @@
 
 	soc {
 		pinmux@800000 {
-			i2c4_pins: i2c4_pinmux {
-				pins = "gpio12", "gpio13";
-				function = "gsbi4";
-				bias-disable;
-			};
-
 			nss_spi_pins: nss_spi_pins {
 				mux {
 					pins = "gpio14", "gpio15", "gpio16",

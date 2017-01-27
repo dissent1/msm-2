@@ -94,12 +94,6 @@
 	soc {
 
 		pinmux@800000 {
-			i2c4_pins: i2c4_pinmux {
-				pins = "gpio12", "gpio13";
-				function = "gsbi4";
-				bias-disable;
-			};
-
 			nss_spi_pins: nss_spi_pins {
 				mux {
 					pins = "gpio14", "gpio15", "gpio16", "gpio17",
@@ -213,15 +207,12 @@
 			serial@16340000 {
 				status = "ok";
 			};
-
-			i2c4: i2c@16380000 {
-				status = "disabled";
-
-				clock-frequency = <200000>;
-
-				pinctrl-0 = <&i2c4_pins>;
-				pinctrl-names = "default";
-			};
+			/*
+			 * The i2c device on gsbi4 should not be enabled.
+			 * On ipq806x designs gsbi4 i2c is meant for exclusive
+			 * RPM usage. Turning this on in kernel manifests as
+			 * i2c failure for the RPM.
+			 */
 		};
 
 		gsbi5: gsbi@1a200000 {

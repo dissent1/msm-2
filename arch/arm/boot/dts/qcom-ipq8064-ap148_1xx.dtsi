@@ -50,15 +50,6 @@
 			pinctrl-0 = <&leds_pins>;
 			pinctrl-names = "default";
 
-			i2c4_pins: i2c4_pinmux {
-				mux {
-					pins = "gpio12", "gpio13";
-					function = "gsbi4";
-					drive-strength = <12>;
-					bias-disable;
-				};
-			};
-
 			nss_spi_pins: nss_spi_pins {
 				mux {
 					pins = "gpio14", "gpio15", "gpio16", "gpio17",
