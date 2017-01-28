@@ -14,6 +14,7 @@
 #define _H_MHI_SYS_
 
 #include <linux/mutex.h>
+#include <linux/errno.h>
 #include <linux/ipc_logging.h>
 #include <linux/sysfs.h>
 #include <linux/delay.h>
