@@ -939,6 +939,11 @@ static int clk_cdiv_rcg2_configure(struct clk_cdiv_rcg2 *rcg,
 				cfg = i;
 		}
 
+		if (cfg == 0) {
+			pr_err("%s: invalid divider\n", __func__);
+			return -EINVAL;
+		}
+
 		if (f->pre_div/cfg > 16)
 			return -EINVAL;
 		mask = (rcg->cdiv.mask)<<rcg->cdiv.shift;
