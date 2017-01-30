@@ -160,10 +160,10 @@ static void qca953x_ip2_irq_dispatch(struct irq_desc *desc)
 	status = ath79_reset_rr(QCA953X_RESET_REG_PCIE_WMAC_INT_STATUS);
 
 	if (status & QCA953X_PCIE_WMAC_INT_PCIE_ALL) {
-		ath79_ddr_wb_flush(QCA953X_DDR_REG_FLUSH_PCIE);
+		ath79_ddr_wb_flush(3);
 		generic_handle_irq(ATH79_IP2_IRQ(0));
 	} else if (status & QCA953X_PCIE_WMAC_INT_WMAC_ALL) {
-		ath79_ddr_wb_flush(QCA953X_DDR_REG_FLUSH_WMAC);
+		ath79_ddr_wb_flush(4);
 		generic_handle_irq(ATH79_IP2_IRQ(1));
 	} else {
 		spurious_interrupt();

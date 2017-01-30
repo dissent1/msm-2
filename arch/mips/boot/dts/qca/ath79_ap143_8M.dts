@@ -46,7 +46,7 @@
 
 	cpuintc: interrupt-controller {
 		qca,ddr-wb-channel-interrupts = <3>;
-		qca,ddr-wb-channels = <&ddr_ctrl 0xa4>;
+		qca,ddr-wb-channels = <&ddr_ctrl 0x2>;
 	};
 
 	ahb {
