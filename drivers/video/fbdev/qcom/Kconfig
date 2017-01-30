@@ -5,6 +5,7 @@ config FB_QCOM_QPIC
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
 	---help---
 	  Support for QCA QPIC framebuffer.
 	  QPIC is a wrapper module provides support for LCD controller
