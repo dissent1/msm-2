@@ -15,6 +15,8 @@
  */
 #include <dt-bindings/reset/qcom,gcc-ipq807x.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/sound/ipq8074-audio.h>
+#include <dt-bindings/clock/qcom,gcc-ipq807x.h>
 
 / {
 	memory {
@@ -990,11 +992,141 @@
 			dma-names = "rx", "tx";
 		};
 
+		i2c_1: i2c@78b7000 {
+			compatible = "qcom,i2c-qup-v2.2.1";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x78b7000 0x600>;
+			interrupts = <GIC_SPI 97 0x4>;
+			clocks = <&gcc GCC_I2C_CLK>,
+				<&gcc GCC_I2C_CLK>;
+			clock-names = "iface", "core";
+			clock-frequency  = <100000>;
+			dmas = <&blsp_bam 17>, <&blsp_bam 16>;
+			dma-names = "rx", "tx";
+
+			qca_codec: qca_codec@12 {
+				compatible = "qca,ipq8074-codec";
+				reg = <0x12>;
+				status = "ok";
+			};
+		};
+
 		qcom_rng: qrng@e1000 {
 			compatible = "qcom,prng";
 			reg = <0xe1000 0x1000>;
 			clocks = <&gcc GCC_DUMMY_CLK>;
 			clock-names = "core";
+		};
+
+		audio: audio@7700000 {
+			compatible = "qca,ipq8074-audio-adss";
+			reg = <0x7700000 0x34>;
+			resets = <&gcc AUDIO_BLK_ARES>;
+			reset-names = "blk_rst";
+			status = "disabled";
+		};
+
+		mbox0: mbox@7708000 {
+			dma-index = <0>;
+			compatible = "qca,ipq8074-mbox";
+			reg = <0x7708000 0x1000>;
+			interrupts = <0 24 0>;
+			tx-channel = <MBOX0_TX_ID>;
+			rx-channel = <MBOX0_RX_ID>;
+			status = "disabled";
+		};
+
+		mbox3: mbox@770e000 {
+			dma-index = <3>;
+			compatible = "qca,ipq8074-mbox";
+			reg = <0x770E000 0x1000>;
+			interrupts = <0 25 0>;
+			tx-channel = <MBOX3_TX_ID>;
+			rx-channel = <MBOX3_RX_ID>;
+			status = "disabled";
+		};
+
+		stereo0: stereo@7709000 {
+			stereo-index = <STEREO0_ID>;
+			compatible = "qca,ipq8074-stereo";
+			reg = <0x7709000 0x1000>;
+			status = "disabled";
+		};
+
+		stereo3: stereo@770f000 {
+			stereo-index = <STEREO3_ID>;
+			compatible = "qca,ipq8074-stereo";
+			reg = <0x770F000 0x1000>;
+			status = "disabled";
+		};
+
+		i2splatform: qca-pcm-i2s@7709000 {
+			compatible = "qca,ipq8074-pcm-i2s";
+			reg = <0x7709000 0x1000>;
+			status = "disabled";
+		};
+
+		i2s: ipq8074-pcm-i2s@0 {
+			compatible = "qca,ipq8074-i2s";
+			dma-tx-channel = <MBOX0_TX_ID>;
+			stereo-tx-port = <STEREO0_ID>;
+			dma-rx-channel = <MBOX3_RX_ID>;
+			stereo-rx-port = <STEREO3_ID>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>;
+			clock-names = "audio_tx_bclk",
+				"audio_tx_mclk",
+				"audio_rx_bclk",
+				"audio_rx_mclk";
+			status = "disabled";
+		};
+
+		tdmplatform: qca-pcm-tdm@7709000 {
+			compatible = "qca,ipq8074-pcm-tdm";
+			reg = <0x7709000 0x1000>;
+			status = "disabled";
+		};
+
+		tdm: tdm@0 {
+			compatible = "qca,ipq8074-tdm";
+			dma-tx-channel = <MBOX0_TX_ID>;
+			dma-rx-channel = <MBOX3_RX_ID>;
+			stereo-tx-port = <STEREO0_ID>;
+			stereo-rx-port = <STEREO3_ID>;
+			clocks = <&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>,
+				<&gcc GCC_DUMMY_CLK>;
+			clock-names = "audio_tx_bclk",
+				"audio_tx_mclk",
+				"audio_rx_bclk",
+				"audio_rx_mclk";
+			status = "disabled";
+		};
+
+		sound: sound@0 {
+			compatible = "qca,ipq8074-audio";
+			status = "disabled";
+		};
+
+		pcm: pcm@7704000 {
+			compatible = "qca,ipq8074-pcm";
+			reg = <0x7704000 0x2000>;
+			dma-tx-channel = <MBOX3_TX_ID>;
+			dma-rx-channel = <MBOX0_RX_ID>;
+			stereo-tx-port = <STEREO3_ID>;
+			stereo-rx-port = <STEREO0_ID>;
+			clocks = <&gcc GCC_DUMMY_CLK>;
+			clock-names = "audio_pcm_clk";
+			status = "disabled";
+		};
+
+		pcm_lb: pcm_lb@0 {
+			compatible = "qca,ipq8074-pcm-lb";
+			status = "disabled";
 		};
 	};
 };
