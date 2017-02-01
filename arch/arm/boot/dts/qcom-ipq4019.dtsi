@@ -830,5 +830,21 @@
 			mhi-event-cfg-1 = <0x80 0x1 0x1 0 0x31>;
 			status = "disabled";
 		};
+
+		qcom,ipc_router {
+			compatible = "qcom,ipc_router";
+			qcom,node-id = <1>;
+		};
+
+		qcom,ipc_router_external_wlan_xprt {
+			compatible = "qcom,ipc_router_mhi_xprt";
+			qcom,mhi = <&mhi_wlan>;
+			qcom,out-chan-id = <16>;
+			qcom,in-chan-id = <17>;
+			qcom,xprt-remote = "external-wlan";
+			qcom,xprt-linkid = <1>;
+			qcom,xprt-version = <3>;
+		};
+
 	};
 };
