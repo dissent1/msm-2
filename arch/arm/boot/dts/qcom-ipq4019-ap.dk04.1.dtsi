@@ -48,6 +48,10 @@
 		};
 	};
 
+	chosen {
+		bootargs-append = " clk_ignore_unused";
+	};
+
 	aliases {
 		sdhc1 = &sdhc_1;
 	};
