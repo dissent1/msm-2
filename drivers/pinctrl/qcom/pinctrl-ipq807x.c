@@ -32,7 +32,7 @@
 		.pins = gpio##id##_pins,		\
 		.npins = (unsigned)ARRAY_SIZE(gpio##id##_pins),	\
 		.funcs = (int[]){			\
-			msm_mux_NA, /* gpio mode */	\
+			msm_mux_gpio, /* gpio mode */	\
 			msm_mux_##f1,			\
 			msm_mux_##f2,			\
 			msm_mux_##f3,			\
@@ -217,6 +217,7 @@ DECLARE_MSM_GPIO_PINS(68);
 DECLARE_MSM_GPIO_PINS(69);
 
 enum ipq807x_functions {
+	msm_mux_gpio,
 	msm_mux_qpic_pad,
 	msm_mux_,
 	msm_mux_blsp5_i2c,
@@ -779,7 +780,21 @@ static const char * const mdio_groups[] = {
 	"gpio69",
 };
 
+static const char * const gpio_groups[] = {
+	"gpio0", "gpio1", "gpio2", "gpio3", "gpio4", "gpio5", "gpio6", "gpio7",
+	"gpio8", "gpio9", "gpio10", "gpio11", "gpio12", "gpio13", "gpio14",
+	"gpio15", "gpio16", "gpio17", "gpio18", "gpio19", "gpio20", "gpio21",
+	"gpio22", "gpio23", "gpio24", "gpio25", "gpio26", "gpio27", "gpio28",
+	"gpio29", "gpio30", "gpio31", "gpio32", "gpio33", "gpio34", "gpio35",
+	"gpio36", "gpio37", "gpio38", "gpio39", "gpio40", "gpio41", "gpio42",
+	"gpio43", "gpio44", "gpio45", "gpio46", "gpio47", "gpio48", "gpio49",
+	"gpio50", "gpio51", "gpio52", "gpio53", "gpio54", "gpio55", "gpio56",
+	"gpio57", "gpio58", "gpio59", "gpio60", "gpio61", "gpio62", "gpio63",
+	"gpio64", "gpio65", "gpio66", "gpio67", "gpio68", "gpio69",
+};
+
 static const struct msm_function ipq807x_functions[] = {
+	FUNCTION(gpio),
 	FUNCTION(qpic_pad),
 	FUNCTION(),
 	FUNCTION(blsp5_i2c),
