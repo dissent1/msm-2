@@ -729,9 +729,45 @@ trip_point_type_show(struct device *dev, struct device_attribute *attr,
 		return sprintf(buf, "passive\n");
 	case THERMAL_TRIP_ACTIVE:
 		return sprintf(buf, "active\n");
+	case THERMAL_TRIP_CONFIGURABLE_HI:
+		return sprintf(buf, "configurable_hi\n");
+	case THERMAL_TRIP_CONFIGURABLE_LOW:
+		return sprintf(buf, "configurable_low\n");
+	case THERMAL_TRIP_CRITICAL_LOW:
+		return sprintf(buf, "critical_low\n");
 	default:
 		return sprintf(buf, "unknown\n");
 	}
+}
+
+static ssize_t
+trip_point_type_activate(struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t count)
+{
+	struct thermal_zone_device *tz = to_thermal_zone(dev);
+	int trip, ret;
+	char *enabled = "enabled";
+	char *disabled = "disabled";
+
+	if (!tz->ops->set_trip_activate)
+		return -EPERM;
+
+	if (!sscanf(attr->attr.name, "trip_point_%d_type", &trip))
+		return -EINVAL;
+
+	if (!strncmp(buf, enabled, strlen(enabled)))
+		ret = tz->ops->set_trip_activate(tz, trip,
+				THERMAL_TRIP_ACTIVATION_ENABLED);
+	else if (!strncmp(buf, disabled, strlen(disabled)))
+		ret = tz->ops->set_trip_activate(tz, trip,
+				THERMAL_TRIP_ACTIVATION_DISABLED);
+	else
+		ret = -EINVAL;
+
+	if (ret)
+		return ret;
+
+	return count;
 }
 
 static ssize_t
@@ -1312,7 +1348,7 @@ thermal_cooling_device_weight_store(struct device *dev,
  */
 int thermal_zone_bind_cooling_device(struct thermal_zone_device *tz,
 				     int trip,
-				     struct thermal_cooling_device *cdev,
+					struct thermal_cooling_device *cdev,
 				     unsigned long upper, unsigned long lower,
 				     unsigned int weight)
 {
@@ -1759,6 +1795,12 @@ static int create_trip_attrs(struct thermal_zone_device *tz, int mask)
 						tz->trip_type_attrs[indx].name;
 		tz->trip_type_attrs[indx].attr.attr.mode = S_IRUGO;
 		tz->trip_type_attrs[indx].attr.show = trip_point_type_show;
+
+		if (IS_ENABLED(CONFIG_THERMAL_WRITABLE_TRIPS)) {
+			tz->trip_type_attrs[indx].attr.store
+						= trip_point_type_activate;
+			tz->trip_type_attrs[indx].attr.attr.mode |= S_IWUSR;
+		}
 
 		device_create_file(&tz->device,
 				   &tz->trip_type_attrs[indx].attr);
