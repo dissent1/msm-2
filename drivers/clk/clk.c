@@ -1492,8 +1492,7 @@ clk_change_rate(struct clk_core *core, unsigned long best_parent_rate)
 		/* Skip children who will be reparented to another clock */
 		if (child->new_parent && child->new_parent != core)
 			continue;
-		if (child->new_rate > child->rate &&
-			!(child->flags & CLK_IGNORE_HIGH_FREQ))
+		if (child->new_rate > child->rate)
 			clk_change_rate(child, core->new_rate);
 	}
 
