@@ -21,6 +21,7 @@
 #include <linux/module.h>
 #include <linux/reboot.h>
 #include <linux/pm.h>
+#include <asm/system_misc.h>
 
 static void __iomem *msm_ps_hold;
 static int do_msm_restart(struct notifier_block *nb, unsigned long action,
@@ -43,6 +44,18 @@ static void do_msm_poweroff(void)
 	do_msm_restart(&restart_nb, 0, NULL);
 }
 
+static int do_msm_reboot_notifier(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	/* Normal Reboot Enable PS HOLD reset sequence */
+	arm_pm_restart = do_msm_restart;
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block reboot_nb1 = {
+	.notifier_call = do_msm_reboot_notifier,
+};
+
 static int msm_restart_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -53,9 +66,9 @@ static int msm_restart_probe(struct platform_device *pdev)
 	if (IS_ERR(msm_ps_hold))
 		return PTR_ERR(msm_ps_hold);
 
-	register_restart_handler(&restart_nb);
-
 	pm_power_off = do_msm_poweroff;
+
+	register_reboot_notifier(&reboot_nb1);
 
 	return 0;
 }
