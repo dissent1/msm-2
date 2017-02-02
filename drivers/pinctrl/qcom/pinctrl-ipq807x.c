@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -233,14 +233,6 @@ enum ipq807x_functions {
 	msm_mux_qdss_cti_trig_out_b0,
 	msm_mux_qdss_cti_trig_in_b0,
 	msm_mux_qpic_pad4,
-	msm_mux_cxc0,
-	msm_mux_mac13,
-	msm_mux_qdss_cti_trig_in_a1,
-	msm_mux_qdss_cti_trig_out_a1,
-	msm_mux_wci22,
-	msm_mux_qdss_cti_trig_in_a0,
-	msm_mux_qpic_pad1,
-	msm_mux_qdss_cti_trig_out_a0,
 	msm_mux_blsp4_uart0,
 	msm_mux_blsp4_i2c0,
 	msm_mux_blsp4_spi0,
@@ -250,6 +242,14 @@ enum ipq807x_functions {
 	msm_mux_qdss_cti_trig_in_b1,
 	msm_mux_qpic_pad6,
 	msm_mux_qpic_pad7,
+	msm_mux_cxc0,
+	msm_mux_mac13,
+	msm_mux_qdss_cti_trig_in_a1,
+	msm_mux_qdss_cti_trig_out_a1,
+	msm_mux_wci22,
+	msm_mux_qdss_cti_trig_in_a0,
+	msm_mux_qpic_pad1,
+	msm_mux_qdss_cti_trig_out_a0,
 	msm_mux_qpic_pad2,
 	msm_mux_qpic_pad3,
 	msm_mux_qdss_traceclk_b,
@@ -258,13 +258,10 @@ enum ipq807x_functions {
 	msm_mux_qpic_pad8,
 	msm_mux_pcm_zsi1,
 	msm_mux_qdss_tracedata_b,
-	msm_mux_boot8,
 	msm_mux_led0,
 	msm_mux_pwm04,
-	msm_mux_boot7,
 	msm_mux_led1,
 	msm_mux_pwm14,
-	msm_mux_boot4,
 	msm_mux_led2,
 	msm_mux_pwm24,
 	msm_mux_pwm00,
@@ -276,7 +273,6 @@ enum ipq807x_functions {
 	msm_mux_blsp3_spi2,
 	msm_mux_pwm10,
 	msm_mux_pwm20,
-	msm_mux_boot0,
 	msm_mux_pwm30,
 	msm_mux_audio_txmclk,
 	msm_mux_pwm02,
@@ -284,7 +280,6 @@ enum ipq807x_functions {
 	msm_mux_pwm12,
 	msm_mux_audio_txfsync,
 	msm_mux_pwm22,
-	msm_mux_boot5,
 	msm_mux_audio_txd,
 	msm_mux_pwm32,
 	msm_mux_audio_rxmclk,
@@ -303,11 +298,9 @@ enum ipq807x_functions {
 	msm_mux_mac10,
 	msm_mux_mac00,
 	msm_mux_pcm_dtx,
-	msm_mux_boot3,
 	msm_mux_pcm_fsync,
 	msm_mux_mac20,
 	msm_mux_qdss_traceclk_a,
-	msm_mux_boot2,
 	msm_mux_pcm_pclk,
 	msm_mux_qdss_tracectl_a,
 	msm_mux_atest_char,
@@ -321,11 +314,9 @@ enum ipq807x_functions {
 	msm_mux_blsp2_uart,
 	msm_mux_blsp2_i2c,
 	msm_mux_blsp2_spi,
-	msm_mux_boot1,
 	msm_mux_blsp3_uart,
 	msm_mux_blsp3_i2c,
 	msm_mux_blsp3_spi,
-	msm_mux_boot6,
 	msm_mux_pta2_0,
 	msm_mux_wci21,
 	msm_mux_cxc1,
@@ -340,23 +331,26 @@ enum ipq807x_functions {
 	msm_mux_pcie0_wake,
 	msm_mux_cri_trng,
 	msm_mux_pcie1_clk,
+	msm_mux_rx2,
 	msm_mux_ldo_update,
 	msm_mux_pcie1_rst,
 	msm_mux_ldo_en,
 	msm_mux_pcie1_wake,
 	msm_mux_gcc_plltest,
-	msm_mux_pta1_0,
+	msm_mux_sd_card,
 	msm_mux_pwm01,
 	msm_mux_pta1_1,
 	msm_mux_pwm11,
+	msm_mux_rx1,
 	msm_mux_pta1_2,
 	msm_mux_gcc_tlmm,
-	msm_mux_sd_card,
+	msm_mux_pta1_0,
 	msm_mux_pwm21,
 	msm_mux_prng_rosc,
 	msm_mux_sd_write,
 	msm_mux_pwm31,
-	msm_mux_boot9,
+	msm_mux_rx0,
+	msm_mux_tsens_max,
 	msm_mux_mdc,
 	msm_mux_mdio,
 	msm_mux_NA,
@@ -420,30 +414,6 @@ static const char * const qdss_cti_trig_in_b0_groups[] = {
 static const char * const qpic_pad4_groups[] = {
 	"gpio5",
 };
-static const char * const cxc0_groups[] = {
-	"gpio9", "gpio16",
-};
-static const char * const mac13_groups[] = {
-	"gpio9", "gpio16",
-};
-static const char * const qdss_cti_trig_in_a1_groups[] = {
-	"gpio9",
-};
-static const char * const qdss_cti_trig_out_a1_groups[] = {
-	"gpio10",
-};
-static const char * const wci22_groups[] = {
-	"gpio11", "gpio17",
-};
-static const char * const qdss_cti_trig_in_a0_groups[] = {
-	"gpio11",
-};
-static const char * const qpic_pad1_groups[] = {
-	"gpio12",
-};
-static const char * const qdss_cti_trig_out_a0_groups[] = {
-	"gpio12",
-};
 static const char * const blsp4_uart0_groups[] = {
 	"gpio5", "gpio6", "gpio7", "gpio8",
 };
@@ -471,6 +441,30 @@ static const char * const qpic_pad6_groups[] = {
 static const char * const qpic_pad7_groups[] = {
 	"gpio8",
 };
+static const char * const cxc0_groups[] = {
+	"gpio9", "gpio16",
+};
+static const char * const mac13_groups[] = {
+	"gpio9", "gpio16",
+};
+static const char * const qdss_cti_trig_in_a1_groups[] = {
+	"gpio9",
+};
+static const char * const qdss_cti_trig_out_a1_groups[] = {
+	"gpio10",
+};
+static const char * const wci22_groups[] = {
+	"gpio11", "gpio17",
+};
+static const char * const qdss_cti_trig_in_a0_groups[] = {
+	"gpio11",
+};
+static const char * const qpic_pad1_groups[] = {
+	"gpio12",
+};
+static const char * const qdss_cti_trig_out_a0_groups[] = {
+	"gpio12",
+};
 static const char * const qpic_pad2_groups[] = {
 	"gpio13",
 };
@@ -497,26 +491,17 @@ static const char * const qdss_tracedata_b_groups[] = {
 	"gpio23", "gpio24", "gpio25", "gpio26", "gpio27", "gpio28", "gpio29",
 	"gpio30", "gpio31",
 };
-static const char * const boot8_groups[] = {
-	"gpio18",
-};
 static const char * const led0_groups[] = {
 	"gpio18",
 };
 static const char * const pwm04_groups[] = {
 	"gpio18",
 };
-static const char * const boot7_groups[] = {
-	"gpio19",
-};
 static const char * const led1_groups[] = {
 	"gpio19",
 };
 static const char * const pwm14_groups[] = {
 	"gpio19",
-};
-static const char * const boot4_groups[] = {
-	"gpio20",
 };
 static const char * const led2_groups[] = {
 	"gpio20",
@@ -551,9 +536,6 @@ static const char * const pwm10_groups[] = {
 static const char * const pwm20_groups[] = {
 	"gpio23",
 };
-static const char * const boot0_groups[] = {
-	"gpio24",
-};
 static const char * const pwm30_groups[] = {
 	"gpio24",
 };
@@ -574,9 +556,6 @@ static const char * const audio_txfsync_groups[] = {
 };
 static const char * const pwm22_groups[] = {
 	"gpio27",
-};
-static const char * const boot5_groups[] = {
-	"gpio28",
 };
 static const char * const audio_txd_groups[] = {
 	"gpio28",
@@ -632,9 +611,6 @@ static const char * const mac00_groups[] = {
 static const char * const pcm_dtx_groups[] = {
 	"gpio34",
 };
-static const char * const boot3_groups[] = {
-	"gpio35",
-};
 static const char * const pcm_fsync_groups[] = {
 	"gpio35",
 };
@@ -643,9 +619,6 @@ static const char * const mac20_groups[] = {
 };
 static const char * const qdss_traceclk_a_groups[] = {
 	"gpio35",
-};
-static const char * const boot2_groups[] = {
-	"gpio36",
 };
 static const char * const pcm_pclk_groups[] = {
 	"gpio36",
@@ -688,9 +661,6 @@ static const char * const blsp2_i2c_groups[] = {
 static const char * const blsp2_spi_groups[] = {
 	"gpio46", "gpio47", "gpio48", "gpio49",
 };
-static const char * const boot1_groups[] = {
-	"gpio49",
-};
 static const char * const blsp3_uart_groups[] = {
 	"gpio50", "gpio51", "gpio52", "gpio53",
 };
@@ -699,9 +669,6 @@ static const char * const blsp3_i2c_groups[] = {
 };
 static const char * const blsp3_spi_groups[] = {
 	"gpio50", "gpio51", "gpio52", "gpio53",
-};
-static const char * const boot6_groups[] = {
-	"gpio53",
 };
 static const char * const pta2_0_groups[] = {
 	"gpio54",
@@ -745,6 +712,9 @@ static const char * const cri_trng_groups[] = {
 static const char * const pcie1_clk_groups[] = {
 	"gpio60",
 };
+static const char * const rx2_groups[] = {
+	"gpio60",
+};
 static const char * const ldo_update_groups[] = {
 	"gpio60",
 };
@@ -760,7 +730,7 @@ static const char * const pcie1_wake_groups[] = {
 static const char * const gcc_plltest_groups[] = {
 	"gpio62", "gpio63",
 };
-static const char * const pta1_0_groups[] = {
+static const char * const sd_card_groups[] = {
 	"gpio63",
 };
 static const char * const pwm01_groups[] = {
@@ -772,13 +742,16 @@ static const char * const pta1_1_groups[] = {
 static const char * const pwm11_groups[] = {
 	"gpio64",
 };
+static const char * const rx1_groups[] = {
+	"gpio64",
+};
 static const char * const pta1_2_groups[] = {
 	"gpio65",
 };
 static const char * const gcc_tlmm_groups[] = {
 	"gpio65",
 };
-static const char * const sd_card_groups[] = {
+static const char * const pta1_0_groups[] = {
 	"gpio66",
 };
 static const char * const pwm21_groups[] = {
@@ -793,8 +766,11 @@ static const char * const sd_write_groups[] = {
 static const char * const pwm31_groups[] = {
 	"gpio67",
 };
-static const char * const boot9_groups[] = {
-	"gpio68",
+static const char * const rx0_groups[] = {
+	"gpio67",
+};
+static const char * const tsens_max_groups[] = {
+	"gpio67",
 };
 static const char * const mdc_groups[] = {
 	"gpio68",
@@ -820,14 +796,6 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(qdss_cti_trig_out_b0),
 	FUNCTION(qdss_cti_trig_in_b0),
 	FUNCTION(qpic_pad4),
-	FUNCTION(cxc0),
-	FUNCTION(mac13),
-	FUNCTION(qdss_cti_trig_in_a1),
-	FUNCTION(qdss_cti_trig_out_a1),
-	FUNCTION(wci22),
-	FUNCTION(qdss_cti_trig_in_a0),
-	FUNCTION(qpic_pad1),
-	FUNCTION(qdss_cti_trig_out_a0),
 	FUNCTION(blsp4_uart0),
 	FUNCTION(blsp4_i2c0),
 	FUNCTION(blsp4_spi0),
@@ -837,6 +805,14 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(qdss_cti_trig_in_b1),
 	FUNCTION(qpic_pad6),
 	FUNCTION(qpic_pad7),
+	FUNCTION(cxc0),
+	FUNCTION(mac13),
+	FUNCTION(qdss_cti_trig_in_a1),
+	FUNCTION(qdss_cti_trig_out_a1),
+	FUNCTION(wci22),
+	FUNCTION(qdss_cti_trig_in_a0),
+	FUNCTION(qpic_pad1),
+	FUNCTION(qdss_cti_trig_out_a0),
 	FUNCTION(qpic_pad2),
 	FUNCTION(qpic_pad3),
 	FUNCTION(qdss_traceclk_b),
@@ -845,13 +821,10 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(qpic_pad8),
 	FUNCTION(pcm_zsi1),
 	FUNCTION(qdss_tracedata_b),
-	FUNCTION(boot8),
 	FUNCTION(led0),
 	FUNCTION(pwm04),
-	FUNCTION(boot7),
 	FUNCTION(led1),
 	FUNCTION(pwm14),
-	FUNCTION(boot4),
 	FUNCTION(led2),
 	FUNCTION(pwm24),
 	FUNCTION(pwm00),
@@ -863,7 +836,6 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(blsp3_spi2),
 	FUNCTION(pwm10),
 	FUNCTION(pwm20),
-	FUNCTION(boot0),
 	FUNCTION(pwm30),
 	FUNCTION(audio_txmclk),
 	FUNCTION(pwm02),
@@ -871,7 +843,6 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(pwm12),
 	FUNCTION(audio_txfsync),
 	FUNCTION(pwm22),
-	FUNCTION(boot5),
 	FUNCTION(audio_txd),
 	FUNCTION(pwm32),
 	FUNCTION(audio_rxmclk),
@@ -890,11 +861,9 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(mac10),
 	FUNCTION(mac00),
 	FUNCTION(pcm_dtx),
-	FUNCTION(boot3),
 	FUNCTION(pcm_fsync),
 	FUNCTION(mac20),
 	FUNCTION(qdss_traceclk_a),
-	FUNCTION(boot2),
 	FUNCTION(pcm_pclk),
 	FUNCTION(qdss_tracectl_a),
 	FUNCTION(atest_char),
@@ -908,11 +877,9 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(blsp2_uart),
 	FUNCTION(blsp2_i2c),
 	FUNCTION(blsp2_spi),
-	FUNCTION(boot1),
 	FUNCTION(blsp3_uart),
 	FUNCTION(blsp3_i2c),
 	FUNCTION(blsp3_spi),
-	FUNCTION(boot6),
 	FUNCTION(pta2_0),
 	FUNCTION(wci21),
 	FUNCTION(cxc1),
@@ -927,23 +894,26 @@ static const struct msm_function ipq807x_functions[] = {
 	FUNCTION(pcie0_wake),
 	FUNCTION(cri_trng),
 	FUNCTION(pcie1_clk),
+	FUNCTION(rx2),
 	FUNCTION(ldo_update),
 	FUNCTION(pcie1_rst),
 	FUNCTION(ldo_en),
 	FUNCTION(pcie1_wake),
 	FUNCTION(gcc_plltest),
-	FUNCTION(pta1_0),
+	FUNCTION(sd_card),
 	FUNCTION(pwm01),
 	FUNCTION(pta1_1),
 	FUNCTION(pwm11),
+	FUNCTION(rx1),
 	FUNCTION(pta1_2),
 	FUNCTION(gcc_tlmm),
-	FUNCTION(sd_card),
+	FUNCTION(pta1_0),
 	FUNCTION(pwm21),
 	FUNCTION(prng_rosc),
 	FUNCTION(sd_write),
 	FUNCTION(pwm31),
-	FUNCTION(boot9),
+	FUNCTION(rx0),
+	FUNCTION(tsens_max),
 	FUNCTION(mdc),
 	FUNCTION(mdio),
 };
@@ -979,9 +949,9 @@ static const struct msm_pingroup ipq807x_groups[] = {
 	PINGROUP(16, qpic_pad8, blsp5_uart, pcm_zsi1, blsp5_spi, cxc0, mac13,
 		 qdss_tracedata_b, NA, NA),
 	PINGROUP(17, qpic_pad, wci22, qdss_tracedata_b, NA, NA, NA, NA, NA, NA),
-	PINGROUP(18, led0, pwm04, qdss_tracedata_b, NA, boot8, NA, NA, NA, NA),
-	PINGROUP(19, led1, pwm14, NA, qdss_tracedata_b, NA, boot7, NA, NA, NA),
-	PINGROUP(20, led2, pwm24, NA, qdss_tracedata_b, NA, boot4, NA, NA, NA),
+	PINGROUP(18, led0, pwm04, qdss_tracedata_b, NA, NA, NA, NA, NA, NA),
+	PINGROUP(19, led1, pwm14, NA, qdss_tracedata_b, NA, NA, NA, NA, NA),
+	PINGROUP(20, led2, pwm24, NA, qdss_tracedata_b, NA, NA, NA, NA, NA),
 	PINGROUP(21, pwm00, blsp4_uart1, blsp4_i2c1, blsp4_spi1, wci23, mac11,
 		 blsp3_spi2, NA, qdss_tracedata_b),
 	PINGROUP(22, pwm10, blsp4_uart1, blsp4_i2c1, blsp4_spi1, wci23, mac11,
@@ -989,14 +959,14 @@ static const struct msm_pingroup ipq807x_groups[] = {
 	PINGROUP(23, pwm20, blsp4_uart1, blsp4_spi1, blsp3_spi2, NA,
 		 qdss_tracedata_b, NA, NA, NA),
 	PINGROUP(24, pwm30, blsp4_uart1, blsp4_spi1, NA, qdss_tracedata_b, NA,
-		 boot0, NA, NA),
+		 NA, NA, NA),
 	PINGROUP(25, audio_txmclk, pwm02, NA, qdss_tracedata_b, NA, NA, NA, NA,
 		 NA),
 	PINGROUP(26, audio_txbclk, pwm12, NA, qdss_tracedata_b, NA, NA, NA, NA,
 		 NA),
 	PINGROUP(27, audio_txfsync, pwm22, NA, qdss_tracedata_b, NA, NA, NA,
 		 NA, NA),
-	PINGROUP(28, audio_txd, pwm32, NA, qdss_tracedata_b, NA, boot5, NA, NA,
+	PINGROUP(28, audio_txd, pwm32, NA, qdss_tracedata_b, NA, NA, NA, NA,
 		 NA),
 	PINGROUP(29, audio_rxmclk, pwm03, atest_char0, NA, qdss_tracedata_b,
 		 NA, NA, NA, NA),
@@ -1007,10 +977,8 @@ static const struct msm_pingroup ipq807x_groups[] = {
 	PINGROUP(32, audio_rxd, pwm33, atest_char3, NA, NA, NA, NA, NA, NA),
 	PINGROUP(33, pcm_drx, mac10, mac00, NA, NA, NA, NA, NA, NA),
 	PINGROUP(34, pcm_dtx, mac10, mac00, NA, NA, NA, NA, NA, NA),
-	PINGROUP(35, pcm_fsync, mac20, qdss_traceclk_a, NA, boot3, NA, NA, NA,
-		 NA),
-	PINGROUP(36, pcm_pclk, mac20, NA, qdss_tracectl_a, NA, boot2, NA, NA,
-		 NA),
+	PINGROUP(35, pcm_fsync, mac20, qdss_traceclk_a, NA, NA, NA, NA, NA, NA),
+	PINGROUP(36, pcm_pclk, mac20, NA, qdss_tracectl_a, NA, NA, NA, NA, NA),
 	PINGROUP(37, atest_char, NA, qdss_tracedata_a, NA, NA, NA, NA, NA, NA),
 	PINGROUP(38, blsp0_uart, blsp0_i2c, blsp0_spi, NA, qdss_tracedata_a,
 		 NA, NA, NA, NA),
@@ -1034,30 +1002,30 @@ static const struct msm_pingroup ipq807x_groups[] = {
 		 NA, NA, NA, NA),
 	PINGROUP(48, blsp2_uart, blsp2_spi, NA, qdss_tracedata_a, NA, NA, NA,
 		 NA, NA),
-	PINGROUP(49, blsp2_uart, blsp2_spi, NA, qdss_tracedata_a, NA, boot1,
-		 NA, NA, NA),
+	PINGROUP(49, blsp2_uart, blsp2_spi, NA, qdss_tracedata_a, NA, NA, NA,
+		 NA, NA),
 	PINGROUP(50, blsp3_uart, blsp3_i2c, blsp3_spi, NA, qdss_tracedata_a,
 		 NA, NA, NA, NA),
 	PINGROUP(51, blsp3_uart, blsp3_i2c, blsp3_spi, NA, qdss_tracedata_a,
 		 NA, NA, NA, NA),
 	PINGROUP(52, blsp3_uart, blsp3_spi, NA, qdss_tracedata_a, NA, NA, NA,
 		 NA, NA),
-	PINGROUP(53, blsp3_uart, blsp3_spi, NA, boot6, NA, NA, NA, NA, NA),
+	PINGROUP(53, blsp3_uart, blsp3_spi, NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(54, pta2_0, wci21, cxc1, blsp3_spi1, NA, NA, NA, NA, NA),
 	PINGROUP(55, pta2_1, blsp3_spi1, NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(56, pta2_2, wci21, cxc1, blsp3_spi1, NA, NA, NA, NA, NA),
 	PINGROUP(57, pcie0_clk, NA, dbg_out, cri_trng0, NA, NA, NA, NA, NA),
 	PINGROUP(58, pcie0_rst, NA, cri_trng1, NA, NA, NA, NA, NA, NA),
 	PINGROUP(59, pcie0_wake, NA, cri_trng, NA, NA, NA, NA, NA, NA),
-	PINGROUP(60, pcie1_clk, ldo_update, NA, NA, NA, NA, NA, NA, NA),
+	PINGROUP(60, pcie1_clk, rx2, ldo_update, NA, NA, NA, NA, NA, NA),
 	PINGROUP(61, pcie1_rst, ldo_en, NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(62, pcie1_wake, gcc_plltest, NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(63, pta1_0, pwm01, NA, gcc_plltest, NA, NA, NA, NA, NA),
-	PINGROUP(64, pta1_1, pwm11, NA, NA, NA, NA, NA, NA, NA),
+	PINGROUP(63, sd_card, pwm01, NA, gcc_plltest, NA, NA, NA, NA, NA),
+	PINGROUP(64, pta1_1, pwm11, NA, rx1, NA, NA, NA, NA, NA),
 	PINGROUP(65, pta1_2, NA, gcc_tlmm, NA, NA, NA, NA, NA, NA),
-	PINGROUP(66, sd_card, pwm21, prng_rosc, NA, NA, NA, NA, NA, NA),
-	PINGROUP(67, sd_write, pwm31, NA, NA, NA, NA, NA, NA, NA),
-	PINGROUP(68, mdc, NA, boot9, NA, NA, NA, NA, NA, NA),
+	PINGROUP(66, pta1_0, pwm21, prng_rosc, NA, NA, NA, NA, NA, NA),
+	PINGROUP(67, sd_write, pwm31, rx0, tsens_max, NA, NA, NA, NA, NA),
+	PINGROUP(68, mdc, NA, NA, NA, NA, NA, NA, NA, NA),
 	PINGROUP(69, mdio, NA, NA, NA, NA, NA, NA, NA, NA),
 };
 
