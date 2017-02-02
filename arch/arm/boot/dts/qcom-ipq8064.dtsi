@@ -1092,7 +1092,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
-	
+
 		sdcc@12400000 {
 			status          = "disabled";
 			compatible      = "arm,pl18x", "arm,primecell";
@@ -1109,8 +1109,29 @@
 			cap-mmc-highspeed;
 			mmc-ddr-1_8v;
 			vmmc-supply = <&vsdcc_fixed>;
-			#dmas = <&sdcc1bam 2>, <&sdcc1bam 1>;
-			#dma-names = "tx", "rx";
+			dmas = <&sdcc1bam 2>, <&sdcc1bam 1>;
+			dma-names = "tx", "rx";
 		};
+
+		sdcc@12180000 {
+			compatible      = "arm,pl18x", "arm,primecell";
+			arm,primecell-periphid = <0x00051180>;
+			status          = "disabled";
+			reg             = <0x12180000 0x2000>;
+			interrupts      = <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "cmd_irq";
+			clocks          = <&gcc SDC3_CLK>, <&gcc SDC3_H_CLK>;
+			clock-names     = "mclk", "apb_pclk";
+			bus-width       = <8>;
+			cap-sd-highspeed;
+			cap-mmc-highspeed;
+			max-frequency   = <192000000>;
+			#mmc-ddr-1_8v;
+			sd-uhs-sdr104;
+			sd-uhs-ddr50;
+			vqmmc-supply = <&vsdcc_fixed>;
+			dmas = <&sdcc3bam 2>, <&sdcc3bam 1>;
+			dma-names = "tx", "rx";
+			};
 	};
 };
