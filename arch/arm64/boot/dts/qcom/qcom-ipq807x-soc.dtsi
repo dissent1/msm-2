@@ -145,6 +145,7 @@
 				     <0x1 0x4 0xff08>,
 				     <0x1 0x1 0xff08>;
 			clock-frequency = <0x124f800>;
+			always-on;
 		};
 
 		gcc: qcom,gcc@1800000 {
