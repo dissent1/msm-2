@@ -1226,7 +1226,7 @@ int qcom_pcie_rescan(void)
 		if (qcom_pcie_dev[i]) {
 			pr_notice("---> Initializing %d", i);
 			pp = &qcom_pcie_dev[i]->pp;
-			qcom_pcie_host_init(pp);
+			dw_pcie_host_init_pm(pp);
 			pr_notice(" ... done<---\n");
 		}
 	}
@@ -1244,8 +1244,14 @@ void qcom_pcie_remove_bus(void)
 
 	for (i = 0; i < MAX_RC_NUM; i++) {
 		if (qcom_pcie_dev[i]) {
+			struct pcie_port *pp;
+
 			pr_notice("---> Removing %d", i);
+			pp = &qcom_pcie_dev[i]->pp;
 			qcom_pcie_dev[i]->ops->deinit(qcom_pcie_dev[i]);
+			pci_stop_root_bus(pp->pci_bus);
+			pci_remove_root_bus(pp->pci_bus);
+			pp->pci_bus = NULL;
 			pr_notice(" ... done<---\n");
 		}
 	}
@@ -1285,7 +1291,6 @@ static ssize_t qcom_bus_remove_store(struct bus_type *bus, const char *buf,
 	return count;
 }
 static BUS_ATTR(rcremove, (S_IWUSR|S_IWGRP), NULL, qcom_bus_remove_store);
-
 static int qcom_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;

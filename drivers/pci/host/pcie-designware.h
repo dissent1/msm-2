@@ -54,6 +54,7 @@ struct pcie_port {
 	struct irq_domain	*irq_domain;
 	unsigned long		msi_data;
 	DECLARE_BITMAP(msi_irq_in_use, MAX_MSI_IRQS);
+	struct pci_bus		*pci_bus;
 };
 
 struct pcie_host_ops {
@@ -85,5 +86,6 @@ int dw_pcie_wait_for_link(struct pcie_port *pp);
 int dw_pcie_link_up(struct pcie_port *pp);
 void dw_pcie_setup_rc(struct pcie_port *pp);
 int dw_pcie_host_init(struct pcie_port *pp);
+int dw_pcie_host_init_pm(struct pcie_port *pp);
 
 #endif /* _PCIE_DESIGNWARE_H */
