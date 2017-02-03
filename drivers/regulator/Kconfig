@@ -796,5 +796,12 @@ config REGULATOR_RPM_GLINK
 	  be used on systems which contain an RPM which communicates with the
 	  application processor over GLINK.
 
+config REGULATOR_IPQ40XX
+	tristate "IPQ40xx regulator support"
+	depends on ARCH_QCOM
+	help
+	  This driver provides support for the voltage regulators of the
+	  IPQ40xx devices.
+
 endif
 
