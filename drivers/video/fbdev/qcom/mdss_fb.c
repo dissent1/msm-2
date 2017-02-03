@@ -683,7 +683,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 	snprintf(fix->id, sizeof(fix->id), "mdssfb_%x", (u32) *id);
 
 	fbi->fbops = &mdss_fb_ops;
-	fbi->flags = FBINFO_FLAG_DEFAULT;
+	fbi->flags = FBINFO_FLAG_DEFAULT | FBINFO_DMAFB;
 	fbi->pseudo_palette = mdss_fb_pseudo_palette;
 
 	mfd->ref_cnt = 0;
