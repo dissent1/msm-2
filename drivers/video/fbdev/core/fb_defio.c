@@ -170,6 +170,10 @@ static int fb_deferred_io_mmap(struct fb_info *info, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP;
 	if (!(info->flags & FBINFO_VIRTFB))
 		vma->vm_flags |= VM_IO;
+
+	if (info->flags & FBINFO_DMAFB)
+		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
 	vma->vm_private_data = info;
 	return 0;
 }
