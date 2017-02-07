@@ -1533,6 +1533,14 @@ static const struct msm_pingroup ipq4019_groups[] = {
 	PINGROUP(99, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
 };
 
+static const struct msm_pinctrl_gpio_pull ipq4019_gpio_pull = {
+	.no_pull = 0,
+	.pull_down = 1,
+	.pull_up = 2,
+	/* keeper is not supported in ipq40xx. Hence configure it as no pull */
+	.keeper = 0,
+};
+
 static const struct msm_pinctrl_soc_data ipq4019_pinctrl = {
 	.pins = ipq4019_pins,
 	.npins = ARRAY_SIZE(ipq4019_pins),
@@ -1541,6 +1549,7 @@ static const struct msm_pinctrl_soc_data ipq4019_pinctrl = {
 	.groups = ipq4019_groups,
 	.ngroups = ARRAY_SIZE(ipq4019_groups),
 	.ngpios = 100,
+	.gpio_pull = &ipq4019_gpio_pull,
 };
 
 static int ipq4019_pinctrl_probe(struct platform_device *pdev)
