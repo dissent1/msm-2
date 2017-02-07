@@ -1479,25 +1479,21 @@ static struct clk_core *clk_propagate_rate_change(struct clk_core *core,
  * walk down a subtree and set the new rates notifying the rate
  * change on the way
  */
-static void
-clk_change_rate(struct clk_core *core, unsigned long best_parent_rate)
+static void clk_change_rate(struct clk_core *core)
 {
 	struct clk_core *child;
 	struct hlist_node *tmp;
 	unsigned long old_rate;
+	unsigned long best_parent_rate = 0;
 	bool skip_set_rate = false;
 	struct clk_core *old_parent;
 
-	hlist_for_each_entry(child, &core->children, child_node) {
-		/* Skip children who will be reparented to another clock */
-		if (child->new_parent && child->new_parent != core)
-			continue;
-		if (child->new_rate > child->rate &&
-			!(child->flags & CLK_IGNORE_HIGH_FREQ))
-			clk_change_rate(child, core->new_rate);
-	}
-
 	old_rate = core->rate;
+
+	if (core->new_parent)
+		best_parent_rate = core->new_parent->rate;
+	else if (core->parent)
+		best_parent_rate = core->parent->rate;
 
 	if (core->new_parent && core->new_parent != core->parent &&
 				!core->safe_parent) {
@@ -1524,7 +1520,7 @@ clk_change_rate(struct clk_core *core, unsigned long best_parent_rate)
 
 	trace_clk_set_rate_complete(core, core->new_rate);
 
-	core->rate = core->new_rate;
+	core->rate = clk_recalc(core, best_parent_rate);
 
 	if (core->flags & CLK_RECALC_NEW_RATES)
 		(void)clk_calc_new_rates(core, core->new_rate);
@@ -1537,13 +1533,12 @@ clk_change_rate(struct clk_core *core, unsigned long best_parent_rate)
 		/* Skip children who will be reparented to another clock */
 		if (child->new_parent && child->new_parent != core)
 			continue;
-		if (child->new_rate != child->rate)
-			clk_change_rate(child, core->new_rate);
+		clk_change_rate(child);
 	}
 
 	/* handle the new child who might not be in core->children yet */
-	if (core->new_child && core->new_child->new_rate != core->new_child->rate)
-		clk_change_rate(core->new_child, core->new_rate);
+	if (core->new_child)
+		clk_change_rate(core->new_child);
 }
 
 static int clk_core_set_rate_nolock(struct clk_core *core,
@@ -1552,7 +1547,6 @@ static int clk_core_set_rate_nolock(struct clk_core *core,
 	struct clk_core *top, *fail_clk;
 	unsigned long rate = req_rate;
 	int ret = 0;
-	unsigned long parent_rate;
 
 	if (!core)
 		return 0;
@@ -1578,13 +1572,8 @@ static int clk_core_set_rate_nolock(struct clk_core *core,
 		return -EBUSY;
 	}
 
-	if (top->parent)
-		parent_rate = top->parent->rate;
-	else
-		parent_rate = 0;
-
 	/* change the rates */
-	clk_change_rate(top, parent_rate);
+	clk_change_rate(top);
 
 	core->req_rate = req_rate;
 
