@@ -94,6 +94,9 @@
 	soc {
 
 		pinmux@800000 {
+			pinctrl-0 = <&rgmii2_pins_default>;
+			pinctrl-names = "default";
+
 			nss_spi_pins: nss_spi_pins {
 				mux {
 					pins = "gpio14", "gpio15", "gpio16", "gpio17",
@@ -150,6 +153,18 @@
 				mux {
 					pins = "gpio0", "gpio1";
 					function = "gpio";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
+			rgmii2_pins_default: rgmii2_pins_default {
+				mux {
+					pins = "gpio27", "gpio28", "gpio29",
+						"gpio30", "gpio31", "gpio32",
+					       "gpio51", "gpio52", "gpio59",
+						"gpio60", "gpio61", "gpio62" ;
+					function = "rgmii2";
 					drive-strength = <8>;
 					bias-disable;
 				};
@@ -318,32 +333,32 @@
 			};
 		};
 		mdio0: mdio {
-                        compatible = "virtual,mdio-gpio";
-                        #address-cells = <1>;
-                        #size-cells = <0>;
-                        gpios = <&qcom_pinmux 1 0 &qcom_pinmux 0 0>;
+			compatible = "virtual,mdio-gpio";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			gpios = <&qcom_pinmux 1 0 &qcom_pinmux 0 0>;
 			pinctrl-0 = <&mdio0_pins>;
 			pinctrl-names = "default";
 
-                        phy0: ethernet-phy@0 {
-                                device_type = "ethernet-phy";
-                                reg = <0>;
-                                qca,ar8327-initvals = <
-                                        0x00004 0x7600000   /* PAD0_MODE */
-                                        0x00008 0x1000000   /* PAD5_MODE */
-                                        0x0000c 0x80        /* PAD6_MODE */
-                                        0x000e4 0xaa545     /* MAC_POWER_SEL */
-                                        0x000e0 0xc74164de  /* SGMII_CTRL */
-                                        0x0007c 0x4e        /* PORT0_STATUS */
-                                        0x00094 0x4e        /* PORT6_STATUS */
-                                >;
-                        };
+			phy0: ethernet-phy@0 {
+				device_type = "ethernet-phy";
+				reg = <0>;
+				qca,ar8327-initvals = <
+					0x00004 0x7600000   /* PAD0_MODE */
+					0x00008 0x1000000   /* PAD5_MODE */
+					0x0000c 0x80        /* PAD6_MODE */
+					0x000e4 0xaa545     /* MAC_POWER_SEL */
+					0x000e0 0xc74164de  /* SGMII_CTRL */
+					0x0007c 0x4e        /* PORT0_STATUS */
+					0x00094 0x4e        /* PORT6_STATUS */
+				>;
+			};
 
-                        phy4: ethernet-phy@4 {
-                                device_type = "ethernet-phy";
-                                reg = <4>;
-                        };
-                };
+			phy4: ethernet-phy@4 {
+				device_type = "ethernet-phy";
+				reg = <4>;
+			};
+		};
 
 		nss0: nss@40000000 {
 			compatible = "qcom,nss";
@@ -419,6 +434,7 @@
 		};
 
 		gmac1: ethernet@37200000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37200000 0x200000>;
@@ -434,9 +450,15 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		gmac2: ethernet@37400000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37400000 0x200000>;
@@ -452,6 +474,11 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		crypto1: crypto@38000000 {
@@ -459,9 +486,9 @@
 			reg-names = "crypto_pbase", "bam_base";
 			reg = <0x38000000 0x20000>,
 			    <0x38004000 0x22000>;
-                        resets = <&gcc CRYPTO_ENG1_RESET>,
-                                 <&gcc CRYPTO_AHB_RESET>;
-                        reset-names = "rst_eng", "rst_ahb";
+			resets = <&gcc CRYPTO_ENG1_RESET>,
+				<&gcc CRYPTO_AHB_RESET>;
+			reset-names = "rst_eng", "rst_ahb";
 			clocks = <&gcc CE5_CORE_CLK>, <&gcc CE5_A_CLK>, <&gcc CE5_H_CLK>;
 			clock-names = "ce5_core", "ce5_aclk", "ce5_hclk";
 			qcom,ee = <0>;
@@ -472,8 +499,8 @@
 			reg-names = "crypto_pbase", "bam_base";
 			reg = <0x38400000 0x20000>,
 			    <0x38404000 0x22000>;
-                        resets = <&gcc CRYPTO_ENG2_RESET>;
-                        reset-names = "rst_eng";
+			resets = <&gcc CRYPTO_ENG2_RESET>;
+			reset-names = "rst_eng";
 			qcom,ee = <0>;
 		};
 
@@ -482,8 +509,8 @@
 			reg-names = "crypto_pbase", "bam_base";
 			reg = <0x38800000 0x20000>,
 			    <0x38804000 0x22000>;
-                        resets = <&gcc CRYPTO_ENG3_RESET>;
-                        reset-names = "rst_eng";
+			resets = <&gcc CRYPTO_ENG3_RESET>;
+			reset-names = "rst_eng";
 			qcom,ee = <0>;
 		};
 
@@ -492,8 +519,8 @@
 			reg-names = "crypto_pbase", "bam_base";
 			reg = <0x38C00000 0x20000>,
 			    <0x38C04000 0x22000>;
-                        resets = <&gcc CRYPTO_ENG4_RESET>;
-                        reset-names = "rst_eng";
+			resets = <&gcc CRYPTO_ENG4_RESET>;
+			reset-names = "rst_eng";
 			qcom,ee = <0>;
 		};
 	};
