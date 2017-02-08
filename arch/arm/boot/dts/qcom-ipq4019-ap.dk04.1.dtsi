@@ -403,7 +403,7 @@
 		};
 
 		mhi_wlan: qcom,mhi@1 {
-			status = "disabled";
+			status = "ok";
 		};
 
 		gpio_keys {

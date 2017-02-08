@@ -1313,11 +1313,13 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 		 "ipc%08x_%s",
 		 port_ptr->this_port.port_id,
 		 current->comm);
+#ifdef CONFIG_PM_SLEEP
 	port_ptr->port_rx_ws = wakeup_source_register(port_ptr->rx_ws_name);
 	if (!port_ptr->port_rx_ws) {
 		kfree(port_ptr);
 		return NULL;
 	}
+#endif
 	init_waitqueue_head(&port_ptr->port_tx_wait_q);
 	kref_init(&port_ptr->ref);
 
@@ -1373,7 +1375,10 @@ void ipc_router_release_port(struct kref *ref)
 		release_pkt(pkt);
 	}
 	mutex_unlock(&port_ptr->port_rx_q_lock_lhc3);
+
+#ifdef CONFIG_PM_SLEEP
 	wakeup_source_unregister(port_ptr->port_rx_ws);
+#endif
 	if (port_ptr->endpoint)
 		sock_put(ipc_port_sk(port_ptr->endpoint));
 	kfree(port_ptr);
@@ -3861,7 +3866,9 @@ static int msm_ipc_router_add_xprt(struct msm_ipc_router_xprt *xprt)
 	INIT_LIST_HEAD(&xprt_info->pkt_list);
 	mutex_init(&xprt_info->rx_lock_lhb2);
 	mutex_init(&xprt_info->tx_lock_lhb2);
+#ifdef CONFIG_PM_SLEEP
 	wakeup_source_init(&xprt_info->ws, xprt->name);
+#endif
 	xprt_info->need_len = 0;
 	xprt_info->abort_data_read = 0;
 	INIT_WORK(&xprt_info->read_data, do_read_data);
@@ -3926,8 +3933,9 @@ static void msm_ipc_router_remove_xprt(struct msm_ipc_router_xprt *xprt)
 		up_write(&xprt_info_list_lock_lha5);
 
 		msm_ipc_cleanup_routing_table(xprt_info);
-
+#ifdef CONFIG_PM_SLEEP
 		wakeup_source_trash(&xprt_info->ws);
+#endif
 
 		xprt->priv = 0;
 		kfree(xprt_info);

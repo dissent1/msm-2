@@ -16,6 +16,7 @@ obj-$(CONFIG_MSM_QMI_INTERFACE)	+=	qmi_interface.o
 obj-$(CONFIG_MSM_RPM_GLINK)	+=	rpm-glink.o
 obj-$(CONFIG_MSM_RPM_LOG)	+=	rpm_log.o
 obj-$(CONFIG_QCOM_RESTART_REASON) += restart_reason.o
+obj-$(CONFIG_MSM_IPC_ROUTER_MHI_XPRT) += ipc_router_mhi_xprt.o
 
 ifdef CONFIG_QCOM_SCM
 obj-$(CONFIG_ARM64) += cpu_ops.o cpu_pwr_ctl.o

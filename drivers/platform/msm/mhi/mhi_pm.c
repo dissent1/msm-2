@@ -38,6 +38,12 @@ static struct attribute_group mhi_attribute_group = {
 	.attrs = mhi_attributes,
 };
 
+int msm_pcie_pm_control(enum msm_pcie_pm_opt pm_opt,
+		u32 busnr, void *user, void *data, u32 options)
+{
+	return 0;
+}
+
 int mhi_pci_suspend(struct device *dev)
 {
 	int r = 0;
