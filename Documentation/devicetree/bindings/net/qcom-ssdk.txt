@@ -5,6 +5,9 @@ Required properties:
 - compatible: = should be "qcom,ess-switch";
 - reg: Base address and size for the ess-switch register space
 - switch_access_mode: should be "local bus"
+- switch_mac_mode: should be "0-0xe" or "0xff"
+- switch_mac_mode1: should be "0-0xe" or "0xff"
+- switch_mac_mode2: should be "0-0xe" or "0xff"
 
 Example:
 
@@ -12,6 +15,9 @@ ess-switch@3a000000 {
 	compatible = "qcom,ess-switch";
 	reg = <0x3a000000 0x1000000>;
 	switch_access_mode = "local bus";
+	switch_mac_mode = <0x0>;
+	switch_mac_mode1 = <0xff>;
+	switch_mac_mode2 = <0xd>;
 };
 
 Required properties:
