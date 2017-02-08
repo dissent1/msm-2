@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -157,6 +157,57 @@
 			};
 		};
 
+		mdio0: mdio@19000000 {
+			compatible = "qca,ag71xx-mdio";
+			reg = <0x19000000 0x200>;
+			phy-mask = <0>;
+			builtin-switch = <0>;
+			ar934x-support = <0>;
+			reset-bit = <0x400000>;
+			phy0: ethernet-phy@0 {
+				reg = <0>;
+				qca,ar8327-initvals = <
+					0x00004 0x80080080     /* PAD0_MODE */
+					0x0007c 0x7e        /* PORT0_STATUS */
+				>;
+			};
+			phy1: ethernet-phy@1 {
+				reg = <1>;
+			};
+			phy2: ethernet-phy@2 {
+				reg = <2>;
+			};
+			phy3: ethernet-phy@3 {
+				reg = <3>;
+			};
+			phy4: ethernet-phy@4 {
+				reg = <4>;
+			};
+		};
+
+		eth0: ethernet@19000000 {
+			compatible = "qca,ag71xx-eth";
+			reg = <0x19000000 0x200>,
+				<0x18070000 0x14>;
+			reg-names = "mac_base",
+					"cfg_base";
+			mdio-handle = <&mdio0>;
+			eth-pll-data = <0x1919 0x101 0x3000000>;
+			phy-mode = <3>;
+			eth-cfg = <0x40>;
+			phy-mask = <1>;
+			force-speed = <1000>;
+			force-duplex = <1>;
+			max-frame-len = <1540>;
+			desc-pktlen-mask = <0xfff>;
+			reset-bit = <0x200>;
+			has-gbit = <1>;
+			ar724x-support = <1>;
+			qca955x-support = <0>;
+			fifo-cfg = <0x0010ffff 0x015500aa 0x01f00140>;
+			interrupts = <4>;
+			interrupt-names = "mac_irq";
+		};
 	};
 
 	gpio-keys-polled {

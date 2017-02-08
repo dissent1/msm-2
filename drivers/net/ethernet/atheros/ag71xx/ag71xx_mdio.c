@@ -1,7 +1,7 @@
 /*
  *  Atheros AR71xx built-in ethernet mac driver
  *
- *  Copyright (c) 2016 The Linux Foundation. All rights reserved.
+ *  Copyright (c) 2016-2017 The Linux Foundation. All rights reserved.
  *  Copyright (C) 2008-2010 Gabor Juhos <juhosg@openwrt.org>
  *  Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
  *
@@ -13,6 +13,10 @@
  */
 
 #include "ag71xx.h"
+#ifdef CONFIG_OF
+#include <linux/of.h>
+#include <linux/of_mdio.h>
+#endif
 
 #define AG71XX_MDIO_RETRY	1000
 #define AG71XX_MDIO_DELAY	5
@@ -150,27 +154,73 @@ static int ag71xx_mdio_write(struct mii_bus *bus, int addr, int reg, u16 val)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static int ag71xx_mdio_of_pdata_update(
+		struct platform_device *pdev,
+		struct ag71xx_mdio_platform_data *pdata)
+{
+	struct device_node *np = NULL;
+	u32 val[2];
+
+	np = of_node_get(pdev->dev.of_node);
+	if (of_property_read_u32(np, "phy-mask", &pdata->phy_mask)
+		|| of_property_read_u32(np, "builtin-switch", &val[0])
+		|| of_property_read_u32(np, "ar934x-support", &val[1])) {
+		dev_err(&pdev->dev,
+			"%s: error reading critical device node properties\n",
+			np->name);
+		return -EFAULT;
+	}
+	pdata->builtin_switch = val[0];
+	pdata->is_ar934x = val[1];
+	of_property_read_u32(np, "reset-bit", &pdata->reset_bit);
+	return 0;
+}
+#endif
+
 static int ag71xx_mdio_probe(struct platform_device *pdev)
 {
 	struct ag71xx_mdio_platform_data *pdata;
 	struct ag71xx_mdio *am;
 	struct resource *res;
+
 	int i;
 	int err;
 
+#ifdef CONFIG_OF
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		err = -ENOMEM;
+		goto err_out;
+	}
+	if (ag71xx_mdio_of_pdata_update(pdev, pdata)) {
+		dev_err(&pdev->dev, "no platform data specified\n");
+		return -EINVAL;
+	}
+	pdev->dev.platform_data = pdata;
+
+	/*reset mdio firstly*/
+	ath79_device_reset_set(pdata->reset_bit);
+	msleep(100);
+
+	ath79_device_reset_clear(pdata->reset_bit);
+	msleep(100);
+#else
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "no platform data specified\n");
 		return -EINVAL;
 	}
+#endif
 
-	am = kzalloc(sizeof(*am), GFP_KERNEL);
+	am = devm_kzalloc(&pdev->dev, sizeof(*am), GFP_KERNEL);
 	if (!am) {
 		err = -ENOMEM;
 		goto err_out;
 	}
 
 	am->pdata = pdata;
+
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -179,17 +229,18 @@ static int ag71xx_mdio_probe(struct platform_device *pdev)
 		goto err_out;
 	}
 
-	am->mdio_base = ioremap_nocache(res->start, res->end - res->start + 1);
+	am->mdio_base = devm_ioremap_nocache(&pdev->dev,
+					res->start, resource_size(res));
 	if (!am->mdio_base) {
 		dev_err(&pdev->dev, "unable to ioremap registers\n");
 		err = -ENOMEM;
-		goto err_free_mdio;
+		goto err_out;
 	}
 
-	am->mii_bus = mdiobus_alloc();
-	if (am->mii_bus == NULL) {
+	am->mii_bus = devm_mdiobus_alloc(&pdev->dev);
+	if (!am->mii_bus) {
 		err = -ENOMEM;
-		goto err_iounmap;
+		goto err_out;
 	}
 
 	am->mii_bus->name = "ag71xx_mdio";
@@ -207,21 +258,17 @@ static int ag71xx_mdio_probe(struct platform_device *pdev)
 
 	ag71xx_mdio_wr(am, AG71XX_REG_MAC_CFG1, 0);
 
-	err = mdiobus_register(am->mii_bus);
+	if (pdev->dev.of_node)
+		err = of_mdiobus_register(am->mii_bus, pdev->dev.of_node);
+	else
+		err = mdiobus_register(am->mii_bus);
 	if (err)
-		goto err_free_bus;
+		goto err_out;
 
 	ag71xx_mdio_dump_regs(am);
 
 	platform_set_drvdata(pdev, am);
 	return 0;
-
-err_free_bus:
-	mdiobus_free(am->mii_bus);
-err_iounmap:
-	iounmap(am->mdio_base);
-err_free_mdio:
-	kfree(am);
 err_out:
 	return err;
 }
@@ -232,20 +279,30 @@ static int ag71xx_mdio_remove(struct platform_device *pdev)
 
 	if (am) {
 		mdiobus_unregister(am->mii_bus);
-		mdiobus_free(am->mii_bus);
-		iounmap(am->mdio_base);
-		kfree(am);
 		platform_set_drvdata(pdev, NULL);
 	}
 
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id ag71xx_mdio_of_match_table[] = {
+	{.compatible = "qca,ag71xx-mdio"},
+	{}
+};
+#else
+#define ag71xx_mdio_of_match_table NULL
+#endif
+
+
 static struct platform_driver ag71xx_mdio_driver = {
 	.probe		= ag71xx_mdio_probe,
 	.remove		= ag71xx_mdio_remove,
 	.driver = {
 		.name	= "ag71xx-mdio",
+#ifdef CONFIG_OF
+		.of_match_table = ag71xx_mdio_of_match_table,
+#endif
 	}
 };
 
