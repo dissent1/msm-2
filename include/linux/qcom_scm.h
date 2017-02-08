@@ -36,4 +36,9 @@ extern void qcom_scm_cpu_power_down(u32 flags);
 
 extern u32 qcom_scm_get_version(void);
 
+#define SCM_SVC_TZSCHEDULER	0xFC
+
+extern int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
+				size_t req_size, void *resp, size_t resp_size);
+
 #endif

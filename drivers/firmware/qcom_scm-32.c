@@ -544,3 +544,14 @@ int __qcom_scm_sdi(u32 svc_id, u32 cmd_id)
 
 	return ret;
 }
+
+int __qcom_scm_tzsched(u32 svc_id, u32 cmd_id, const void *req,
+			size_t req_size, void *resp, size_t resp_size)
+{
+	int ret;
+
+	ret = qcom_scm_call(svc_id, cmd_id, req,
+				req_size, resp, resp_size);
+
+	return ret;
+}
