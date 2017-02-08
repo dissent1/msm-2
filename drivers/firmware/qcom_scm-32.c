@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/qcom_scm.h>
 #include <linux/dma-mapping.h>
+#include <linux/delay.h>
 
 #include "qcom_scm.h"
 
@@ -302,6 +303,141 @@ static s32 qcom_scm_call_atomic2(u32 svc, u32 cmd, u32 arg1, u32 arg2)
 	return r0;
 }
 
+#define R0_STR "r0"
+#define R1_STR "r1"
+#define R2_STR "r2"
+#define R3_STR "r3"
+#define R4_STR "r4"
+#define R5_STR "r5"
+#define R6_STR "r6"
+
+static int __scm_call_armv8_32(u32 w0, u32 w1, u32 w2, u32 w3, u32 w4, u32 w5,
+				u64 *ret1, u64 *ret2, u64 *ret3)
+{
+	register u32 r0 asm("r0") = w0;
+	register u32 r1 asm("r1") = w1;
+	register u32 r2 asm("r2") = w2;
+	register u32 r3 asm("r3") = w3;
+	register u32 r4 asm("r4") = w4;
+	register u32 r5 asm("r5") = w5;
+	register u32 r6 asm("r6") = 0;
+
+	do {
+		asm volatile(
+			__asmeq("%0", R0_STR)
+			__asmeq("%1", R1_STR)
+			__asmeq("%2", R2_STR)
+			__asmeq("%3", R3_STR)
+			__asmeq("%4", R0_STR)
+			__asmeq("%5", R1_STR)
+			__asmeq("%6", R2_STR)
+			__asmeq("%7", R3_STR)
+			__asmeq("%8", R4_STR)
+			__asmeq("%9", R5_STR)
+			__asmeq("%10", R6_STR)
+#ifdef REQUIRES_SEC
+			".arch_extension sec\n"
+#endif
+			"smc	#0\n"
+			: "=r" (r0), "=r" (r1), "=r" (r2), "=r" (r3)
+			: "r" (r0), "r" (r1), "r" (r2), "r" (r3), "r" (r4),
+			 "r" (r5), "r" (r6));
+
+	} while (r0 == QCOM_SCM_INTERRUPTED);
+
+	if (ret1)
+		*ret1 = r1;
+	if (ret2)
+		*ret2 = r2;
+	if (ret3)
+		*ret3 = r3;
+
+	return r0;
+}
+
+static enum scm_interface_version {
+	SCM_UNKNOWN,
+	SCM_LEGACY,
+	SCM_ARMV8_32,
+} scm_version = SCM_UNKNOWN;
+
+/* This function is used to find whether TZ is in AARCH64 mode.
+ * If this function returns 1, then its in AARCH64 mode and
+ * calling conventions for AARCH64 TZ is different, we need to
+ * use them.
+ */
+static bool is_scm_armv8(void)
+{
+	int ret;
+	u64 ret1, x0;
+
+	if (likely(scm_version != SCM_UNKNOWN))
+		return (scm_version == SCM_ARMV8_32);
+
+	/* Try SMC32 call */
+	ret1 = 0;
+	x0 = SCM_SIP_FNID(QCOM_SCM_SVC_INFO, QCOM_IS_CALL_AVAIL_CMD) |
+			QCOM_SMC_ATOMIC_MASK;
+
+	ret = __scm_call_armv8_32(x0, SCM_ARGS(1), x0, 0, 0, 0,
+				  &ret1, NULL, NULL);
+	if (ret || !ret1)
+		scm_version = SCM_LEGACY;
+	else
+		scm_version = SCM_ARMV8_32;
+
+	pr_debug("scm_call: scm version is %x\n", scm_version);
+
+	return (scm_version == SCM_ARMV8_32);
+}
+
+/**
+ * qcom_scm_call2() - Invoke a syscall in the secure world
+ * @fn_id: The function ID for this syscall
+ * @desc: Descriptor structure containing arguments and return values
+ *
+ * Sends a command to the SCM and waits for the command to finish processing.
+ * This should *only* be called in pre-emptible context.
+ *
+ */
+static int qcom_scm_call2(u32 fn_id, struct scm_desc *desc)
+{
+	int ret, retry_count = 0;
+	u64 x0;
+
+	if (unlikely(!is_scm_armv8()))
+		return -ENODEV;
+
+	x0 = fn_id;
+
+	do {
+		mutex_lock(&qcom_scm_lock);
+
+		desc->ret[0] = desc->ret[1] = desc->ret[2] = 0;
+
+		ret = __scm_call_armv8_32(x0, desc->arginfo,
+					  desc->args[0], desc->args[1],
+					  desc->args[2], desc->x5,
+					  &desc->ret[0], &desc->ret[1],
+					  &desc->ret[2]);
+		mutex_unlock(&qcom_scm_lock);
+
+		if (ret == QCOM_SCM_V2_EBUSY)
+			msleep(QCOM_SCM_EBUSY_WAIT_MS);
+	}  while (ret == QCOM_SCM_V2_EBUSY &&
+			(retry_count++ < QCOM_SCM_EBUSY_MAX_RETRY));
+
+	if (ret < 0)
+		pr_err("scm_call failed: func id %#llx ret: %d"
+			" syscall returns: %#llx, %#llx, %#llx\n",
+			x0, ret, desc->ret[0],
+			desc->ret[1], desc->ret[2]);
+
+	if (ret < 0)
+		return qcom_scm_remap_error(ret);
+	return 0;
+}
+
 u32 qcom_scm_get_version(void)
 {
 	int context_id;
@@ -504,14 +640,23 @@ int __qcom_scm_pas_init_image(struct device *dev, u32 peripheral,
 		__le32 proc;
 		__le32 image_addr;
 	} request;
+	struct scm_desc desc = {0};
 
-	request.proc = cpu_to_le32(peripheral);
-	request.image_addr = cpu_to_le32(metadata_phys);
-
-	ret = qcom_scm_call(dev, QCOM_SCM_SVC_PIL,
+	if (!is_scm_armv8()) {
+		request.proc = cpu_to_le32(peripheral);
+		request.image_addr = cpu_to_le32(metadata_phys);
+		ret = qcom_scm_call(dev, QCOM_SCM_SVC_PIL,
 			    QCOM_SCM_PAS_INIT_IMAGE_CMD,
 			    &request, sizeof(request),
 			    &scm_ret, sizeof(scm_ret));
+	} else {
+		desc.args[0] = peripheral;
+		desc.args[1] = metadata_phys;
+		desc.arginfo = SCM_ARGS(2, SCM_VAL, SCM_RW);
+		ret = qcom_scm_call2(SCM_SIP_FNID(QCOM_SCM_SVC_PIL,
+				QCOM_SCM_PAS_INIT_IMAGE_CMD), &desc);
+		scm_ret = desc.ret[0];
+	}
 
 	return ret ? : le32_to_cpu(scm_ret);
 }
@@ -544,13 +689,21 @@ int __qcom_scm_pas_auth_and_reset(struct device *dev, u32 peripheral)
 	__le32 out;
 	__le32 in;
 	int ret;
+	struct scm_desc desc = {0};
 
-	in = cpu_to_le32(peripheral);
-	ret = qcom_scm_call(dev, QCOM_SCM_SVC_PIL,
+	if (!is_scm_armv8()) {
+		in = cpu_to_le32(peripheral);
+		ret = qcom_scm_call(dev, QCOM_SCM_SVC_PIL,
 			    QCOM_SCM_PAS_AUTH_AND_RESET_CMD,
 			    &in, sizeof(in),
 			    &out, sizeof(out));
-
+	} else {
+		desc.args[0] = peripheral;
+		desc.arginfo = SCM_ARGS(1);
+		ret = qcom_scm_call2(SCM_SIP_FNID(QCOM_SCM_SVC_PIL,
+				QCOM_SCM_PAS_AUTH_AND_RESET_CMD), &desc);
+		out = desc.ret[0];
+	}
 	return ret ? : le32_to_cpu(out);
 }
 

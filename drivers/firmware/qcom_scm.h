@@ -33,6 +33,53 @@ extern void __qcom_scm_cpu_power_down(u32 flags);
 extern int __qcom_scm_is_call_available(struct device *dev, u32 svc_id,
 		u32 cmd_id);
 
+#define SCM_SIP_FNID(s, c) (((((s) & 0xFF) << 8) | ((c) & 0xFF)) | 0x02000000)
+#define QCOM_SMC_ATOMIC_MASK		0x80000000
+#define SCM_ARGS_IMPL(num, a, b, c, d, e, f, g, h, i, j, ...) (\
+			(((a) & 0xff) << 4) | \
+			(((b) & 0xff) << 6) | \
+			(((c) & 0xff) << 8) | \
+			(((d) & 0xff) << 10) | \
+			(((e) & 0xff) << 12) | \
+			(((f) & 0xff) << 14) | \
+			(((g) & 0xff) << 16) | \
+			(((h) & 0xff) << 18) | \
+			(((i) & 0xff) << 20) | \
+			(((j) & 0xff) << 22) | \
+			(num & 0xffff))
+
+#define SCM_ARGS(...) SCM_ARGS_IMPL(__VA_ARGS__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+#define MAX_SCM_ARGS 10
+#define MAX_SCM_RETS 3
+
+enum scm_arg_types {
+	SCM_VAL,
+	SCM_RO,
+	SCM_RW,
+	SCM_BUFVAL,
+};
+
+/**
+ * struct scm_desc
+ * @arginfo: Metadata describing the arguments in args[]
+ * @args: The array of arguments for the secure syscall
+ * @ret: The values returned by the secure syscall
+ * @extra_arg_buf: The buffer containing extra arguments
+		   (that don't fit in available registers)
+ * @x5: The 4rd argument to the secure syscall or physical address of
+	extra_arg_buf
+ */
+struct scm_desc {
+	u32 arginfo;
+	u64 args[MAX_SCM_ARGS];
+	u64 ret[MAX_SCM_RETS];
+
+	/* private */
+	void *extra_arg_buf;
+	u64 x5;
+};
+
 #define QCOM_SCM_SVC_HDCP		0x11
 #define QCOM_SCM_CMD_HDCP		0x01
 
@@ -101,6 +148,9 @@ extern int qcom_scm_send_cache_dump_addr(u32 cmd_id, void *cmd_buf, u32 size);
 #define QCOM_SCM_EINVAL_ARG	-2
 #define QCOM_SCM_ERROR		-1
 #define QCOM_SCM_INTERRUPTED	1
+
+#define QCOM_SCM_EBUSY_WAIT_MS 30
+#define QCOM_SCM_EBUSY_MAX_RETRY 20
 
 static inline int qcom_scm_remap_error(int err)
 {
