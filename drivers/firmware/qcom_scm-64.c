@@ -328,19 +328,3 @@ int __qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
 {
 	return -ENOTSUPP;
 }
-
-int __qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf)
-{
-	return -ENOTSUPP;
-}
-
-int __qcom_scm_sdi(u32 svc_id, u32 cmd_id)
-{
-	return -ENOTSUPP;
-}
-
-int __qcom_scm_tzsched(u32 svc_id, u32 cmd_id, const void *req,
-			size_t req_size, void *resp, size_t resp_size)
-{
-	return -ENOTSUPP;
-}

@@ -33,26 +33,10 @@ extern int __qcom_scm_is_call_available(u32 svc_id, u32 cmd_id);
 
 #define QCOM_SCM_SVC_HDCP		0x11
 #define QCOM_SCM_CMD_HDCP		0x01
-
-struct qcom_scm_hdcp_req {
-	u32 addr;
-	u32 val;
-};
 extern int __qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
-		u32 *resp);
-extern int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
 		u32 *resp);
 
 extern int __qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *);
-
-extern int __qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf);
-extern int qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf);
-
-extern int __qcom_scm_sdi(u32 svc_id, u32 cmd_id);
-extern int qcom_scm_sdi(u32 svc_id, u32 cmd_id);
-
-extern int __qcom_scm_tzsched(u32 svc_id, u32 cmd_id, const void *req,
-			      size_t req_size, void *resp, size_t resp_size);
 /* common error codes */
 #define QCOM_SCM_ENOMEM		-5
 #define QCOM_SCM_EOPNOTSUPP	-4

@@ -23,7 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/notifier.h>
 #include <linux/reboot.h>
-#include "qcom_scm.h"
+#include <soc/qcom/scm.h>
 
 #define SET_MAGIC	0x1
 #define CLEAR_MAGIC	0x0
@@ -37,22 +37,24 @@ static void scm_restart_dload_mode_enable(void)
 {
 	if (!dload_dis) {
 		unsigned int magic_cookie = SET_MAGIC;
-		qcom_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
-				&magic_cookie);
+		scm_call(SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID, &magic_cookie,
+			sizeof(magic_cookie), NULL, 0);
 	}
 }
 
 static void scm_restart_dload_mode_disable(void)
 {
 	unsigned int magic_cookie = CLEAR_MAGIC;
-
-	qcom_scm_dload(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID,
-			&magic_cookie);
-};
+	scm_call(SCM_SVC_BOOT, SCM_CMD_TZ_FORCE_DLOAD_ID, &magic_cookie,
+		sizeof(magic_cookie), NULL, 0);
+}
 
 static void scm_restart_sdi_disable(void)
 {
-	qcom_scm_sdi(QCOM_SCM_SVC_BOOT, SCM_CMD_TZ_CONFIG_HW_FOR_RAM_DUMP_ID);
+	unsigned int clear_info[] = {
+		1 /* Disable wdog debug */, 0 /* SDI enable*/, };
+	scm_call(SCM_SVC_BOOT, SCM_CMD_TZ_CONFIG_HW_FOR_RAM_DUMP_ID,
+		&clear_info, sizeof(clear_info), NULL, 0);
 }
 
 static int scm_restart_panic(struct notifier_block *this,
@@ -99,8 +101,8 @@ static int scm_restart_reason_probe(struct platform_device *pdev)
 		dload_dis_sec = 0;
 
 	if (dload_dis_sec) {
-		qcom_scm_dload(QCOM_SCM_SVC_BOOT,
-			SCM_CMD_TZ_SET_DLOAD_FOR_SECURE_BOOT, NULL);
+		scm_call(SCM_SVC_BOOT, SCM_CMD_TZ_SET_DLOAD_FOR_SECURE_BOOT,
+							NULL, 0, NULL, 0);
 	}
 
 	/* Ensure Disable before enabling the dload and sdi bits

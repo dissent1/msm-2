@@ -18,9 +18,16 @@ extern int qcom_scm_set_warm_boot_addr(void *entry, const cpumask_t *cpus);
 
 #define QCOM_SCM_HDCP_MAX_REQ_CNT	5
 
+struct qcom_scm_hdcp_req {
+	u32 addr;
+	u32 val;
+};
+
 extern bool qcom_scm_is_available(void);
 
 extern bool qcom_scm_hdcp_available(void);
+extern int qcom_scm_hdcp_req(struct qcom_scm_hdcp_req *req, u32 req_cnt,
+		u32 *resp);
 
 #define SCM_SVC_UTIL		0x3
 #define SCM_CMD_SET_REGSAVE	0x2
@@ -35,10 +42,5 @@ extern void qcom_scm_cpu_power_down(u32 flags);
 #define QCOM_SCM_VERSION(major, minor) (((major) << 16) | ((minor) & 0xFF))
 
 extern u32 qcom_scm_get_version(void);
-
-#define SCM_SVC_TZSCHEDULER	0xFC
-
-extern int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
-				size_t req_size, void *resp, size_t resp_size);
 
 #endif

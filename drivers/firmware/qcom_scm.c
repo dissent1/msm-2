@@ -100,23 +100,3 @@ int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
 	return __qcom_scm_regsave(svc_id, cmd_id, scm_regsave);
 }
 EXPORT_SYMBOL(qcom_scm_regsave);
-
-int qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf)
-{
-	return __qcom_scm_dload(svc_id, cmd_id, cmd_buf);
-}
-EXPORT_SYMBOL(qcom_scm_dload);
-
-int qcom_scm_sdi(u32 svc_id, u32 cmd_id)
-{
-	return __qcom_scm_sdi(svc_id, cmd_id);
-}
-EXPORT_SYMBOL(qcom_scm_sdi);
-
-int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
-			size_t req_size, void *resp, size_t resp_size)
-{
-	return __qcom_scm_tzsched(svc_id, cmdid, req, req_size,
-				resp, resp_size);
-}
-EXPORT_SYMBOL(qcom_scm_tzsched);
