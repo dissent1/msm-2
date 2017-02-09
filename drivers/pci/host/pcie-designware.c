@@ -567,6 +567,7 @@ int dw_pcie_host_init(struct pcie_port *pp)
 	if (!bus)
 		return -ENOMEM;
 
+	pp->pci_bus = bus;
 	if (pp->ops->scan_bus)
 		pp->ops->scan_bus(pp);
 
@@ -585,6 +586,72 @@ int dw_pcie_host_init(struct pcie_port *pp)
 
 	pci_bus_add_devices(bus);
 	return 0;
+}
+
+int dw_pcie_host_init_pm(struct pcie_port *pp)
+{
+	int ret;
+	LIST_HEAD(res);
+	u32 val;
+	struct pci_bus *bus, *child;
+
+	pci_add_resource(&res, pp->busn);
+	pci_add_resource(&res, pp->io);
+	pci_add_resource(&res, pp->mem);
+
+	if (pp->ops->host_init) {
+		ret = pp->ops->host_init(pp);
+		if (ret) {
+			dev_err(pp->dev, "pm_hostinit failed\n");
+			return ret;
+		}
+	}
+
+	if (!pp->ops->rd_other_conf)
+		dw_pcie_prog_outbound_atu(pp, PCIE_ATU_REGION_INDEX1,
+					  PCIE_ATU_TYPE_MEM, pp->mem_base,
+					  pp->mem_bus_addr, pp->mem_size);
+
+	dw_pcie_wr_own_conf(pp, PCI_BASE_ADDRESS_0, 4, 0);
+
+	/* program correct class for RC */
+	dw_pcie_wr_own_conf(pp, PCI_CLASS_DEVICE, 2, PCI_CLASS_BRIDGE_PCI);
+
+	dw_pcie_rd_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, &val);
+	val |= PORT_LOGIC_SPEED_CHANGE;
+	dw_pcie_wr_own_conf(pp, PCIE_LINK_WIDTH_SPEED_CONTROL, 4, val);
+
+	if (IS_ENABLED(CONFIG_PCI_MSI)) {
+		bus = pci_scan_root_bus_msi(pp->dev, pp->root_bus_nr,
+					    &dw_pcie_ops, pp, &res,
+					    &dw_pcie_msi_chip);
+		dw_pcie_msi_chip.dev = pp->dev;
+	} else {
+		bus = pci_scan_root_bus(pp->dev, pp->root_bus_nr, &dw_pcie_ops,
+					pp, &res);
+	}
+	if (!bus)
+		return -ENOMEM;
+
+	pp->pci_bus = bus;
+	if (pp->ops->scan_bus)
+		pp->ops->scan_bus(pp);
+
+#ifdef CONFIG_ARM
+	/* support old dtbs that incorrectly describe IRQs */
+	pci_fixup_irqs(pci_common_swizzle, of_irq_parse_and_map_pci);
+#endif
+	if (!pci_has_flag(PCI_PROBE_ONLY)) {
+		pci_bus_size_bridges(bus);
+		pci_bus_assign_resources(bus);
+
+		list_for_each_entry(child, &bus->children, node)
+			pcie_bus_configure_settings(child);
+	}
+
+	pci_bus_add_devices(bus);
+	return 0;
+
 }
 
 static int dw_pcie_rd_other_conf(struct pcie_port *pp, struct pci_bus *bus,
