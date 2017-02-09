@@ -42,6 +42,9 @@
 #define BLANK_FLAG_LP	FB_BLANK_VSYNC_SUSPEND
 #define BLANK_FLAG_ULP	FB_BLANK_NORMAL
 
+#define DEFERRED_IO_REFRESH_RATE	25
+#define DEFERRED_IO_DELAY		(HZ / DEFERRED_IO_REFRESH_RATE)
+
 enum {
 	MDP_RGB_565,      /* RGB 565 planer */
 	MDP_XRGB_8888,    /* RGB 888 padded */
@@ -63,6 +66,7 @@ static u32 mdss_fb_pseudo_palette[16] = {
 };
 
 static struct msm_mdp_interface *mdp_instance;
+static struct fb_deferred_io mdss_fb_defio;
 
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
 static int mdss_fb_open(struct fb_info *info, int user);
@@ -120,6 +124,7 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mfd->fb_imgType = MDP_RGBA_8888;
 
+	mfd->fbi->fbdefio = &mdss_fb_defio;
 	mfd->pdev = pdev;
 
 	mfd->mdp = *mdp_instance;
@@ -166,6 +171,7 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		pr_err("msm_fb_remove: can't stop the device %d\n",
 			    mfd->index);
 
+	fb_deferred_io_cleanup(mfd->fbi);
 	/* remove /dev/fb* */
 	unregister_framebuffer(mfd->fbi);
 
@@ -447,6 +453,12 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	return ret;
 }
 
+static void mdss_fb_deferred_io(struct fb_info *info,
+				struct list_head *pagelist)
+{
+	mdss_fb_pan_display(&info->var, info);
+}
+
 static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 {
 	struct mdss_panel_data *pdata;
@@ -493,11 +505,15 @@ static struct fb_ops mdss_fb_ops = {
 	.fb_check_var = mdss_fb_check_var,	/* vinfo check */
 	.fb_set_par = mdss_fb_set_par,	/* set the video mode */
 	.fb_blank = mdss_fb_blank,	/* blank display */
-	.fb_pan_display = mdss_fb_pan_display,	/* pan display */
 	.fb_fillrect	= cfb_fillrect,
 	.fb_copyarea	= cfb_copyarea,
 	.fb_imageblit	= cfb_imageblit,
 	.fb_mmap = mdss_fb_mmap,
+};
+
+static struct fb_deferred_io mdss_fb_defio = {
+	.delay		= DEFERRED_IO_DELAY,
+	.deferred_io	= mdss_fb_deferred_io,
 };
 
 static int mdss_fb_alloc_fbmem(struct msm_fb_data_type *mfd)
@@ -678,6 +694,7 @@ static int mdss_fb_register(struct msm_fb_data_type *mfd)
 
 	mfd->op_enable = true;
 
+	fb_deferred_io_init(mfd->fbi);
 	ret = fb_alloc_cmap(&fbi->cmap, 256, 0);
 	if (ret)
 		pr_err("fb_alloc_cmap() failed!\n");
