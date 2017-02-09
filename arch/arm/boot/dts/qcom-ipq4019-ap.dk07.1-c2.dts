@@ -68,13 +68,13 @@
 				mux_1 {
 					pins = "gpio37";
 					function="wifi0_wci";
-					bias-pull-down;
+					bias-pull-up;
 					drive-strength = <2>;
 				};
 				mux_2 {
 					pins = "gpio43";
 					function="wifi_wci1";
-					bias-pull-down;
+					bias-pull-up;
 					drive-strength = <2>;
 				};
 				mux_3 {
