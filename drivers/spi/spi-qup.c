@@ -451,6 +451,7 @@ static int spi_qup_io_config(struct spi_device *spi, struct spi_transfer *xfer)
 		writel_relaxed(0, controller->base + QUP_MX_OUTPUT_CNT);
 		break;
 	case QUP_IO_M_MODE_BAM:
+	case QUP_IO_M_MODE_DMOV:
 		writel_relaxed(controller->n_words,
 			       controller->base + QUP_MX_INPUT_CNT);
 		writel_relaxed(controller->n_words,
@@ -853,7 +854,8 @@ static int spi_qup_io_prep(struct spi_device *spi, struct spi_transfer *xfer)
 	else if (spi->master->can_dma &&
 		 spi->master->can_dma(spi->master, spi, xfer) &&
 		 spi->master->cur_msg_mapped)
-		controller->mode = QUP_IO_M_MODE_BAM;
+		controller->mode = controller->qup_v1 ? QUP_IO_M_MODE_DMOV :
+							QUP_IO_M_MODE_BAM;
 	else
 		controller->mode = QUP_IO_M_MODE_BLOCK;
 
@@ -944,6 +946,7 @@ static int spi_qup_init_dma(struct spi_master *master, resource_size_t base)
 	struct dma_slave_config *rx_conf = &spi->rx_conf,
 				*tx_conf = &spi->tx_conf;
 	struct device *dev = spi->dev;
+	u32 tx_crci = 0, rx_crci = 0;
 	int ret;
 
 	/* allocate dma resources, if available */
@@ -957,16 +960,34 @@ static int spi_qup_init_dma(struct spi_master *master, resource_size_t base)
 		goto err_tx;
 	}
 
+	if (spi->qup_v1) {
+		ret = of_property_read_u32(dev->of_node, "qcom,tx-crci",
+					   &tx_crci);
+		if (ret) {
+			dev_err(dev, "missing property qcom,tx-crci\n");
+			goto err;
+		}
+
+		ret = of_property_read_u32(dev->of_node, "qcom,rx-crci",
+					   &rx_crci);
+		if (ret) {
+			dev_err(dev, "missing property qcom,rx-crci\n");
+			goto err;
+		}
+	}
+
 	/* set DMA parameters */
 	rx_conf->direction = DMA_DEV_TO_MEM;
 	rx_conf->device_fc = 1;
 	rx_conf->src_addr = base + QUP_INPUT_FIFO;
 	rx_conf->src_maxburst = spi->in_blk_sz;
+	rx_conf->slave_id = rx_crci;
 
 	tx_conf->direction = DMA_MEM_TO_DEV;
 	tx_conf->device_fc = 1;
 	tx_conf->dst_addr = base + QUP_OUTPUT_FIFO;
 	tx_conf->dst_maxburst = spi->out_blk_sz;
+	tx_conf->slave_id = tx_crci;
 
 	ret = dmaengine_slave_config(master->dma_rx, rx_conf);
 	if (ret) {
@@ -1107,12 +1128,6 @@ static int spi_qup_probe(struct platform_device *pdev)
 	controller->cclk = cclk;
 	controller->irq = irq;
 
-	ret = spi_qup_init_dma(master, res->start);
-	if (ret == -EPROBE_DEFER)
-		goto error;
-	else if (!ret)
-		master->can_dma = spi_qup_can_dma;
-
 	/* set v1 flag if device is version 1 */
 	if (of_device_is_compatible(dev->of_node, "qcom,spi-qup-v1.1.1"))
 		controller->qup_v1 = 1;
@@ -1149,6 +1164,12 @@ static int spi_qup_probe(struct platform_device *pdev)
 	dev_info(dev, "IN:block:%d, fifo:%d, OUT:block:%d, fifo:%d\n",
 		 controller->in_blk_sz, controller->in_fifo_sz,
 		 controller->out_blk_sz, controller->out_fifo_sz);
+
+	ret = spi_qup_init_dma(master, res->start);
+	if (ret == -EPROBE_DEFER)
+		goto error;
+	else if (!ret)
+		master->can_dma = spi_qup_can_dma;
 
 	writel_relaxed(1, base + QUP_SW_RESET);
 
