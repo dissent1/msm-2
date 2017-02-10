@@ -50,6 +50,8 @@ static int dwc3_of_simple_probe(struct platform_device *pdev)
 	if (!simple)
 		return -ENOMEM;
 
+	platform_set_drvdata(pdev, simple);
+
 	count = of_clk_get_parent_count(np);
 	if (!count)
 		return -ENOENT;
