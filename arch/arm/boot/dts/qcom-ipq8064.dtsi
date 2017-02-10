@@ -180,6 +180,12 @@
 		fab_freq_nominal = <400000000>;
         };
 
+	firmware {
+		scm {
+			compatible = "qcom,scm-ipq806x";
+		};
+	};
+
 	soc: soc {
 		#address-cells = <1>;
 		#size-cells = <1>;
