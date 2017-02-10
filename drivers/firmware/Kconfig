@@ -164,6 +164,7 @@ config RASPBERRYPI_FIRMWARE
 config QCOM_SCM
 	def_bool y
 	depends on ARM || ARM64
+	select RESET_CONTROLLER
 
 config QCOM_SCM_32
 	def_bool y

@@ -24,7 +24,6 @@
 #include <linux/sched.h>
 #include <linux/qcom_scm.h>
 #include <linux/smp.h>
-#include <linux/utsname.h>
 
 static int in_panic;
 
@@ -59,71 +58,9 @@ struct qcom_wdt {
 	const u32		*layout;
 };
 
-struct qcom_wdt_scm_tlv_msg {
-	unsigned char *msg_buffer;
-	unsigned char *cur_msg_buffer_pos;
-	unsigned int len;
-};
-
-#define CFG_TLV_MSG_OFFSET	2048
-#define QCOM_WDT_SCM_TLV_TYPE_SIZE	1
-#define QCOM_WDT_SCM_TLV_LEN_SIZE	2
-#define QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE	(QCOM_WDT_SCM_TLV_TYPE_SIZE +\
-						QCOM_WDT_SCM_TLV_LEN_SIZE)
-enum {
-	QCOM_WDT_LOG_DUMP_TYPE_INVALID,
-	QCOM_WDT_LOG_DUMP_TYPE_UNAME,
-};
-
 static void __iomem *wdt_addr(struct qcom_wdt *wdt, enum wdt_reg reg)
 {
 	return wdt->base + wdt->layout[reg];
-};
-
-static int qcom_wdt_scm_add_tlv(struct qcom_wdt_scm_tlv_msg *scm_tlv_msg,
-			unsigned char type, unsigned int size, const char *data)
-{
-	unsigned char *x = scm_tlv_msg->cur_msg_buffer_pos;
-	unsigned char *y = scm_tlv_msg->msg_buffer + scm_tlv_msg->len;
-
-	if ((x + QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE + size) >= y)
-		return -ENOBUFS;
-
-	x[0] = type;
-	x[1] = size;
-	x[2] = size >> 8;
-
-	memcpy(x + 3, data, size);
-
-	scm_tlv_msg->cur_msg_buffer_pos +=
-		(size + QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE);
-
-	return 0;
-}
-
-static int qcom_wdt_scm_fill_log_dump_tlv(
-			struct qcom_wdt_scm_tlv_msg *scm_tlv_msg)
-{
-	struct new_utsname *uname;
-	int ret_val;
-
-	uname = utsname();
-
-	ret_val = qcom_wdt_scm_add_tlv(scm_tlv_msg,
-			QCOM_WDT_LOG_DUMP_TYPE_UNAME,
-			sizeof(*uname),
-			(unsigned char *)uname);
-
-	if (ret_val)
-		return ret_val;
-
-	if (scm_tlv_msg->cur_msg_buffer_pos >=
-		scm_tlv_msg->msg_buffer + scm_tlv_msg->len)
-		return -ENOBUFS;
-
-	*scm_tlv_msg->cur_msg_buffer_pos++ = QCOM_WDT_LOG_DUMP_TYPE_INVALID;
-
-	return 0;
 }
 
 static inline
@@ -146,12 +83,7 @@ static struct notifier_block panic_blk = {
 static long qcom_wdt_configure_bark_dump(void *arg)
 {
 	void *scm_regsave;
-	struct qcom_wdt_scm_tlv_msg tlv_msg;
-	void *tlv_ptr;
-	resource_size_t tlv_base;
-	resource_size_t tlv_size;
 
-	struct resource *res = (struct resource *)arg;
 	long ret = -ENOMEM;
 
 	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
@@ -164,45 +96,6 @@ static long qcom_wdt_configure_bark_dump(void *arg)
 		pr_err("Setting register save address failed.\n"
 			"Registers won't be dumped on a dog bite\n");
 		return ret;
-	}
-
-	/* Initialize the tlv and fill all the details */
-	tlv_msg.msg_buffer = scm_regsave + CFG_TLV_MSG_OFFSET;
-	tlv_msg.cur_msg_buffer_pos = tlv_msg.msg_buffer;
-	tlv_msg.len = PAGE_SIZE - CFG_TLV_MSG_OFFSET;
-
-	ret = qcom_wdt_scm_fill_log_dump_tlv(&tlv_msg);
-
-	/* if failed, we still return 0 because it should not
-	 * affect the boot flow. The return value 0 does not
-	 * necessarily indicate success in this function.
-	 */
-	if (ret) {
-		pr_err("log dump initialization failed\n");
-		return 0;
-	}
-
-	if (res) {
-		tlv_base = res->start;
-		tlv_size = resource_size(res);
-		res = request_mem_region(tlv_base, tlv_size, "tlv_dump");
-
-		if (!res) {
-			pr_err("requesting memory region failed\n");
-			return 0;
-		}
-
-		tlv_ptr = ioremap(tlv_base, tlv_size);
-
-		if (!tlv_ptr) {
-			pr_err("mapping physical mem failed\n");
-			release_mem_region(tlv_base, tlv_size);
-			return 0;
-		}
-
-		memcpy_toio(tlv_ptr, tlv_msg.msg_buffer, tlv_msg.len);
-		iounmap(tlv_ptr);
-		release_mem_region(tlv_base, tlv_size);
 	}
 
 	return 0;
@@ -374,7 +267,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	if (!wdt)
 		return -ENOMEM;
 	irq = platform_get_irq_byname(pdev, "bark_irq");
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "kpss_wdt");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	/* We use CPU0's DGT for the watchdog */
 	if (of_property_read_u32(np, "cpu-offset", &percpu_offset))
@@ -386,8 +279,6 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	wdt->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(wdt->base))
 		return PTR_ERR(wdt->base);
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "tlv");
 
 	id = of_match_device(qcom_wdt_of_table, &pdev->dev);
 	if (!id)
@@ -427,7 +318,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 		goto err_clk_unprepare;
 	}
 
-	ret = work_on_cpu(0, qcom_wdt_configure_bark_dump, res);
+	ret = work_on_cpu(0, qcom_wdt_configure_bark_dump, NULL);
 	if (ret)
 		wdt->wdd.ops = &qcom_wdt_ops_nonsecure;
 	else

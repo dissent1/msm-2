@@ -22,8 +22,16 @@ extern bool qcom_scm_is_available(void);
 
 extern bool qcom_scm_hdcp_available(void);
 
+extern bool qcom_scm_pas_supported(u32 peripheral);
+extern int qcom_scm_pas_init_image(u32 peripheral, const void *metadata,
+		size_t size);
+extern int qcom_scm_pas_mem_setup(u32 peripheral, phys_addr_t addr,
+		phys_addr_t size);
+extern int qcom_scm_pas_auth_and_reset(u32 peripheral);
+extern int qcom_scm_pas_shutdown(u32 peripheral);
+
 #define SCM_SVC_UTIL		0x3
-#define SCM_CMD_SET_REGSAVE	0x2
+#define SCM_CMD_SET_REGSAVE 	0x2
 
 extern int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *);
 
@@ -40,5 +48,6 @@ extern u32 qcom_scm_get_version(void);
 
 extern int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
 				size_t req_size, void *resp, size_t resp_size);
+
 
 #endif
