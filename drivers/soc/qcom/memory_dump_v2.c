@@ -19,7 +19,9 @@
 #include <linux/of_address.h>
 #include <linux/kmemleak.h>
 #include <soc/qcom/memory_dump.h>
+#ifdef CONFIG_MSM_DEBUG_LAR_UNLOCK
 #include <soc/qcom/scm.h>
+#endif
 
 #define MSM_DUMP_TABLE_VERSION		MSM_DUMP_MAKE_VERSION(2, 0)
 
