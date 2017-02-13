@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 - 2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -16,6 +16,7 @@
 #include <linux/cpu_rmap.h>
 #include <linux/of_net.h>
 #include <linux/timer.h>
+#include <linux/bitmap.h>
 #include "edma.h"
 #include "ess_edma.h"
 
@@ -37,7 +38,9 @@ static struct mii_bus *miibus_gb;
 char edma_tx_irq[16][64];
 char edma_rx_irq[8][64];
 struct net_device *edma_netdev[EDMA_MAX_PORTID_SUPPORTED];
-static struct phy_device *phy_dev[EDMA_MAX_PORTID_SUPPORTED];
+static struct phy_device *edma_phydev[EDMA_MAX_PORTID_SUPPORTED];
+static int edma_link_detect_bmp;
+static int phy_dev_state[EDMA_MAX_PORTID_SUPPORTED];
 static u16 tx_start[4] = {EDMA_TXQ_START_CORE0, EDMA_TXQ_START_CORE1,
 			EDMA_TXQ_START_CORE2, EDMA_TXQ_START_CORE3};
 static u32 tx_mask[4] = {EDMA_TXQ_IRQ_MASK_CORE0, EDMA_TXQ_IRQ_MASK_CORE1,
@@ -53,6 +56,7 @@ static u32 edma_default_group5_vtag  __read_mostly = EDMA_DEFAULT_GROUP5_VLAN;
 
 static u32 edma_default_group1_bmp  __read_mostly = EDMA_DEFAULT_GROUP1_BMP;
 static u32 edma_default_group2_bmp  __read_mostly = EDMA_DEFAULT_GROUP2_BMP;
+static u32 edma_disable_rss __read_mostly = EDMA_DEFAULT_DISABLE_RSS;
 
 static int edma_weight_assigned_to_q __read_mostly;
 static int edma_queue_to_virtual_q __read_mostly;
@@ -194,6 +198,36 @@ static int edma_ath_hdr_eth_type(struct ctl_table *table, int write,
 		edma_assign_ath_hdr_type(edma_athr_hdr_eth_type);
 
 	return ret;
+}
+
+static int edma_get_port_from_phydev(struct phy_device *phydev)
+{
+	int i;
+
+	for (i = 0; i < EDMA_MAX_PORTID_SUPPORTED; i++) {
+		if (phydev == edma_phydev[i])
+			return i;
+	}
+
+	pr_err("Invalid PHY devive\n");
+	return -1;
+}
+
+static int edma_is_port_used(int portid)
+{
+	int used_portid_bmp;
+
+	used_portid_bmp = edma_link_detect_bmp >> 1;
+
+	while (used_portid_bmp) {
+		int port_bit_set = ffs(used_portid_bmp);
+
+		if (port_bit_set == portid)
+			return 1;
+		used_portid_bmp &= ~(1 << (port_bit_set - 1));
+	}
+
+	return 0;
 }
 
 static int edma_change_default_lan_vlan(struct ctl_table *table, int write,
@@ -367,8 +401,8 @@ static int edma_change_group1_bmp(struct ctl_table *table, int write,
 	struct edma_common_info *edma_cinfo;
 	struct net_device *ndev;
 	struct phy_device *phydev;
-	int ret;
-	u32 portid_bmp, port_bit, prev_bmp;
+	int ret, num_ports_enabled;
+	u32 portid_bmp, port_bit, prev_bmp, port_id;
 
 	ndev = edma_netdev[0];
 	if (!ndev) {
@@ -384,21 +418,19 @@ static int edma_change_group1_bmp(struct ctl_table *table, int write,
 
 	adapter = netdev_priv(ndev);
 	edma_cinfo = adapter->edma_cinfo;
+
 	/* We ignore the bit for CPU Port */
 	portid_bmp = edma_default_group1_bmp >> 1;
 	port_bit = ffs(portid_bmp);
 	if (port_bit > EDMA_MAX_PORTID_SUPPORTED)
 		return -1;
 
-	/*
-	 * We want to check if all ports are part of LAN Group
-	 * If yes, we disable polling for the adapter, stop
-	 * the queues and return
+	/* If this group has no ports,
+	 * we disable polling for the adapter, stop the queues and return
 	 */
 	if (!port_bit) {
 		adapter->dp_bitmap = edma_default_group1_bmp;
 		if (adapter->poll_required) {
-			adapter->poll_required_saved = adapter->poll_required;
 			adapter->poll_required = 0;
 			adapter->link_state = __EDMA_LINKDOWN;
 			netif_carrier_off(ndev);
@@ -409,16 +441,72 @@ static int edma_change_group1_bmp(struct ctl_table *table, int write,
 
 	/* Our array indexes are for 5 ports (0 - 4) */
 	port_bit--;
+	edma_link_detect_bmp = 0;
 
-	adapter->poll_required = adapter->poll_required_saved;
+	/* Do we have more ports in this group */
+	num_ports_enabled = bitmap_weight((unsigned long int *)&portid_bmp, 32);
+
+	/* If this group has more then one port,
+	 * we disable polling for the adapter as link detection
+	 * should be disabled, stop the phy state machine of previous
+	 * phy adapter attached to group and start the queues
+	 */
+	if (num_ports_enabled > 1) {
+		if (adapter->poll_required) {
+			adapter->poll_required = 0;
+			if (adapter->phydev) {
+				port_id = edma_get_port_from_phydev(
+						adapter->phydev);
+
+				/* We check if phydev attached to this group is
+				 * already started and if yes, we stop
+				 * the state machine for the phy
+				 */
+				if (phy_dev_state[port_id]) {
+					phy_stop_machine(adapter->phydev);
+					phy_dev_state[port_id] = 0;
+				}
+
+				adapter->phydev = NULL;
+			}
+
+			/* Start the tx queues for this netdev
+			 * with link detection disabled
+			 */
+			if (adapter->link_state == __EDMA_LINKDOWN) {
+				adapter->link_state = __EDMA_LINKUP;
+				netif_tx_start_all_queues(ndev);
+				netif_carrier_on(ndev);
+			}
+		}
+		goto set_bitmap;
+	}
+
+	adapter->poll_required = adapter->poll_required_dynamic;
 
 	if (!adapter->poll_required)
 		goto set_bitmap;
 
 	phydev = adapter->phydev;
 
-	if (phy_dev[port_bit]) {
-		adapter->phydev = phy_dev[port_bit];
+	/* If this group has only one port,
+	 * if phydev exists we start the phy state machine
+	 * and if it doesn't we create a phydev and start it.
+	 */
+	if (edma_phydev[port_bit]) {
+		adapter->phydev = edma_phydev[port_bit];
+		set_bit(port_bit, (unsigned long int *)&edma_link_detect_bmp);
+
+		/* If the Phy device has changed group,
+		 * we need to reassign the netdev
+		 */
+		if (adapter->phydev->attached_dev != ndev)
+			adapter->phydev->attached_dev = ndev;
+
+		if (!phy_dev_state[port_bit]) {
+			phy_start_machine(adapter->phydev);
+			phy_dev_state[port_bit] = 1;
+		}
 	} else {
 		snprintf(adapter->phy_id,
 			MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
@@ -434,28 +522,48 @@ static int edma_change_group1_bmp(struct ctl_table *table, int write,
 			adapter->phydev = phydev;
 			pr_err("PHY attach FAIL for port %d", port_bit);
 			return -1;
-		} else {
-			phy_dev[port_bit] = adapter->phydev;
-				adapter->phydev->advertising |=
-					(ADVERTISED_Pause |
-					ADVERTISED_Asym_Pause);
-				adapter->phydev->supported |=
-					(SUPPORTED_Pause |
-					SUPPORTED_Asym_Pause);
-			phy_start(adapter->phydev);
-			phy_start_aneg(adapter->phydev);
+		}
+
+		if (adapter->phydev->attached_dev != ndev)
+			adapter->phydev->attached_dev = ndev;
+
+		edma_phydev[port_bit] = adapter->phydev;
+		phy_dev_state[port_bit] = 1;
+		set_bit(port_bit, (unsigned long int *)&edma_link_detect_bmp);
+		adapter->phydev->advertising |=
+			(ADVERTISED_Pause |
+			ADVERTISED_Asym_Pause);
+		adapter->phydev->supported |=
+			(SUPPORTED_Pause |
+			SUPPORTED_Asym_Pause);
+		phy_start(adapter->phydev);
+		phy_start_aneg(adapter->phydev);
+	}
+
+	/* We check if this phydev is in use by other Groups
+	 * and stop phy machine only if it is not stopped
+	 */
+	if (phydev) {
+		port_id = edma_get_port_from_phydev(phydev);
+		if (phy_dev_state[port_id]) {
+			phy_stop_machine(phydev);
+			phy_dev_state[port_id] = 0;
 		}
 	}
 
-	phydev->advertising &= ~(ADVERTISED_Pause |
-				ADVERTISED_Asym_Pause);
-	phydev->supported &= ~(SUPPORTED_Pause |
-				SUPPORTED_Asym_Pause);
+	adapter->poll_required = 1;
 	adapter->link_state = __EDMA_LINKDOWN;
 
 set_bitmap:
+	while (portid_bmp) {
+		int port_bit_set = ffs(portid_bmp);
+
+		edma_cinfo->portid_netdev_lookup_tbl[port_bit_set] = ndev;
+		portid_bmp &= ~(1 << (port_bit_set - 1));
+	}
+
 	adapter->dp_bitmap = edma_default_group1_bmp;
-	edma_cinfo->portid_netdev_lookup_tbl[port_bit + 1] = ndev;
+
 	return 0;
 }
 
@@ -465,8 +573,9 @@ static int edma_change_group2_bmp(struct ctl_table *table, int write,
 	struct edma_adapter *adapter;
 	struct edma_common_info *edma_cinfo;
 	struct net_device *ndev;
+	struct phy_device *phydev;
 	int ret;
-	u32 prev_bmp, portid_bmp;
+	u32 prev_bmp, portid_bmp, port_bit, num_ports_enabled, port_id;
 
 	ndev = edma_netdev[1];
 	if (!ndev) {
@@ -478,22 +587,207 @@ static int edma_change_group2_bmp(struct ctl_table *table, int write,
 
 	ret = proc_dointvec(table, write, buffer, lenp, ppos);
 	if ((!write) || (prev_bmp == edma_default_group2_bmp))
-		goto out;
+		return ret;
 
 	adapter = netdev_priv(ndev);
 	edma_cinfo = adapter->edma_cinfo;
+
 	/* We ignore the bit for CPU Port */
 	portid_bmp = edma_default_group2_bmp >> 1;
-	while (portid_bmp) {
-		int port_bit = ffs(portid_bmp);
-		if (port_bit > EDMA_MAX_PORTID_SUPPORTED)
-			return -1;
-		edma_cinfo->portid_netdev_lookup_tbl[port_bit] = ndev;
-		portid_bmp &= ~(1 << (port_bit - 1));
+	port_bit = ffs(portid_bmp);
+	if (port_bit > EDMA_MAX_PORTID_SUPPORTED)
+		return -1;
+
+	/* If this group has no ports,
+	 * we disable polling for the adapter, stop the queues and return
+	 */
+	if (!port_bit) {
+		adapter->dp_bitmap = edma_default_group2_bmp;
+		if (adapter->poll_required) {
+			adapter->poll_required = 0;
+			adapter->link_state = __EDMA_LINKDOWN;
+			netif_carrier_off(ndev);
+			netif_tx_stop_all_queues(ndev);
+		}
+		return 0;
 	}
+
+	/* Our array indexes are for 5 ports (0 - 4) */
+	port_bit--;
+
+	/* Do we have more ports in this group */
+	num_ports_enabled = bitmap_weight((unsigned long int *)&portid_bmp, 32);
+
+	/* If this group has more then one port,
+	 * we disable polling for the adapter as link detection
+	 * should be disabled, stop the phy state machine of previous
+	 * phy adapter attached to group and start the queues
+	 */
+	if (num_ports_enabled > 1) {
+		if (adapter->poll_required) {
+			adapter->poll_required = 0;
+			if (adapter->phydev) {
+				port_id = edma_get_port_from_phydev(
+							adapter->phydev);
+
+				/* We check if this phydev is in use by
+				 * other Groups and stop phy machine only
+				 * if that is NOT the case
+				 */
+				if (!edma_is_port_used(port_id)) {
+					if (phy_dev_state[port_id]) {
+						phy_stop_machine(
+							adapter->phydev);
+						phy_dev_state[port_id] = 0;
+					}
+				}
+
+				adapter->phydev = NULL;
+			}
+
+			/* Start the tx queues for this netdev
+			 * with link detection disabled
+			 */
+			if (adapter->link_state == __EDMA_LINKDOWN) {
+				adapter->link_state = __EDMA_LINKUP;
+				netif_carrier_on(ndev);
+				netif_tx_start_all_queues(ndev);
+			}
+		}
+		goto set_bitmap;
+	}
+
+	adapter->poll_required = adapter->poll_required_dynamic;
+
+	if (!adapter->poll_required)
+		goto set_bitmap;
+
+	phydev = adapter->phydev;
+
+	/* If this group has only one port,
+	 * if phydev exists we start the phy state machine
+	 * and if it doesn't we create a phydev and start it.
+	 */
+	if (edma_phydev[port_bit]) {
+		adapter->phydev = edma_phydev[port_bit];
+
+		/* If the Phy device has changed group,
+		 * we need to reassign the netdev
+		 */
+		if (adapter->phydev->attached_dev != ndev)
+			adapter->phydev->attached_dev = ndev;
+
+		if (!phy_dev_state[port_bit]) {
+			phy_start_machine(adapter->phydev);
+			phy_dev_state[port_bit] = 1;
+			set_bit(port_bit,
+				(unsigned long int *)&edma_link_detect_bmp);
+		}
+	} else {
+		snprintf(adapter->phy_id,
+			 MII_BUS_ID_SIZE + 3, PHY_ID_FMT,
+			 miibus_gb->id,
+			 port_bit);
+
+		adapter->phydev = phy_connect(ndev,
+					      (const char *)adapter->phy_id,
+					      &edma_adjust_link,
+					      PHY_INTERFACE_MODE_SGMII);
+
+		if (IS_ERR(adapter->phydev)) {
+			adapter->phydev = phydev;
+			pr_err("PHY attach FAIL for port %d", port_bit);
+			return -1;
+		}
+
+		if (adapter->phydev->attached_dev != ndev)
+			adapter->phydev->attached_dev = ndev;
+
+		edma_phydev[port_bit] = adapter->phydev;
+		phy_dev_state[port_bit] = 1;
+		set_bit(port_bit, (unsigned long int *)&edma_link_detect_bmp);
+		adapter->phydev->advertising |=
+			(ADVERTISED_Pause |
+			ADVERTISED_Asym_Pause);
+		adapter->phydev->supported |=
+			(SUPPORTED_Pause |
+			SUPPORTED_Asym_Pause);
+		phy_start(adapter->phydev);
+		phy_start_aneg(adapter->phydev);
+	}
+
+	/* We check if this phydev is in use by other Groups
+	 * and stop phy machine only if that is NOT the case
+	 */
+	if (phydev) {
+		port_id = edma_get_port_from_phydev(phydev);
+		if (!edma_is_port_used(port_id)) {
+			if (phy_dev_state[port_id]) {
+				phy_stop_machine(phydev);
+				phy_dev_state[port_id] = 0;
+			}
+		}
+	}
+
+	adapter->poll_required = 1;
+	adapter->link_state = __EDMA_LINKDOWN;
+
+set_bitmap:
+	while (portid_bmp) {
+		int port_bit_set = ffs(portid_bmp);
+
+		edma_cinfo->portid_netdev_lookup_tbl[port_bit_set] = ndev;
+		portid_bmp &= ~(1 << (port_bit_set - 1));
+	}
+
 	adapter->dp_bitmap = edma_default_group2_bmp;
 
-out:
+	return 0;
+}
+
+static int edma_disable_rss_func(struct ctl_table *table, int write,
+				 void __user *buffer, size_t *lenp,
+				 loff_t *ppos)
+{
+	struct edma_adapter *adapter;
+	struct edma_common_info *edma_cinfo;
+	struct edma_hw *hw;
+	int ret;
+
+	if (!edma_netdev[0]) {
+		pr_err("Invalid Netdevice\n");
+		return -1;
+	}
+
+	adapter = netdev_priv(edma_netdev[0]);
+	edma_cinfo = adapter->edma_cinfo;
+	hw = &edma_cinfo->hw;
+
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+
+	if ((!write) || (ret))
+		return ret;
+
+	switch (edma_disable_rss) {
+	case EDMA_RSS_DISABLE:
+		hw->rss_type = 0;
+		edma_write_reg(EDMA_REG_RSS_TYPE, hw->rss_type);
+		break;
+	case EDMA_RSS_ENABLE:
+		hw->rss_type = EDMA_RSS_TYPE_IPV4TCP |
+				EDMA_RSS_TYPE_IPV6_TCP |
+				EDMA_RSS_TYPE_IPV4_UDP |
+				EDMA_RSS_TYPE_IPV6UDP |
+				EDMA_RSS_TYPE_IPV4 |
+				EDMA_RSS_TYPE_IPV6;
+		edma_write_reg(EDMA_REG_RSS_TYPE, hw->rss_type);
+		break;
+	default:
+		pr_err("Invalid input\n");
+		ret = -1;
+		break;
+	}
+
 	return ret;
 }
 
@@ -653,6 +947,13 @@ static struct ctl_table edma_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = edma_change_group2_bmp
+	},
+	{
+		.procname       = "edma_disable_rss",
+		.data           = &edma_disable_rss,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = edma_disable_rss_func
 	},
 	{}
 };
@@ -1042,6 +1343,10 @@ static int edma_axi_probe(struct platform_device *pdev)
 			portid_bmp &= ~(1 << (port_bit - 1));
 		}
 
+		if (of_property_read_u32(pnp, "qcom,poll-required-dynamic",
+					 &adapter[idx]->poll_required_dynamic))
+			adapter[idx]->poll_required_dynamic = 0;
+
 		if (!of_property_read_u32(pnp, "qcom,poll-required",
 					  &adapter[idx]->poll_required)) {
 			if (adapter[idx]->poll_required) {
@@ -1051,9 +1356,6 @@ static int edma_axi_probe(struct platform_device *pdev)
 						     &adapter[idx]->forced_speed);
 				of_property_read_u32(pnp, "qcom,forced-duplex",
 						     &adapter[idx]->forced_duplex);
-
-				adapter[idx]->poll_required_saved =
-					adapter[idx]->poll_required;
 
 				/* create a phyid using MDIO bus id
 				 * and MDIO bus address
@@ -1065,7 +1367,6 @@ static int edma_axi_probe(struct platform_device *pdev)
 			}
 		} else {
 			adapter[idx]->poll_required = 0;
-			adapter[idx]->poll_required_saved = 0;
 			adapter[idx]->forced_speed = SPEED_1000;
 			adapter[idx]->forced_duplex = DUPLEX_FULL;
 		}
@@ -1214,7 +1515,8 @@ static int edma_axi_probe(struct platform_device *pdev)
 					SUPPORTED_Asym_Pause;
 				portid_bmp = adapter[i]->dp_bitmap >> 1;
 				port_id = ffs(portid_bmp);
-				phy_dev[port_id - 1] = adapter[i]->phydev;
+				edma_phydev[port_id - 1] = adapter[i]->phydev;
+				phy_dev_state[port_id - 1] = 1;
 			}
 		}
 	}
@@ -1299,8 +1601,8 @@ static int edma_axi_remove(struct platform_device *pdev)
 #endif
 
 	for (i = 0; i < EDMA_MAX_PORTID_SUPPORTED; i++) {
-		if (phy_dev[i])
-			phy_disconnect(phy_dev[i]);
+		if (edma_phydev[i])
+			phy_disconnect(edma_phydev[i]);
 	}
 
 	del_timer_sync(&edma_stats_timer);
