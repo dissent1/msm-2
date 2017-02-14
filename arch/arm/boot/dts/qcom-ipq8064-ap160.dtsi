@@ -179,6 +179,10 @@
 				pinctrl-names = "default";
 
 				cs-gpios = <&qcom_pinmux 20 0>;
+				dmas = <&adm_dma 6>, <&adm_dma 5>;
+				dma-names = "rx", "tx";
+				qcom,rx-crci = <9>;
+				qcom,tx-crci = <10>;
 
 				flash: m25p80@0 {
 					compatible = "s25fl256s1";
