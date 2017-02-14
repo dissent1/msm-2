@@ -709,6 +709,14 @@
 				dr_mode = "host";
 			};
 		};
+
+		rng@1a500000 {
+			compatible = "qcom,prng";
+			reg = <0x1a500000 0x200>;
+			clocks = <&gcc PRNG_CLK>;
+			clock-names = "core";
+		};
+
 		sfpb_mutex_block: syscon@1200600 {
 			compatible = "syscon";
 			reg = <0x01200600 0x100>;
