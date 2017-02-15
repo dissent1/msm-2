@@ -17,27 +17,26 @@
 #include <linux/bitops.h>
 #include <linux/regmap.h>
 #include <linux/thermal.h>
+#include <linux/nvmem-consumer.h>
+#include <linux/io.h>
+#include <linux/interrupt.h>
 #include "tsens.h"
 
 #define CAL_MDEGC		30000
 
 #define CONFIG_ADDR		0x3640
-#define CONFIG_ADDR_8660	0x3620
 /* CONFIG_ADDR bitmasks */
 #define CONFIG			0x9b
 #define CONFIG_MASK		0xf
-#define CONFIG_8660		1
-#define CONFIG_SHIFT_8660	28
-#define CONFIG_MASK_8660	(3 << CONFIG_SHIFT_8660)
+#define CONFIG_SHIFT		0
 
-#define STATUS_CNTL_ADDR_8064	0x3660
+#define STATUS_CNTL_8064	0x3660
 #define CNTL_ADDR		0x3620
 /* CNTL_ADDR bitmasks */
 #define EN			BIT(0)
 #define SW_RST			BIT(1)
 #define SENSOR0_EN		BIT(3)
 #define SLP_CLK_ENA		BIT(26)
-#define SLP_CLK_ENA_8660	BIT(24)
 #define MEASURE_PERIOD		1
 #define SENSOR0_SHIFT		3
 
@@ -49,23 +48,109 @@
 
 #define THRESHOLD_ADDR		0x3624
 /* THRESHOLD_ADDR bitmasks */
+#define THRESHOLD_MAX_CODE		0xff
+#define THRESHOLD_MIN_CODE		0
 #define THRESHOLD_MAX_LIMIT_SHIFT	24
 #define THRESHOLD_MIN_LIMIT_SHIFT	16
 #define THRESHOLD_UPPER_LIMIT_SHIFT	8
 #define THRESHOLD_LOWER_LIMIT_SHIFT	0
+#define THRESHOLD_MAX_LIMIT_MASK	(THRESHOLD_MAX_CODE << \
+						THRESHOLD_MAX_LIMIT_SHIFT)
+#define THRESHOLD_MIN_LIMIT_MASK	(THRESHOLD_MAX_CODE << \
+						THRESHOLD_MIN_LIMIT_SHIFT)
+#define THRESHOLD_UPPER_LIMIT_MASK	(THRESHOLD_MAX_CODE << \
+						THRESHOLD_UPPER_LIMIT_SHIFT)
+#define THRESHOLD_LOWER_LIMIT_MASK	(THRESHOLD_MAX_CODE << \
+						THRESHOLD_LOWER_LIMIT_SHIFT)
 
 /* Initial temperature threshold values */
-#define LOWER_LIMIT_TH		0x50
-#define UPPER_LIMIT_TH		0xdf
+#define LOWER_LIMIT_TH		0x9d /* 95C */
+#define UPPER_LIMIT_TH		0xa6 /* 105C */
 #define MIN_LIMIT_TH		0x0
 #define MAX_LIMIT_TH		0xff
 
 #define S0_STATUS_ADDR		0x3628
+#define STATUS_ADDR_OFFSET	2
+#define SENSOR_STATUS_SIZE	4
 #define INT_STATUS_ADDR		0x363c
 #define TRDY_MASK		BIT(7)
 #define TIMEOUT_US		100
 
-static int suspend_8960(struct tsens_device *tmdev)
+#define TSENS_EN		BIT(0)
+#define TSENS_SW_RST		BIT(1)
+#define TSENS_ADC_CLK_SEL	BIT(2)
+#define SENSOR0_EN		BIT(3)
+#define SENSOR1_EN		BIT(4)
+#define SENSOR2_EN		BIT(5)
+#define SENSOR3_EN		BIT(6)
+#define SENSOR4_EN		BIT(7)
+#define SENSORS_EN		(SENSOR0_EN | SENSOR1_EN | \
+				SENSOR2_EN | SENSOR3_EN | SENSOR4_EN)
+#define TSENS_8064_SENSOR5_EN				BIT(8)
+#define TSENS_8064_SENSOR6_EN				BIT(9)
+#define TSENS_8064_SENSOR7_EN				BIT(10)
+#define TSENS_8064_SENSOR8_EN				BIT(11)
+#define TSENS_8064_SENSOR9_EN				BIT(12)
+#define TSENS_8064_SENSOR10_EN				BIT(13)
+#define TSENS_8064_SENSORS_EN				(SENSORS_EN | \
+						TSENS_8064_SENSOR5_EN | \
+						TSENS_8064_SENSOR6_EN | \
+						TSENS_8064_SENSOR7_EN | \
+						TSENS_8064_SENSOR8_EN | \
+						TSENS_8064_SENSOR9_EN | \
+						TSENS_8064_SENSOR10_EN)
+
+#define TSENS_8064_SEQ_SENSORS	5
+#define TSENS_8064_S4_S5_OFFSET	40
+#define TSENS_FACTOR		1000
+
+/* Trips: from very hot to very cold */
+enum tsens_trip_type {
+	TSENS_TRIP_STAGE3 = 0,
+	TSENS_TRIP_STAGE2,
+	TSENS_TRIP_STAGE1,
+	TSENS_TRIP_STAGE0,
+	TSENS_TRIP_NUM,
+};
+
+u32 tsens_8064_slope[] = {
+			1176, 1176, 1154, 1176,
+			1111, 1132, 1132, 1199,
+			1132, 1199, 1132
+			};
+
+/* Temperature on y axis and ADC-code on x-axis */
+static inline int code_to_degC(u32 adc_code, const struct tsens_sensor *s)
+{
+	int degcbeforefactor, degc;
+
+	degcbeforefactor = (adc_code * s->slope) + s->offset;
+
+	if (degcbeforefactor == 0)
+		degc = degcbeforefactor;
+	else if (degcbeforefactor > 0)
+		degc = (degcbeforefactor + TSENS_FACTOR/2)
+			/ TSENS_FACTOR;
+	else
+		degc = (degcbeforefactor - TSENS_FACTOR/2)
+			/ TSENS_FACTOR;
+
+	return degc;
+}
+
+static int degC_to_code(int degC, const struct tsens_sensor *s)
+{
+	int code = ((degC * TSENS_FACTOR - s->offset) + (s->slope/2))
+			/ s->slope;
+
+	if (code > THRESHOLD_MAX_CODE)
+		code = THRESHOLD_MAX_CODE;
+	else if (code < THRESHOLD_MIN_CODE)
+		code = THRESHOLD_MIN_CODE;
+	return code;
+}
+
+static int suspend_ipq8064(struct tsens_device *tmdev)
 {
 	int ret;
 	unsigned int mask;
@@ -79,10 +164,7 @@ static int suspend_8960(struct tsens_device *tmdev)
 	if (ret)
 		return ret;
 
-	if (tmdev->num_sensors > 1)
-		mask = SLP_CLK_ENA | EN;
-	else
-		mask = SLP_CLK_ENA_8660 | EN;
+	mask = SLP_CLK_ENA | EN;
 
 	ret = regmap_update_bits(map, CNTL_ADDR, mask, 0);
 	if (ret)
@@ -91,7 +173,7 @@ static int suspend_8960(struct tsens_device *tmdev)
 	return 0;
 }
 
-static int resume_8960(struct tsens_device *tmdev)
+static int resume_ipq8064(struct tsens_device *tmdev)
 {
 	int ret;
 	struct regmap *map = tmdev->map;
@@ -100,15 +182,9 @@ static int resume_8960(struct tsens_device *tmdev)
 	if (ret)
 		return ret;
 
-	/*
-	 * Separate CONFIG restore is not needed only for 8660 as
-	 * config is part of CTRL Addr and its restored as such
-	 */
-	if (tmdev->num_sensors > 1) {
-		ret = regmap_update_bits(map, CONFIG_ADDR, CONFIG_MASK, CONFIG);
-		if (ret)
-			return ret;
-	}
+	ret = regmap_update_bits(map, CONFIG_ADDR, CONFIG_MASK, CONFIG);
+	if (ret)
+		return ret;
 
 	ret = regmap_write(map, THRESHOLD_ADDR, tmdev->ctx.threshold);
 	if (ret)
@@ -121,62 +197,135 @@ static int resume_8960(struct tsens_device *tmdev)
 	return 0;
 }
 
-static int enable_8960(struct tsens_device *tmdev, int id)
+static void notify_uspace_tsens_fn(struct work_struct *work)
 {
-	int ret;
-	u32 reg, mask;
+	struct tsens_sensor *s = container_of(work, struct tsens_sensor,
+								notify_work);
 
-	ret = regmap_read(tmdev->map, CNTL_ADDR, &reg);
-	if (ret)
-		return ret;
-
-	mask = BIT(id + SENSOR0_SHIFT);
-	ret = regmap_write(tmdev->map, CNTL_ADDR, reg | SW_RST);
-	if (ret)
-		return ret;
-
-	if (tmdev->num_sensors > 1)
-		reg |= mask | SLP_CLK_ENA | EN;
-	else
-		reg |= mask | SLP_CLK_ENA_8660 | EN;
-
-	ret = regmap_write(tmdev->map, CNTL_ADDR, reg);
-	if (ret)
-		return ret;
-
-	return 0;
+	sysfs_notify(&s->tzd->device.kobj, NULL, "type");
 }
 
-static void disable_8960(struct tsens_device *tmdev)
+static void tsens_scheduler_fn(struct work_struct *work)
 {
-	int ret;
-	u32 reg_cntl;
-	u32 mask;
+	struct tsens_device *tmdev = container_of(work, struct tsens_device,
+					tsens_work);
+	unsigned int threshold, threshold_low, code, reg, sensor, mask;
+	unsigned int sensor_addr;
+	bool upper_th_x, lower_th_x;
+	int adc_code, ret;
 
-	mask = GENMASK(tmdev->num_sensors - 1, 0);
-	mask <<= SENSOR0_SHIFT;
-	mask |= EN;
-
-	ret = regmap_read(tmdev->map, CNTL_ADDR, &reg_cntl);
+	ret = regmap_read(tmdev->map, STATUS_CNTL_8064, &reg);
+	if (ret)
+		return;
+	reg = reg | LOWER_STATUS_CLR | UPPER_STATUS_CLR;
+	ret = regmap_write(tmdev->map, STATUS_CNTL_8064, reg);
 	if (ret)
 		return;
 
-	reg_cntl &= ~mask;
+	mask = ~(LOWER_STATUS_CLR | UPPER_STATUS_CLR);
+	ret = regmap_read(tmdev->map, THRESHOLD_ADDR, &threshold);
+	if (ret)
+		return;
+	threshold_low = (threshold & THRESHOLD_LOWER_LIMIT_MASK)
+				>> THRESHOLD_LOWER_LIMIT_SHIFT;
+	threshold = (threshold & THRESHOLD_UPPER_LIMIT_MASK)
+				>> THRESHOLD_UPPER_LIMIT_SHIFT;
 
-	if (tmdev->num_sensors > 1)
-		reg_cntl &= ~SLP_CLK_ENA;
-	else
-		reg_cntl &= ~SLP_CLK_ENA_8660;
+	ret = regmap_read(tmdev->map, STATUS_CNTL_8064, &reg);
+	if (ret)
+		return;
 
-	regmap_write(tmdev->map, CNTL_ADDR, reg_cntl);
+	ret = regmap_read(tmdev->map, CNTL_ADDR, &sensor);
+	if (ret)
+		return;
+	sensor &= (uint32_t) TSENS_8064_SENSORS_EN;
+	sensor >>= SENSOR0_SHIFT;
+
+	/* Constraint: There is only 1 interrupt control register for all
+	 * 11 temperature sensor. So monitoring more than 1 sensor based
+	 * on interrupts will yield inconsistent result. To overcome this
+	 * issue we will monitor only sensor 0 which is the master sensor.
+	 */
+
+	/* Skip if the sensor is disabled */
+	if (sensor & 1) {
+		ret = regmap_read(tmdev->map, tmdev->sensor[0].status, &code);
+		if (ret)
+			return;
+		upper_th_x = code >= threshold;
+		lower_th_x = code <= threshold_low;
+		if (upper_th_x)
+			mask |= UPPER_STATUS_CLR;
+		if (lower_th_x)
+			mask |= LOWER_STATUS_CLR;
+		if (upper_th_x || lower_th_x) {
+			/* Notify user space */
+			schedule_work(&tmdev->sensor[0].notify_work);
+			regmap_read(tmdev->map, sensor_addr, &adc_code);
+			pr_debug("Trigger (%d degrees) for sensor %d\n",
+				code_to_degC(adc_code, &tmdev->sensor[0]), 0);
+		}
+	}
+	regmap_write(tmdev->map, STATUS_CNTL_8064, reg & mask);
+
+	/* force memory to sync */
+	mb();
 }
 
-static int init_8960(struct tsens_device *tmdev)
+static irqreturn_t tsens_isr(int irq, void *data)
+{
+	struct tsens_device *tmdev = data;
+
+	schedule_work(&tmdev->tsens_work);
+	return IRQ_HANDLED;
+}
+
+static void hw_init(struct tsens_device *tmdev)
+{
+	int ret;
+	unsigned int reg_cntl = 0, reg_cfg = 0, reg_thr = 0;
+	unsigned int reg_status_cntl = 0;
+
+	regmap_read(tmdev->map, CNTL_ADDR, &reg_cntl);
+	regmap_write(tmdev->map, CNTL_ADDR, reg_cntl | TSENS_SW_RST);
+
+	reg_cntl |= SLP_CLK_ENA | (MEASURE_PERIOD << 18)
+		| (((1 << tmdev->num_sensors) - 1) << SENSOR0_SHIFT);
+	regmap_write(tmdev->map, CNTL_ADDR, reg_cntl);
+	regmap_read(tmdev->map, STATUS_CNTL_8064, &reg_status_cntl);
+	reg_status_cntl |= LOWER_STATUS_CLR | UPPER_STATUS_CLR
+			| MIN_STATUS_MASK | MAX_STATUS_MASK;
+	regmap_write(tmdev->map, STATUS_CNTL_8064, reg_status_cntl);
+	reg_cntl |= TSENS_EN;
+	regmap_write(tmdev->map, CNTL_ADDR, reg_cntl);
+
+	regmap_read(tmdev->map, CONFIG_ADDR, &reg_cfg);
+	reg_cfg = (reg_cfg & ~CONFIG_MASK) | (CONFIG << CONFIG_SHIFT);
+	regmap_write(tmdev->map, CONFIG_ADDR, reg_cfg);
+
+	reg_thr |= (LOWER_LIMIT_TH << THRESHOLD_LOWER_LIMIT_SHIFT)
+		| (UPPER_LIMIT_TH << THRESHOLD_UPPER_LIMIT_SHIFT)
+		| (MIN_LIMIT_TH << THRESHOLD_MIN_LIMIT_SHIFT)
+		| (MAX_LIMIT_TH << THRESHOLD_MAX_LIMIT_SHIFT);
+
+	regmap_write(tmdev->map, THRESHOLD_ADDR, reg_thr);
+
+	ret = devm_request_irq(tmdev->dev, tmdev->tsens_irq, tsens_isr,
+			IRQF_TRIGGER_RISING, "tsens_interrupt", tmdev);
+	if (ret < 0) {
+		pr_err("%s: request_irq FAIL: %d\n", __func__, ret);
+		return;
+	}
+
+	INIT_WORK(&tmdev->tsens_work, tsens_scheduler_fn);
+}
+
+static int init_ipq8064(struct tsens_device *tmdev)
 {
 	int ret, i;
-	u32 reg_cntl;
+	u32 reg_cntl, offset = 0;
 
-	tmdev->map = dev_get_regmap(tmdev->dev, NULL);
+	init_common(tmdev);
 	if (!tmdev->map)
 		return -ENODEV;
 
@@ -187,9 +336,14 @@ static int init_8960(struct tsens_device *tmdev)
 	 * directly after the first 5 status registers.
 	 */
 	for (i = 0; i < tmdev->num_sensors; i++) {
-		if (i >= 5)
-			tmdev->sensor[i].status = S0_STATUS_ADDR + 40;
-		tmdev->sensor[i].status += i * 4;
+		if (i >= TSENS_8064_SEQ_SENSORS)
+			offset = TSENS_8064_S4_S5_OFFSET;
+
+		tmdev->sensor[i].status = S0_STATUS_ADDR + offset
+					+ (i << STATUS_ADDR_OFFSET);
+		tmdev->sensor[i].slope = tsens_8064_slope[i];
+		INIT_WORK(&tmdev->sensor[i].notify_work,
+						notify_uspace_tsens_fn);
 	}
 
 	reg_cntl = SW_RST;
@@ -197,16 +351,10 @@ static int init_8960(struct tsens_device *tmdev)
 	if (ret)
 		return ret;
 
-	if (tmdev->num_sensors > 1) {
-		reg_cntl |= SLP_CLK_ENA | (MEASURE_PERIOD << 18);
-		reg_cntl &= ~SW_RST;
-		ret = regmap_update_bits(tmdev->map, CONFIG_ADDR,
+	reg_cntl |= SLP_CLK_ENA | (MEASURE_PERIOD << 18);
+	reg_cntl &= ~SW_RST;
+	ret = regmap_update_bits(tmdev->map, CONFIG_ADDR,
 					 CONFIG_MASK, CONFIG);
-	} else {
-		reg_cntl |= SLP_CLK_ENA_8660 | (MEASURE_PERIOD << 16);
-		reg_cntl &= ~CONFIG_MASK_8660;
-		reg_cntl |= CONFIG_8660 << CONFIG_SHIFT_8660;
-	}
 
 	reg_cntl |= GENMASK(tmdev->num_sensors - 1, 0) << SENSOR0_SHIFT;
 	ret = regmap_write(tmdev->map, CNTL_ADDR, reg_cntl);
@@ -221,38 +369,46 @@ static int init_8960(struct tsens_device *tmdev)
 	return 0;
 }
 
-static int calibrate_8960(struct tsens_device *tmdev)
+static int calibrate_ipq8064(struct tsens_device *tmdev)
 {
 	int i;
-	char *data;
+	char *data, *data_backup;
 
 	ssize_t num_read = tmdev->num_sensors;
 	struct tsens_sensor *s = tmdev->sensor;
 
 	data = qfprom_read(tmdev->dev, "calib");
-	if (IS_ERR(data))
-		data = qfprom_read(tmdev->dev, "calib_backup");
-	if (IS_ERR(data))
+	if (IS_ERR(data)) {
+		pr_err("Calibration not found.\n");
 		return PTR_ERR(data);
+	}
 
-	for (i = 0; i < num_read; i++, s++)
-		s->offset = data[i];
+	data_backup = qfprom_read(tmdev->dev, "calib_backup");
+	if (IS_ERR(data_backup)) {
+		pr_err("Backup calibration not found.\n");
+		return PTR_ERR(data_backup);
+	}
+
+	for (i = 0; i < num_read; i++) {
+		s[i].calib_data = readb_relaxed(data + i);
+		s[i].calib_data_backup = readb_relaxed(data_backup + i);
+
+		if (s[i].calib_data_backup)
+			s[i].calib_data = s[i].calib_data_backup;
+		if (!s[i].calib_data) {
+			pr_err("QFPROM TSENS calibration data not present\n");
+			return -ENODEV;
+		}
+		s[i].slope = tsens_8064_slope[i];
+		s[i].offset = CAL_MDEGC - (s[i].calib_data * s[i].slope);
+	}
+
+	hw_init(tmdev);
 
 	return 0;
 }
 
-/* Temperature on y axis and ADC-code on x-axis */
-static inline int code_to_mdegC(u32 adc_code, const struct tsens_sensor *s)
-{
-	int slope, offset;
-
-	slope = thermal_zone_get_slope(s->tzd);
-	offset = CAL_MDEGC - slope * s->offset;
-
-	return adc_code * slope + offset;
-}
-
-static int get_temp_8960(struct tsens_device *tmdev, int id, int *temp)
+static int get_temp_ipq8064(struct tsens_device *tmdev, int id, int *temp)
 {
 	int ret;
 	u32 code, trdy;
@@ -269,24 +425,127 @@ static int get_temp_8960(struct tsens_device *tmdev, int id, int *temp)
 		ret = regmap_read(tmdev->map, s->status, &code);
 		if (ret)
 			return ret;
-		*temp = code_to_mdegC(code, s);
+		*temp = code_to_degC(code, s);
 		return 0;
 	} while (time_before(jiffies, timeout));
 
 	return -ETIMEDOUT;
 }
 
-const struct tsens_ops ops_8960 = {
-	.init		= init_8960,
-	.calibrate	= calibrate_8960,
-	.get_temp	= get_temp_8960,
-	.enable		= enable_8960,
-	.disable	= disable_8960,
-	.suspend	= suspend_8960,
-	.resume		= resume_8960,
+static int set_trip_temp_ipq8064(void *data, int trip, int temp)
+{
+	unsigned int reg_th, reg_cntl;
+	int ret, code, code_chk, hi_code, lo_code;
+	const struct tsens_sensor *s = data;
+	struct tsens_device *tmdev = s->tmdev;
+
+	code_chk = code = degC_to_code(temp, s);
+
+	if (code < THRESHOLD_MIN_CODE || code > THRESHOLD_MAX_CODE)
+		return -EINVAL;
+
+	ret = regmap_read(tmdev->map, STATUS_CNTL_8064, &reg_cntl);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(tmdev->map, THRESHOLD_ADDR, &reg_th);
+	if (ret)
+		return ret;
+
+	hi_code = (reg_th & THRESHOLD_UPPER_LIMIT_MASK)
+			>> THRESHOLD_UPPER_LIMIT_SHIFT;
+	lo_code = (reg_th & THRESHOLD_LOWER_LIMIT_MASK)
+			>> THRESHOLD_LOWER_LIMIT_SHIFT;
+
+	switch (trip) {
+	case TSENS_TRIP_STAGE3:
+		code <<= THRESHOLD_MAX_LIMIT_SHIFT;
+		reg_th &= ~THRESHOLD_MAX_LIMIT_MASK;
+		break;
+	case TSENS_TRIP_STAGE2:
+		if (code_chk <= lo_code)
+			return -EINVAL;
+		code <<= THRESHOLD_UPPER_LIMIT_SHIFT;
+		reg_th &= ~THRESHOLD_UPPER_LIMIT_MASK;
+		break;
+	case TSENS_TRIP_STAGE1:
+		if (code_chk >= hi_code)
+			return -EINVAL;
+		code <<= THRESHOLD_LOWER_LIMIT_SHIFT;
+		reg_th &= ~THRESHOLD_LOWER_LIMIT_MASK;
+		break;
+	case TSENS_TRIP_STAGE0:
+		code <<= THRESHOLD_MIN_LIMIT_SHIFT;
+		reg_th &= ~THRESHOLD_MIN_LIMIT_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	ret = regmap_write(tmdev->map, THRESHOLD_ADDR, reg_th | code);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int set_trip_activate_ipq8064(void *data, int trip,
+					enum thermal_trip_activation_mode mode)
+{
+	unsigned int reg_cntl, mask, val;
+	const struct tsens_sensor *s = data;
+	struct tsens_device *tmdev = s->tmdev;
+	int ret;
+
+	if (!tmdev || trip < 0)
+		return -EINVAL;
+
+	ret = regmap_read(tmdev->map, STATUS_CNTL_8064, &reg_cntl);
+	if (ret)
+		return ret;
+
+	switch (trip) {
+	case TSENS_TRIP_STAGE3:
+		mask = MAX_STATUS_MASK;
+		break;
+	case TSENS_TRIP_STAGE2:
+		mask = UPPER_STATUS_CLR;
+		break;
+	case TSENS_TRIP_STAGE1:
+		mask = LOWER_STATUS_CLR;
+		break;
+	case TSENS_TRIP_STAGE0:
+		mask = MIN_STATUS_MASK;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (mode == THERMAL_TRIP_ACTIVATION_DISABLED)
+		val = reg_cntl | mask;
+	else
+		val = reg_cntl & ~mask;
+
+	ret = regmap_write(tmdev->map, STATUS_CNTL_8064, val);
+	if (ret)
+		return ret;
+
+	/* force memory to sync */
+	mb();
+	return 0;
+}
+
+const struct tsens_ops ops_ipq8064 = {
+	.init		= init_ipq8064,
+	.calibrate	= calibrate_ipq8064,
+	.get_temp	= get_temp_ipq8064,
+	.suspend	= suspend_ipq8064,
+	.resume		= resume_ipq8064,
+	.set_trip_temp	= set_trip_temp_ipq8064,
+	.set_trip_activate = set_trip_activate_ipq8064,
 };
 
-const struct tsens_data data_8960 = {
+const struct tsens_data data_ipq8064 = {
 	.num_sensors	= 11,
-	.ops		= &ops_8960,
+	.ops		= &ops_ipq8064,
 };
