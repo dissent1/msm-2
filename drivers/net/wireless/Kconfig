@@ -265,12 +265,6 @@ config MWL8K
 	  To compile this driver as a module, choose M here: the module
 	  will be called mwl8k.  If unsure, say N.
 
-config CNSS_QCA6290
-	bool "Enable CNSS QCA6290 specific changes"
-	---help---
-	  This enables the changes that are specific to CNSS QCA6290 chipset.
-	  These changes are only needed for QCA6290 pre-silicon development.
-
 source "drivers/net/wireless/ath/Kconfig"
 source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"
@@ -291,5 +285,5 @@ source "drivers/net/wireless/zd1211rw/Kconfig"
 source "drivers/net/wireless/mwifiex/Kconfig"
 source "drivers/net/wireless/cw1200/Kconfig"
 source "drivers/net/wireless/rsi/Kconfig"
-source "drivers/net/wireless/cnss2/Kconfig"
+
 endif # WLAN
