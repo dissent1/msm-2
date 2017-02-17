@@ -367,7 +367,6 @@ int cnss_wlan_enable(struct device *dev,
 		req.svc_cfg[i].pipe_num = config->ce_svc_cfg[i].pipe_num;
 	}
 
-#ifdef CONFIG_CNSS2_SHADOW_REGISTER
 	req.shadow_reg_v2_valid = 1;
 	if (config->num_shadow_reg_v2_cfg >
 	    QMI_WLFW_MAX_NUM_SHADOW_REG_V2_V01)
@@ -378,9 +377,6 @@ int cnss_wlan_enable(struct device *dev,
 	memcpy(req.shadow_reg_v2, config->shadow_reg_v2_cfg,
 	       sizeof(struct wlfw_shadow_reg_v2_cfg_s_v01)
 	       * req.shadow_reg_v2_len);
-#else
-	req.shadow_reg_v2_valid = 0;
-#endif
 
 	ret = cnss_wlfw_wlan_cfg_send_sync(plat_priv, &req);
 	if (ret)
@@ -429,12 +425,6 @@ out:
 	return ret;
 }
 
-int cnss_is_fw_ready(void)
-{
-	return !!(CNSS_FW_READY & plat_env->driver_state);
-}
-EXPORT_SYMBOL(cnss_is_fw_ready);
-
 static int cnss_fw_ready_hdlr(struct cnss_plat_data *plat_priv)
 {
 	struct cnss_pci_data *pci_priv;
@@ -449,13 +439,12 @@ static int cnss_fw_ready_hdlr(struct cnss_plat_data *plat_priv)
 	if (!pci_priv)
 		return -ENODEV;
 
-#ifdef CONFIG_CNSS2_CALIBRATION_SUPPORT
 	if (plat_priv->driver_status == CNSS_LOAD_UNLOAD)
 		complete(&plat_priv->fw_ready_event);
 	else
 		ret = cnss_wlfw_wlan_mode_send_sync(plat_priv,
 						    QMI_WLFW_CALIBRATION_V01);
-#endif
+
 	return ret;
 }
 
@@ -1290,15 +1279,11 @@ int cnss_self_recovery(struct device *dev,
 	subsys_info = &plat_priv->subsys_info;
 	plat_priv->recovery_count++;
 	plat_priv->driver_status = CNSS_RECOVERY;
-#if CONFIG_CNSS2_PM
 	pm_stay_awake(dev);
-#endif
 	cnss_shutdown(&subsys_info->subsys_desc, false);
 	udelay(WLAN_RECOVERY_DELAY);
 	cnss_powerup(&subsys_info->subsys_desc);
-#if CONFIG_CNSS2_PM
 	pm_relax(dev);
-#endif
 	plat_priv->driver_status = CNSS_INITIALIZED;
 
 	return 0;
@@ -1653,7 +1638,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 	cnss_set_plat_priv(plat_dev, plat_priv);
 	platform_set_drvdata(plat_dev, plat_priv);
 
-#ifdef CONFIG_CNSS2_PM
 	ret = cnss_get_resources(plat_priv);
 	if (ret)
 		goto reset_ctx;
@@ -1661,16 +1645,11 @@ static int cnss_probe(struct platform_device *plat_dev)
 	ret = cnss_power_on_device(plat_priv);
 	if (ret)
 		goto free_res;
-#endif
 
-
-#ifdef CONFIG_CNSS2_PCI_DRIVER
 	ret = cnss_pci_init(plat_priv);
 	if (ret)
 		goto power_off;
-#endif
 
-#ifdef CONFIG_CNSS2_PM
 	ret = cnss_register_esoc(plat_priv);
 	if (ret)
 		goto deinit_pci;
@@ -1678,7 +1657,6 @@ static int cnss_probe(struct platform_device *plat_dev)
 	ret = cnss_register_bus_scale(plat_priv);
 	if (ret)
 		goto unreg_esoc;
-#endif
 
 	ret = cnss_create_sysfs(plat_priv);
 	if (ret)
@@ -1691,9 +1669,8 @@ static int cnss_probe(struct platform_device *plat_dev)
 	ret = cnss_qmi_init(plat_priv);
 	if (ret)
 		goto deinit_event_work;
-#ifdef CONFIG_CNSS2_PM
+
 	register_pm_notifier(&cnss_pm_notifier);
-#endif
 
 	cnss_pr_info("Platform driver probed successfully.\n");
 
@@ -1723,9 +1700,8 @@ out:
 static int cnss_remove(struct platform_device *plat_dev)
 {
 	struct cnss_plat_data *plat_priv = platform_get_drvdata(plat_dev);
-#ifdef CONFIG_CNSS2_PM
+
 	unregister_pm_notifier(&cnss_pm_notifier);
-#endif
 	cnss_qmi_deinit(plat_priv);
 	cnss_event_work_deinit(plat_priv);
 	cnss_remove_sysfs(plat_priv);
