@@ -108,10 +108,23 @@
 					bias-pull-up;
 				};
 			};
+
 			mdio0_pins: mdio0_pins {
 				mux {
 					pins = "gpio0", "gpio1";
 					function = "gpio";
+					drive-strength = <8>;
+					bias-disable;
+				};
+			};
+
+			rgmii2_pins: rgmii2_pins {
+				mux {
+					pins = "gpio27", "gpio28", "gpio29",
+						"gpio30", "gpio31", "gpio32",
+						"gpio51", "gpio52", "gpio59",
+						"gpio60", "gpio61", "gpio62";
+					function = "rgmii2";
 					drive-strength = <8>;
 					bias-disable;
 				};
@@ -350,11 +363,14 @@
 
 		nss-gmac-common@03000000 {
 			compatible = "qcom,nss-gmac-common";
-			reg = <0x03000000 0x0000FFFF 0x1bb00000 0x0000FFFF 0x00900000 0x00004000>;
-			reg-names = "nss_reg_base" , "qsgmii_reg_base", "clk_ctl_base";
+			reg = <0x03000000 0x0000FFFF 0x1bb00000 0x0000FFFF
+				0x00900000 0x00004000>;
+			reg-names = "nss_reg_base" , "qsgmii_reg_base",
+				"clk_ctl_base";
 		};
 
 		gmac1: ethernet@37200000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37200000 0x200000>;
@@ -365,14 +381,24 @@
 			qcom,phy-mdio-addr = <4>;
 			qcom,poll-required = <1>;
 			qcom,rgmii-delay = <1>;
+			qcom,emulation = <0>;
 			qcom,forced-speed = <1000>;
 			qcom,forced-duplex = <1>;
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			pinctrl-0 = <&rgmii2_pins>;
+			pinctrl-names = "default";
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		gmac2: ethernet@37400000 {
+			status = "ok";
 			device_type = "network";
 			compatible = "qcom,nss-gmac";
 			reg = <0x37400000 0x200000>;
@@ -388,6 +414,11 @@
 			qcom,socver = <0>;
 			local-mac-address = [000000000000];
 			mdiobus = <&mdio0>;
+
+			fixed-link {
+				speed = <1000>;
+				full-duplex;
+			};
 		};
 
 		crypto1: crypto@38000000 {
