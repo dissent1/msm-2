@@ -31,6 +31,7 @@
 		pci1 = &pci_1;
 		ehci_0 = &ehci0;
 		ehci_1 = &ehci1;
+		eth0 = "/ahb/ethernet@19000000";
 	};
 
 	memory@0 {
@@ -207,6 +208,7 @@
 			fifo-cfg = <0x0010ffff 0x015500aa 0x01f00140>;
 			interrupts = <4>;
 			interrupt-names = "mac_irq";
+			local-mac-address = [ 00 00 00 00 00 00 ];
 		};
 	};
 
