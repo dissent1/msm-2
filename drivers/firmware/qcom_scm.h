@@ -71,14 +71,11 @@ extern int qcom_scm_dload(u32 svc_id, u32 cmd_id, void *cmd_buf);
 extern int __qcom_scm_sdi(struct device *, u32 svc_id, u32 cmd_id);
 extern int qcom_scm_sdi(u32 svc_id, u32 cmd_id);
 
-extern int __qcom_scm_tzsched(struct device *, u32 svc_id, u32 cmd_id,
-			const void *req, size_t req_size, void *resp,
-			size_t resp_size);
-
 #define SCM_IO_READ	1
 #define SCM_IO_WRITE	2
 #define SCM_SVC_IO_ACCESS	0x5
 #define SCM_CMD_CACHE_BUFFER_DUMP	0x5
+#define SCM_SVC_TZSCHEDULER	0xFC
 
 s32 __qcom_scm_pinmux_read(u32 svc_id, u32 cmd_id, u32 arg1);
 s32 __qcom_scm_pinmux_write(u32 svc_id, u32 cmd_id, u32 arg1, u32 arg2);
@@ -92,6 +89,10 @@ extern int __qcom_scm_send_cache_dump_addr(struct device *, u32 cmd_id,
 					void *cmd_buf, u32 size);
 extern int qcom_scm_get_cache_dump_size(u32 cmd_id, void *cmd_buf, u32 size);
 extern int qcom_scm_send_cache_dump_addr(u32 cmd_id, void *cmd_buf, u32 size);
+
+extern int __qcom_scm_tzsched(struct device *, const void *req,
+				size_t req_size, void *resp,
+				size_t resp_size);
 
 /* common error codes */
 #define QCOM_SCM_V2_EBUSY	-12

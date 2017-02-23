@@ -607,13 +607,12 @@ int __qcom_scm_sdi(struct device *dev, u32 svc_id, u32 cmd_id)
 	return ret;
 }
 
-int __qcom_scm_tzsched(struct device *dev,
-			u32 svc_id, u32 cmd_id, const void *req,
+int __qcom_scm_tzsched(struct device *dev, const void *req,
 			size_t req_size, void *resp, size_t resp_size)
 {
 	int ret;
 
-	ret = qcom_scm_call(dev, svc_id, cmd_id, req,
+	ret = qcom_scm_call(dev, SCM_SVC_TZSCHEDULER, 1, req,
 				req_size, resp, resp_size);
 	return ret;
 }
