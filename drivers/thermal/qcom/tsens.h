@@ -24,9 +24,12 @@ struct tsens_device;
 struct tsens_sensor {
 	struct tsens_device		*tmdev;
 	struct thermal_zone_device	*tzd;
+	struct work_struct		notify_work;
 	int				offset;
 	int				id;
 	int				hw_id;
+	int				calib_data;
+	int				calib_data_backup;
 	int				slope;
 	u32				status;
 };
@@ -41,6 +44,9 @@ struct tsens_sensor {
  * @suspend: Function to suspend the tsens device
  * @resume: Function to resume the tsens device
  * @get_trend: Function to get the thermal/temp trend
+ * @set_trip_temp: Function to set trip temp
+ * @get_trip_temp: Function to get trip temp
+ * @set_trip_activate: Function to activate trip points
  */
 struct tsens_ops {
 	/* mandatory callbacks */
@@ -53,6 +59,9 @@ struct tsens_ops {
 	int (*suspend)(struct tsens_device *);
 	int (*resume)(struct tsens_device *);
 	int (*get_trend)(struct tsens_device *, int, enum thermal_trend *);
+	int (*set_trip_temp)(void *, int, int);
+	int (*set_trip_activate)(void *, int,
+					enum thermal_trip_activation_mode);
 };
 
 /**
@@ -76,11 +85,13 @@ struct tsens_context {
 struct tsens_device {
 	struct device			*dev;
 	u32				num_sensors;
+	u32				tsens_irq;
 	struct regmap			*map;
 	struct regmap_field		*status_field;
 	struct tsens_context		ctx;
 	bool				trdy;
 	const struct tsens_ops		*ops;
+	struct work_struct		tsens_work;
 	struct tsens_sensor		sensor[0];
 };
 
