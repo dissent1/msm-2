@@ -518,3 +518,23 @@ int qcom_scm_pinmux_write(u32 arg1, u32 arg2)
 					arg1, arg2);
 }
 EXPORT_SYMBOL(qcom_scm_pinmux_write);
+
+int qcom_scm_cache_dump(u32 cpu)
+{
+	return __qcom_scm_cache_dump(cpu);
+}
+EXPORT_SYMBOL(qcom_scm_cache_dump);
+
+int qcom_scm_get_cache_dump_size(u32 cmd_id, void *cmd_buf, u32 size)
+{
+	return __qcom_scm_get_cache_dump_size(__scm->dev, cmd_id,
+					cmd_buf, size);
+}
+EXPORT_SYMBOL(qcom_scm_get_cache_dump_size);
+
+int qcom_scm_send_cache_dump_addr(u32 cmd_id, void *cmd_buf, u32 size)
+{
+	return __qcom_scm_send_cache_dump_addr(__scm->dev, cmd_id,
+					cmd_buf, size);
+}
+EXPORT_SYMBOL(qcom_scm_send_cache_dump_addr);

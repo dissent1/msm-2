@@ -635,3 +635,32 @@ int __qcom_scm_pinmux_write(u32 svc_id, u32 cmd_id, u32 arg1, u32 arg2)
 
 	return ret;
 }
+
+int __qcom_scm_cache_dump(u32 cpu)
+{
+	long ret;
+
+	ret = qcom_scm_call_atomic1(SCM_SVC_UTIL, SCM_CMD_CACHE_BUFFER_DUMP,
+									cpu);
+	return ret;
+}
+
+int __qcom_scm_get_cache_dump_size(struct device *dev, u32 cmd_id,
+						void *cmd_buf, u32 size)
+{
+	long ret;
+
+	ret = qcom_scm_call(dev, SCM_SVC_UTIL, cmd_id, NULL, 0, cmd_buf, size);
+
+	return ret;
+}
+
+int __qcom_scm_send_cache_dump_addr(struct device *dev, u32 cmd_id,
+						void *cmd_buf, u32 size)
+{
+	long ret;
+
+	ret = qcom_scm_call(dev, SCM_SVC_UTIL, cmd_id, cmd_buf, size, NULL, 0);
+
+	return ret;
+}
