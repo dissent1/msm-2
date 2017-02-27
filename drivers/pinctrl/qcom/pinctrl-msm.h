@@ -49,6 +49,7 @@ struct msm_function {
  * @oe_bit:               Offset in @ctl_reg for controlling output enable.
  * @in_bit:               Offset in @io_reg for the input bit value.
  * @out_bit:              Offset in @io_reg for the output bit value.
+ * @od_bit:		  Offset in @io_reg for controlling output drain.
  * @intr_enable_bit:      Offset in @intr_cfg_reg for enabling the interrupt for this group.
  * @intr_status_bit:      Offset in @intr_status_reg for reading and acking the interrupt
  *                        status.
@@ -84,6 +85,7 @@ struct msm_pingroup {
 	unsigned oe_bit:5;
 	unsigned in_bit:5;
 	unsigned out_bit:5;
+	unsigned od_bit:5;
 
 	unsigned intr_enable_bit:5;
 	unsigned intr_status_bit:5;
@@ -98,6 +100,16 @@ struct msm_pingroup {
 };
 
 /**
+ * struct msm_pinctrl_gpio_pull - pinctrl pull value bit field descriptor
+ */
+struct msm_pinctrl_gpio_pull {
+	unsigned no_pull;
+	unsigned pull_down;
+	unsigned pull_up;
+	unsigned keeper;
+};
+
+/**
  * struct msm_pinctrl_soc_data - Qualcomm pin controller driver configuration
  * @pins:       An array describing all pins the pin controller affects.
  * @npins:      The number of entries in @pins.
@@ -106,6 +118,7 @@ struct msm_pingroup {
  * @groups:     An array describing all pin groups the pin SoC supports.
  * @ngroups:    The numbmer of entries in @groups.
  * @ngpio:      The number of pingroups the driver should expose as GPIOs.
+ * @gpio_pull_val: The pull value bit field descriptor.
  */
 struct msm_pinctrl_soc_data {
 	const struct pinctrl_pin_desc *pins;
@@ -115,6 +128,14 @@ struct msm_pinctrl_soc_data {
 	const struct msm_pingroup *groups;
 	unsigned ngroups;
 	unsigned ngpios;
+	const struct msm_pinctrl_gpio_pull *gpio_pull;
+};
+
+static const struct msm_pinctrl_gpio_pull msm_gpio_pull = {
+	.no_pull = 0,
+	.pull_down = 1,
+	.keeper = 2,
+	.pull_up = 3,
 };
 
 int msm_pinctrl_probe(struct platform_device *pdev,

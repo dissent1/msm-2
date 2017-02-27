@@ -1,4 +1,5 @@
 /*
+
  * Copyright (c) 2013, Sony Mobile Communications AB.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
@@ -199,17 +200,16 @@ static int msm_config_reg(struct msm_pinctrl *pctrl,
 		*bit = g->oe_bit;
 		*mask = 1;
 		break;
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		*bit = g->od_bit;
+		*mask = 1;
+		break;
 	default:
 		return -ENOTSUPP;
 	}
 
 	return 0;
 }
-
-#define MSM_NO_PULL	0
-#define MSM_PULL_DOWN	1
-#define MSM_KEEPER	2
-#define MSM_PULL_UP	3
 
 static unsigned msm_regval_to_drive(u32 val)
 {
@@ -241,16 +241,16 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 	/* Convert register value to pinconf value */
 	switch (param) {
 	case PIN_CONFIG_BIAS_DISABLE:
-		arg = arg == MSM_NO_PULL;
+		arg = arg == pctrl->soc->gpio_pull->no_pull;
 		break;
 	case PIN_CONFIG_BIAS_PULL_DOWN:
-		arg = arg == MSM_PULL_DOWN;
+		arg = arg == pctrl->soc->gpio_pull->pull_down;
 		break;
 	case PIN_CONFIG_BIAS_BUS_HOLD:
-		arg = arg == MSM_KEEPER;
+		arg = arg == pctrl->soc->gpio_pull->keeper;
 		break;
 	case PIN_CONFIG_BIAS_PULL_UP:
-		arg = arg == MSM_PULL_UP;
+		arg = arg == pctrl->soc->gpio_pull->pull_up;
 		break;
 	case PIN_CONFIG_DRIVE_STRENGTH:
 		arg = msm_regval_to_drive(arg);
@@ -268,6 +268,9 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 		if (arg)
 			return -EINVAL;
 		arg = 1;
+		break;
+	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+		arg = arg == 1;
 		break;
 	default:
 		return -ENOTSUPP;
@@ -307,16 +310,16 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 		/* Convert pinconf values to register values */
 		switch (param) {
 		case PIN_CONFIG_BIAS_DISABLE:
-			arg = MSM_NO_PULL;
+			arg = pctrl->soc->gpio_pull->no_pull;
 			break;
 		case PIN_CONFIG_BIAS_PULL_DOWN:
-			arg = MSM_PULL_DOWN;
+			arg = pctrl->soc->gpio_pull->pull_down;
 			break;
 		case PIN_CONFIG_BIAS_BUS_HOLD:
-			arg = MSM_KEEPER;
+			arg = pctrl->soc->gpio_pull->keeper;
 			break;
 		case PIN_CONFIG_BIAS_PULL_UP:
-			arg = MSM_PULL_UP;
+			arg = pctrl->soc->gpio_pull->pull_up;
 			break;
 		case PIN_CONFIG_DRIVE_STRENGTH:
 			/* Check for invalid values */
@@ -342,6 +345,9 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 		case PIN_CONFIG_INPUT_ENABLE:
 			/* disable output */
 			arg = 0;
+			break;
+		case PIN_CONFIG_DRIVE_OPEN_DRAIN:
+			arg = 1;
 			break;
 		default:
 			dev_err(pctrl->dev, "Unsupported config parameter: %x\n",
