@@ -128,6 +128,11 @@
 			<0x0b002000 0x1000>;
 		};
 
+		counter {
+			compatible = "qcom,qca-gcnt";
+			reg = <0x004a1000 0x4>;
+		};
+
 		gcc: clock-controller@1800000 {
 			compatible = "qcom,gcc-ipq4019";
 			#clock-cells = <1>;
