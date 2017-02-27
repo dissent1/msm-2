@@ -239,10 +239,11 @@ static int adm_get_blksize(unsigned int burst)
  * @crci: CRCI value
  * @burst: Burst size of transaction
  * @direction: DMA transfer direction
+ * @is_last_sg: set true if this desc is for last SG
  */
 static void *adm_process_fc_descriptors(struct adm_chan *achan,
 	void *desc, struct scatterlist *sg, u32 crci, u32 burst,
-	enum dma_transfer_direction direction)
+	enum dma_transfer_direction direction, bool is_last_sg)
 {
 	struct adm_desc_hw_box *box_desc = NULL;
 	struct adm_desc_hw_single *single_desc;
@@ -290,10 +291,10 @@ static void *adm_process_fc_descriptors(struct adm_chan *achan,
 		single_desc->dst_addr = *dst;
 		desc += sizeof(*single_desc);
 
-		if (sg_is_last(sg))
+		if (is_last_sg)
 			single_desc->cmd |= ADM_CMD_LC;
 	} else {
-		if (box_desc && sg_is_last(sg))
+		if (box_desc && is_last_sg)
 			box_desc->cmd |= ADM_CMD_LC;
 	}
 
@@ -307,10 +308,12 @@ static void *adm_process_fc_descriptors(struct adm_chan *achan,
  * @desc: Descriptor memory pointer
  * @sg: Scatterlist entry
  * @direction: DMA transfer direction
+ * @is_last_sg: set true if this desc is for last SG
  */
 static void *adm_process_non_fc_descriptors(struct adm_chan *achan,
 	void *desc, struct scatterlist *sg,
-	enum dma_transfer_direction direction)
+	enum dma_transfer_direction direction,
+	bool is_last_sg)
 {
 	struct adm_desc_hw_single *single_desc;
 	u32 remainder = sg_dma_len(sg);
@@ -340,7 +343,7 @@ static void *adm_process_non_fc_descriptors(struct adm_chan *achan,
 	} while (remainder);
 
 	/* set last command if this is the end of the whole transaction */
-	if (sg_is_last(sg))
+	if (is_last_sg)
 		single_desc->cmd |= ADM_CMD_LC;
 
 	return desc;
@@ -370,6 +373,7 @@ static struct dma_async_tx_descriptor *adm_prep_slave_sg(struct dma_chan *chan,
 	void *desc;
 	u32 *cple;
 	int blk_size = 0;
+	bool is_last_sg = false;
 
 	if (!is_slave_direction(direction)) {
 		dev_err(adev->dev, "invalid dma direction\n");
@@ -456,12 +460,15 @@ static struct dma_async_tx_descriptor *adm_prep_slave_sg(struct dma_chan *chan,
 	for_each_sg(sgl, sg, sg_len, i) {
 		async_desc->length += sg_dma_len(sg);
 
+		if (i == sg_len - 1)
+			is_last_sg = true;
+
 		if (achan->slave.device_fc)
 			desc = adm_process_fc_descriptors(achan, desc, sg, crci,
-							burst, direction);
+					burst, direction, is_last_sg);
 		else
 			desc = adm_process_non_fc_descriptors(achan, desc, sg,
-							   direction);
+					direction, is_last_sg);
 	}
 
 	return vchan_tx_prep(&achan->vc, &async_desc->vd, flags);
