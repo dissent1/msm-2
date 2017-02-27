@@ -567,6 +567,7 @@ int cnss_wlfw_wlan_cfg_send_sync(struct cnss_plat_data *plat_priv,
 		ret = resp.resp.result;
 		goto out;
 	}
+	cnss_pr_dbg("Config Message response received\n");
 
 	return 0;
 out:
