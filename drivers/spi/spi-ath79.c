@@ -24,6 +24,9 @@
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/libfdt.h>
+#include <linux/of_fdt.h>
+#include <linux/if_ether.h>
 
 #include <asm/mach-ath79/ar71xx_regs.h>
 #include <asm/mach-ath79/ath79_spi_platform.h>
@@ -318,6 +321,39 @@ static int ath79_spi_setup_transfer(struct spi_device *spi,
 	return ret;
 }
 
+void ath79_spi_fixup_mac_addr(void)
+{
+	const u8 *art = (u8 *)KSEG1ADDR(0x1fff0000);
+	char node[20];
+	const void *eth;
+	int idx, off, ret;
+
+	if (!of_aliases) {
+		pr_err("%s: No /aliases in DT\n", __func__);
+		return;
+	}
+
+	for (idx = 0; idx < 2; idx++, art += ETH_ALEN) {
+		snprintf(node, sizeof(node), "eth%d", idx);
+		eth = of_get_property(of_aliases, node, NULL);
+		if (!eth) {
+			pr_err("%s: No eth%d alias in DT\n", __func__,
+					idx);
+			continue;
+		}
+
+		off = fdt_path_offset(initial_boot_params, eth);
+		if (off < 0)
+			pr_err("%s: No eth%d node in DT (%d)\n",__func__,
+				idx, off);
+		ret = fdt_setprop_inplace(initial_boot_params, off,
+				"local-mac-address", art, ETH_ALEN);
+		if (ret)
+			pr_err("%s: Set local-mac-address failed for eth%d (%d)\n",
+					__func__, idx, ret);
+	}
+}
+
 static int ath79_spi_probe(struct platform_device *pdev)
 {
 	struct spi_master *master;
@@ -393,6 +429,9 @@ static int ath79_spi_probe(struct platform_device *pdev)
 	sp->rrw_delay = ATH79_SPI_RRW_DELAY_FACTOR / rate;
 	dev_dbg(&pdev->dev, "register read/write delay is %u nsecs\n",
 		sp->rrw_delay);
+
+	if (master->dev.of_node != NULL)
+		ath79_spi_fixup_mac_addr();
 
 	ath79_spi_enable(sp);
 	ret = spi_bitbang_start(&sp->bitbang);

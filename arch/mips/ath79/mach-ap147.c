@@ -40,7 +40,9 @@
 #define AP147_KEYS_POLL_INTERVAL	20	/* msecs */
 #define AP147_KEYS_DEBOUNCE_INTERVAL	(3 * AP147_KEYS_POLL_INTERVAL)
 
-#define AP147_MAC0_OFFSET	0x1000
+#define AP147_MAC0_OFFSET		0
+#define AP147_MAC1_OFFSET		6
+#define AP147_WMAC_CALDATA_OFFSET	0x1000
 
 static struct gpio_led ap147_leds_gpio[] __initdata = {
 	{
@@ -100,7 +102,7 @@ static void __init ap147_setup(void)
 
 	ath79_register_pci();
 
-	ath79_register_wmac(art + AP147_MAC0_OFFSET, NULL);
+	ath79_register_wmac(art + AP147_WMAC_CALDATA_OFFSET, NULL);
 
 	ath79_setup_ar933x_phy4_switch(false, false);
 
@@ -113,7 +115,7 @@ static void __init ap147_setup(void)
 	ath79_eth0_data.duplex = DUPLEX_FULL;
 	ath79_eth0_data.speed = SPEED_100;
 	ath79_eth0_data.phy_mask = BIT(4);
-	ath79_init_mac(ath79_eth0_data.mac_addr, art, 1);
+	ath79_init_mac(ath79_eth0_data.mac_addr, art + AP147_MAC0_OFFSET, 0);
 	ath79_register_eth(0);
 
 	/* LAN */
@@ -121,7 +123,7 @@ static void __init ap147_setup(void)
 	ath79_eth1_data.speed = SPEED_1000;
 	ath79_eth1_data.duplex = DUPLEX_FULL;
 	ath79_switch_data.phy_poll_mask |= BIT(4);
-	ath79_init_mac(ath79_eth1_data.mac_addr, art, 0);
+	ath79_init_mac(ath79_eth1_data.mac_addr, art + AP147_MAC1_OFFSET, 0);
 	ath79_register_eth(1);
 }
 

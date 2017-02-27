@@ -1647,9 +1647,8 @@ static int ag71xx_of_pdata_update(
 	u32 value[5] = {0};
 	struct device_node *mdio;
 	struct platform_device *pdev_mdio;
-	u32 offset;
 	const phandle *ph;
-	u8 *art = (u8 *)KSEG1ADDR(0x1fff0000);
+	const u8 *mac_new;
 
 	if (!pdev->dev.of_node)
 		return -EINVAL;
@@ -1735,11 +1734,9 @@ static int ag71xx_of_pdata_update(
 	of_property_read_u32(pdev->dev.of_node, "qca955x-support", &value[0]);
 	pdata->is_qca955x = value[0];
 
-	if (ag71xx_gmac_num == 0)
-		offset = AG71XX_MAC0_OFFSET;
-	else
-		offset = AG71XX_MAC1_OFFSET;
-	ag71xx_init_mac(pdata->mac_addr, art + offset, 0);
+	mac_new = of_get_property(pdev->dev.of_node, "local-mac-address", NULL);
+
+	ag71xx_init_mac(pdata->mac_addr, mac_new, 0);
 	if (!is_valid_ether_addr(pdata->mac_addr)) {
 		random_ether_addr(pdata->mac_addr);
 		printk(KERN_DEBUG

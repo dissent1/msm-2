@@ -241,8 +241,10 @@ void __init plat_mem_setup(void)
 	else
 		__dt_setup_arch(__dtb_start);
 #else
-	else
+	else {
 		__dt_setup_arch(__owrt_dtb);
+		initial_boot_params = (void *)__owrt_dtb;
+	}
 #endif
 
 	ath79_reset_base = ioremap_nocache(AR71XX_RESET_BASE,
