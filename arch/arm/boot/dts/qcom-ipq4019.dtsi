@@ -193,6 +193,13 @@
 			status = "disabled";
 		};
 
+		rng@0x00022000 {
+			compatible = "qcom,prng";
+			reg = <0x00022000 0x140>;
+			clocks = <&gcc GCC_PRNG_AHB_CLK>;
+			clock-names = "core";
+		};
+
 		i2c_0: i2c@78b7000 { /* BLSP1 QUP3 */
 			compatible = "qcom,i2c-qup-v2.2.1";
 			#address-cells = <1>;
