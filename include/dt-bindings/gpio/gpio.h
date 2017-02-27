@@ -24,4 +24,18 @@
 #define GPIO_OPEN_DRAIN (GPIO_SINGLE_ENDED | GPIO_ACTIVE_LOW)
 #define GPIO_OPEN_SOURCE (GPIO_SINGLE_ENDED | GPIO_ACTIVE_HIGH)
 
+#define DRV_TYPE_D		0
+#define DRV_TYPE_C		1
+#define DRV_TYPE_B		3
+#define DRV_TYPE_A		7
+
+#define DRV_CAP_HIGH	0
+#define DRV_CAP_HALF	1
+#define DRV_CAP_QUARTER	2
+
+#define RES_10_KOHM	0
+#define RES_1_5_KOHM	1
+#define RES_35_KOHM	2
+#define RES_20_KOHM	3
+
 #endif
