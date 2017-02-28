@@ -28,11 +28,13 @@
 #include <linux/soc/qcom/smem_state.h>
 #include <linux/qcom_scm.h>
 #include <linux/elf.h>
+#include <soc/qcom/subsystem_restart.h>
 
 #define WCSS_CRASH_REASON_SMEM 421
 #define WCNSS_PAS_ID		6
 #define QCOM_MDT_TYPE_MASK      (7 << 24)
 #define QCOM_MDT_TYPE_HASH      (2 << 24)
+#define STOP_ACK_TIMEOUT_MS 10000
 
 struct q6v5_rtable {
 	struct resource_table rtable;
@@ -52,6 +54,8 @@ static struct q6v5_rtable q6v5_rtable = {
 struct q6v5_rproc_pdata {
 	void __iomem *q6_base;
 	struct rproc *rproc;
+	struct subsys_device *subsys;
+	struct subsys_desc subsys_desc;
 	struct completion start_done;
 	struct completion stop_done;
 	struct qcom_smem_state *state;
@@ -63,6 +67,8 @@ struct q6v5_rproc_pdata {
 };
 
 static struct q6v5_rproc_pdata *q6v5_rproc_pdata;
+
+#define subsys_to_pdata(d) container_of(d, struct q6v5_rproc_pdata, subsys_desc)
 
 static struct resource_table *q6v5_find_loaded_rsc_table(struct rproc *rproc,
 	const struct firmware *fw)
@@ -88,18 +94,6 @@ static int q6_rproc_stop(struct rproc *rproc)
 	int ret;
 
 	pdata->running = false;
-
-	qcom_smem_state_update_bits(pdata->state,
-			BIT(pdata->stop_bit), BIT(pdata->stop_bit));
-
-	ret = wait_for_completion_timeout(&pdata->stop_done,
-			msecs_to_jiffies(10000));
-
-	if (ret == 0)
-		pr_err("Timedout waiting for stop-ack\n");
-
-	qcom_smem_state_update_bits(pdata->state, BIT(pdata->stop_bit), 0);
-
 	if (pdata->secure) {
 		ret = qcom_scm_pas_shutdown(WCNSS_PAS_ID);
 		if (ret)
@@ -225,9 +219,12 @@ static struct rproc_fw_ops q6_fw_ops;
 
 static irqreturn_t wcss_err_fatal_intr_handler(int irq, void *dev_id)
 {
-	struct q6v5_rproc_pdata *pdata = dev_id;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(dev_id);
 	char *msg;
 	size_t len;
+
+	if (!pdata->running)
+		return IRQ_HANDLED;
 
 	msg = qcom_smem_get(QCOM_SMEM_HOST_ANY, WCSS_CRASH_REASON_SMEM, &len);
 	if (!IS_ERR(msg) && len > 0 && msg[0])
@@ -235,14 +232,14 @@ static irqreturn_t wcss_err_fatal_intr_handler(int irq, void *dev_id)
 	else
 		pr_err("Fatal error received no message!\n");
 
-	panic("%s: System ramdump requested.!\n", __func__);
-
+	subsys_set_crash_status(pdata->subsys, CRASH_STATUS_ERR_FATAL);
+	subsystem_restart_dev(pdata->subsys);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t wcss_handover_intr_handler(int irq, void *dev_id)
 {
-	struct q6v5_rproc_pdata *pdata = dev_id;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(dev_id);
 
 	pr_info("Received handover interrupt from wcss\n");
 	complete(&pdata->start_done);
@@ -251,7 +248,7 @@ static irqreturn_t wcss_handover_intr_handler(int irq, void *dev_id)
 
 static irqreturn_t wcss_stop_ack_intr_handler(int irq, void *dev_id)
 {
-	struct q6v5_rproc_pdata *pdata = dev_id;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(dev_id);
 
 	pr_info("Received stop ack interrupt from wcss\n");
 	complete(&pdata->stop_done);
@@ -260,7 +257,7 @@ static irqreturn_t wcss_stop_ack_intr_handler(int irq, void *dev_id)
 
 static irqreturn_t wcss_wdog_bite_intr_handler(int irq, void *dev_id)
 {
-	struct q6v5_rproc_pdata *pdata = dev_id;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(dev_id);
 	char *msg;
 	size_t len;
 
@@ -275,17 +272,21 @@ static irqreturn_t wcss_wdog_bite_intr_handler(int irq, void *dev_id)
 	else
 		pr_err("Watchdog bit received no message!\n");
 
-	panic("%s: System ramdump requested.!\n", __func__);
+	subsys_set_crash_status(pdata->subsys, CRASH_STATUS_WDOG_BITE);
+	subsystem_restart_dev(pdata->subsys);
 
 	return IRQ_HANDLED;
 }
 
 
-int start_q6(void)
+static int start_q6(const struct subsys_desc *subsys)
 {
-	struct rproc *rproc = q6v5_rproc_pdata->rproc;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(subsys);
+	struct rproc *rproc = pdata->rproc;
 	int ret = 0;
 
+	reinit_completion(&pdata->stop_done);
+	pdata->subsys_desc.ramdump_disable = 1;
 	ret = rproc_add(rproc);
 	if (ret)
 		return ret;
@@ -299,18 +300,32 @@ int start_q6(void)
 
 	return ret;
 }
-EXPORT_SYMBOL(start_q6);
 
-int stop_q6(void)
+static int stop_q6(const struct subsys_desc *subsys, bool force_stop)
 {
-	struct rproc *rproc = q6v5_rproc_pdata->rproc;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(subsys);
+	struct rproc *rproc = pdata->rproc;
+	int ret = 0;
+
+	if (!subsys_get_crash_status(pdata->subsys) && force_stop) {
+		qcom_smem_state_update_bits(pdata->state,
+			BIT(pdata->stop_bit), BIT(pdata->stop_bit));
+
+		ret = wait_for_completion_timeout(&pdata->stop_done,
+			msecs_to_jiffies(STOP_ACK_TIMEOUT_MS));
+
+		if (ret == 0)
+			pr_err("Timedout waiting for stop-ack\n");
+
+		qcom_smem_state_update_bits(pdata->state,
+			BIT(pdata->stop_bit), 0);
+	}
 
 	rproc_shutdown(rproc);
 	rproc_del(rproc);
 
 	return 0;
 }
-EXPORT_SYMBOL(stop_q6);
 
 static int q6v5_request_irq(struct q6v5_rproc_pdata *pdata,
 				struct platform_device *pdev,
@@ -318,14 +333,15 @@ static int q6v5_request_irq(struct q6v5_rproc_pdata *pdata,
 				irq_handler_t thread_fn)
 {
 	int ret;
+	unsigned int irq;
 
-	ret = platform_get_irq_byname(pdev, name);
-	if (ret < 0) {
+	irq = platform_get_irq_byname(pdev, name);
+	if (irq < 0) {
 		dev_err(&pdev->dev, "no %s IRQ defined\n", name);
 		return ret;
 	}
 
-	ret = devm_request_threaded_irq(&pdev->dev, ret,
+	ret = devm_request_threaded_irq(&pdev->dev, irq,
 			NULL, thread_fn,
 			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"wcss", pdata);
@@ -335,22 +351,19 @@ static int q6v5_request_irq(struct q6v5_rproc_pdata *pdata,
 	return ret;
 }
 
-static int wcss_panic_handler(struct notifier_block *this,
-			unsigned long event, void *ptr)
+static void wcss_panic_handler(const struct subsys_desc *subsys)
 {
-	struct q6v5_rproc_pdata *pdata = ptr;
+	struct q6v5_rproc_pdata *pdata = subsys_to_pdata(subsys);
 
 	pdata->running = false;
 
-	qcom_smem_state_update_bits(pdata->state, BIT(pdata->shutdown_bit),
-			BIT(pdata->shutdown_bit));
-	mdelay(1000);
-	return NOTIFY_DONE;
+	if (!subsys_get_crash_status(pdata->subsys)) {
+		qcom_smem_state_update_bits(pdata->state,
+			BIT(pdata->shutdown_bit), BIT(pdata->shutdown_bit));
+		mdelay(STOP_ACK_TIMEOUT_MS);
+	}
+	return;
 }
-
-static struct notifier_block panic_nb = {
-	.notifier_call  = wcss_panic_handler,
-};
 
 static int q6v5_load(struct rproc *rproc, const struct firmware *fw)
 {
@@ -483,57 +496,67 @@ static int q6_rproc_probe(struct platform_device *pdev)
 	q6_fw_ops.find_loaded_rsc_table = q6v5_find_loaded_rsc_table;
 	q6_fw_ops.load = q6v5_load;
 
-	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (unlikely(!resource))
-		goto free_rproc;
+	if (!q6v5_rproc_pdata->secure) {
+		resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (unlikely(!resource))
+			goto free_rproc;
 
-	q6v5_rproc_pdata->q6_base = ioremap(resource->start,
-					resource_size(resource));
-	if (!q6v5_rproc_pdata->q6_base)
-		goto free_rproc;
+		q6v5_rproc_pdata->q6_base = ioremap(resource->start,
+				resource_size(resource));
+		if (!q6v5_rproc_pdata->q6_base)
+			goto free_rproc;
+	}
 
 	platform_set_drvdata(pdev, q6v5_rproc_pdata);
 
 	rproc->fw_ops = &q6_fw_ops;
 
-	ret = q6v5_request_irq(q6v5_rproc_pdata, pdev, "wdog",
-				wcss_wdog_bite_intr_handler);
-	if (ret < 0)
+	q6v5_rproc_pdata->state = qcom_smem_state_get(&pdev->dev, "stop",
+			&q6v5_rproc_pdata->stop_bit);
+	if (IS_ERR(q6v5_rproc_pdata->state)) {
+		pr_err("Can't get stop bit status fro SMP2P\n");
 		goto free_rproc;
-
-	ret = q6v5_request_irq(q6v5_rproc_pdata, pdev, "fatal",
-				wcss_err_fatal_intr_handler);
-	if (ret < 0)
-		goto free_rproc;
+	}
 
 	ret = q6v5_request_irq(q6v5_rproc_pdata, pdev, "handover",
 			wcss_handover_intr_handler);
 	if (ret < 0)
 		goto free_rproc;
 
-	ret = q6v5_request_irq(q6v5_rproc_pdata, pdev, "stop-ack",
-			wcss_stop_ack_intr_handler);
-	if (ret < 0)
-		goto free_rproc;
-
-	q6v5_rproc_pdata->state = qcom_smem_state_get(&pdev->dev, "stop",
-			&q6v5_rproc_pdata->stop_bit);
-	if (IS_ERR(q6v5_rproc_pdata->state))
-		goto free_rproc;
-
 	q6v5_rproc_pdata->state = qcom_smem_state_get(&pdev->dev, "shutdown",
 			&q6v5_rproc_pdata->shutdown_bit);
-	if (IS_ERR(q6v5_rproc_pdata->state))
+	if (IS_ERR(q6v5_rproc_pdata->state)) {
+		pr_err("Can't get shutdown bit status fro SMP2P\n");
 		goto free_rproc;
+	}
+
+	q6v5_rproc_pdata->subsys_desc.is_not_loadable = 0;
+	q6v5_rproc_pdata->subsys_desc.name = "q6v5-wcss";
+	q6v5_rproc_pdata->subsys_desc.dev = &pdev->dev;
+	q6v5_rproc_pdata->subsys_desc.owner = THIS_MODULE;
+	q6v5_rproc_pdata->subsys_desc.shutdown = stop_q6;
+	q6v5_rproc_pdata->subsys_desc.powerup = start_q6;
+	q6v5_rproc_pdata->subsys_desc.ramdump = NULL;
+	q6v5_rproc_pdata->subsys_desc.crash_shutdown = wcss_panic_handler;
+	q6v5_rproc_pdata->subsys_desc.err_fatal_handler =
+				wcss_err_fatal_intr_handler;
+	q6v5_rproc_pdata->subsys_desc.stop_ack_handler =
+				wcss_stop_ack_intr_handler;
+	q6v5_rproc_pdata->subsys_desc.wdog_bite_handler =
+				wcss_wdog_bite_intr_handler;
+
+	q6v5_rproc_pdata->subsys = subsys_register(
+					&q6v5_rproc_pdata->subsys_desc);
+	if (IS_ERR(q6v5_rproc_pdata->subsys)) {
+		ret = PTR_ERR(q6v5_rproc_pdata->subsys);
+		goto free_rproc;
+	}
+
+
 
 	init_completion(&q6v5_rproc_pdata->start_done);
 	init_completion(&q6v5_rproc_pdata->stop_done);
 	q6v5_rproc_pdata->running = false;
-
-	ret = atomic_notifier_chain_register(&panic_notifier_list,
-				&panic_nb);
-	if (ret)
-		goto free_rproc;
 
 	return 0;
 
@@ -552,6 +575,8 @@ static int q6_rproc_remove(struct platform_device *pdev)
 
 	rproc_del(rproc);
 	rproc_put(rproc);
+
+	subsys_unregister(pdata->subsys);
 
 	return 0;
 }

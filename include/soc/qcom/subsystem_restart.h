@@ -25,6 +25,12 @@ enum {
 	RESET_LEVEL_MAX
 };
 
+enum crash_status {
+	CRASH_STATUS_NO_CRASH = 0,
+	CRASH_STATUS_ERR_FATAL,
+	CRASH_STATUS_WDOG_BITE,
+};
+
 struct device;
 struct module;
 
