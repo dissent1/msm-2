@@ -1148,6 +1148,54 @@
 			qcom,mdss-pan-bpp = <18>;
 			qcom,refresh_rate = <60>;
 		};
+
+		q6v5_wcss: q6v5_wcss@CD00000 {
+			compatible = "qca,q6v5-wcss-rproc";
+			firmware = "IPQ8074/M8074QCAHKAWPLQ00010_WLANFW.elf";
+			reg = <0xCD00000 0x4040>;
+			interrupts-extended = <&intc 0 325 1>,
+					<&wcss_smp2p_in 0 0>,
+					<&wcss_smp2p_in 1 0>,
+					<&wcss_smp2p_in 3 0>;
+			interrupt-names = "wdog",
+					"fatal",
+					"handover",
+					"stop-ack";
+			qcom,smem-states = <&wcss_smp2p_out 0>,
+					<&wcss_smp2p_out 1>;
+			qcom,smem-state-names = "shutdown",
+						"stop";
+		};
+
+		apcs: syscon@b111000 {
+			compatible = "syscon";
+			reg = <0x0B111000 0x1000>;
+		};
+
+		smp2p-wcss {
+			compatible = "qcom,smp2p";
+			qcom,smem = <435>, <428>;
+
+			interrupt-parent = <&intc>;
+			interrupts = <0 322 1>;
+
+			qcom,ipc = <&apcs 8 9>;
+
+			qcom,local-pid = <0>;
+			qcom,remote-pid = <1>;
+
+			wcss_smp2p_out: master-kernel {
+				qcom,entry-name = "master-kernel";
+				qcom,smp2p-feature-ssr-ack;
+				#qcom,smem-state-cells = <1>;
+			};
+
+			wcss_smp2p_in: slave-kernel {
+				qcom,entry-name = "slave-kernel";
+				interrupt-controller;
+				#interrupt-cells = <2>;
+			};
+		};
 	};
 
 	clocks {
