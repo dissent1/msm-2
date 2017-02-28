@@ -24,3 +24,4 @@ endif
 obj-$(CONFIG_IPQ_TCSR)	+=	ipq_tcsr.o
 
 obj-$(CONFIG_QCOM_CACHE_DUMP) += cache_dump.o
+obj-$(CONFIG_QCOM_MEMORY_DUMP_V2) += memory_dump_v2.o

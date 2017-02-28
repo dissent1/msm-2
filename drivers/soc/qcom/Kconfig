@@ -211,3 +211,15 @@ config QCOM_CACHE_DUMP_ON_PANIC
           look at them in a RAM dump will give useless data. Select this if you
           want to dump the L1 and L2 caches on panic before any flush occurs.
           If unsure, say N
+
+if ARCH_QCOM
+
+config QCOM_MEMORY_DUMP_V2
+	bool "QCOM Memory Dump V2 Support"
+	help
+	  This enables memory dump feature. It allows various client
+	  subsystems to register respective dump regions. At the time
+	  of deadlocks or cpu hangs these dump regions are captured to
+	  give a snapshot of the system at the time of the crash.
+
+endif # ARCH_QCOM
