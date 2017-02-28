@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,12 +17,15 @@
 #include <linux/err.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/kmemleak.h>
 #include <soc/qcom/memory_dump.h>
+#ifdef CONFIG_MSM_DEBUG_LAR_UNLOCK
 #include <soc/qcom/scm.h>
+#endif
 
 #define MSM_DUMP_TABLE_VERSION		MSM_DUMP_MAKE_VERSION(2, 0)
 
-#define SCM_CMD_DEBUG_LAR_UNLOCK	0x00001003
+#define SCM_CMD_DEBUG_LAR_UNLOCK	0x4
 
 struct msm_dump_table {
 	uint32_t version;
@@ -139,7 +142,7 @@ static int __init init_memory_dump(void)
 	}
 	memdump.table->version = MSM_DUMP_TABLE_VERSION;
 	memdump.table_phys = virt_to_phys(memdump.table);
-	writel_relaxed(memdump.table_phys, imem_base);
+	memcpy_toio(imem_base, &memdump.table_phys, sizeof(memdump.table_phys));
 	/* Ensure write to imem_base is complete before unmapping */
 	mb();
 	pr_info("MSM Memory Dump base table set up\n");
@@ -152,6 +155,7 @@ static int __init init_memory_dump(void)
 		ret = -ENOMEM;
 		goto err1;
 	}
+	kmemleak_not_leak(table);
 	table->version = MSM_DUMP_TABLE_VERSION;
 
 	entry.id = MSM_DUMP_TABLE_APPS;
@@ -180,13 +184,19 @@ static int __init init_debug_lar_unlock(void)
 {
 	int ret;
 	uint32_t argument = 0;
+	struct scm_desc desc = {0};
 
-	ret = scm_call(SCM_SVC_TZ, SCM_CMD_DEBUG_LAR_UNLOCK, &argument,
-		       sizeof(argument), NULL, 0);
+	if (!is_scm_armv8())
+		ret = scm_call(SCM_SVC_TZ, SCM_CMD_DEBUG_LAR_UNLOCK, &argument,
+			       sizeof(argument), NULL, 0);
+	else
+		ret = scm_call2(SCM_SIP_FNID(SCM_SVC_TZ,
+				SCM_CMD_DEBUG_LAR_UNLOCK), &desc);
 	if (ret)
-		pr_info("Core Debug Lock unlock failed, ret: %d\n", ret);
+		pr_err("Core Debug Lock unlock failed, ret: %d\n", ret);
 	else
 		pr_info("Core Debug Lock unlocked\n");
+
 	return ret;
 }
 early_initcall(init_debug_lar_unlock);
