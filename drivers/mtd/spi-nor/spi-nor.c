@@ -856,6 +856,49 @@ static const struct flash_info spi_nor_ids[] = {
 	{ },
 };
 
+static int spi_nor_default_config(struct spi_nor *nor,
+			struct device_node *np, struct flash_info *def_id)
+{
+	int ret;
+	u32 jedec, density_def;
+	u16 ext_jedec;
+	bool use_def_sizes;
+
+	use_def_sizes = of_property_read_bool(np, "use-default-sizes");
+	if (!use_def_sizes)
+		return -ENOENT;
+
+	ret = of_property_read_u32(np, "sector-size", &def_id->sector_size);
+	if (ret) {
+		dev_err(nor->dev, "Failed to find sector-size\n");
+		return ret;
+	}
+
+	ret = of_property_read_u32(np, "density", &density_def);
+	if (ret) {
+		dev_err(nor->dev, "Failed to find density\n");
+		return ret;
+	}
+
+	def_id->n_sectors = (u32) (density_def / def_id->sector_size);
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDID, def_id->id,
+					SPI_NOR_MAX_ID_LEN);
+	if (ret < 0) {
+		dev_dbg(nor->dev, " error %d reading JEDEC ID\n", ret);
+		return ret;
+	}
+
+	jedec = def_id->id[0] << 16 | def_id->id[1] << 8 | def_id->id[2];
+	ext_jedec = def_id->id[3] << 8 | def_id->id[4];
+	def_id->name = "default";
+	def_id->id_len = !(jedec) ? 0 : (3 + ((ext_jedec) ? 2 : 0));
+	def_id->page_size = 256;
+	def_id->flags = 0;
+
+	return 0;
+}
+
 static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
 {
 	int			tmp;
@@ -1113,11 +1156,13 @@ static int spi_nor_check(struct spi_nor *nor)
 int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 {
 	const struct flash_info *info = NULL;
+	struct flash_info def_id;
 	struct device *dev = nor->dev;
 	struct mtd_info *mtd = &nor->mtd;
 	struct device_node *np = nor->flash_node;
 	int ret;
 	int i;
+	bool is_default_config = false;
 
 	ret = spi_nor_check(nor);
 	if (ret)
@@ -1128,14 +1173,21 @@ int spi_nor_scan(struct spi_nor *nor, const char *name, enum read_mode mode)
 	/* Try to auto-detect if chip name wasn't specified or not found */
 	if (!info)
 		info = spi_nor_read_id(nor);
-	if (IS_ERR_OR_NULL(info))
-		return -ENOENT;
+	if (IS_ERR_OR_NULL(info)) {
+		/*fall back to default configuration */
+		ret = spi_nor_default_config(nor, np, &def_id);
+		if (ret)
+			return ret;
+
+		info = &def_id;
+		is_default_config = true;
+	}
 
 	/*
 	 * If caller has specified name of flash model that can normally be
 	 * detected using JEDEC, let's verify it.
 	 */
-	if (name && info->id_len) {
+	if (name && info->id_len && !is_default_config) {
 		const struct flash_info *jinfo;
 
 		jinfo = spi_nor_read_id(nor);
