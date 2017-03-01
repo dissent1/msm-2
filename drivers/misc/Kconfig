@@ -541,6 +541,14 @@ config FW_AUTH_TEST
 	  This kernel module provides an interface through sysfs to test
 	  the firmware authentication API defined under FW_AUTH config.
 
+config QSEECOM
+	tristate "QSEECOM Client Driver"
+	default m
+	---help---
+	  This is client test driver that demonstrates a communication interface
+	  between userspace and Qualcomm Secure Execution Environment (QSEE)
+	  using Secure Channel Manager (SCM) interface.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
