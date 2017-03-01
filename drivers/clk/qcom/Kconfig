@@ -63,6 +63,14 @@ config IPQ_LCC_806X
 	  Say Y if you want to use audio devices such as i2s, pcm,
 	  S/PDIF, etc.
 
+config IPQ_APSS_807x
+	tristate "IPQ807x APSS Clock Controller"
+	select IPQ_GCC_807x
+	depends on COMMON_CLK_QCOM
+	help
+	  Support for APSS clock controller on ipq807x devices.
+	  Say Y if you want to use APSS clocks such as CPU.
+
 config IPQ_GCC_807x
 	tristate "IPQ807x Global Clock Controller"
 	depends on COMMON_CLK_QCOM
