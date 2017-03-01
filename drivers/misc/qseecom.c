@@ -59,7 +59,7 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/kobject.h>
-#include "soc/qcom/scm.h"
+#include <linux/qcom_scm.h>
 #include <linux/gfp.h>
 #include <linux/sysfs.h>
 #include <linux/dma-mapping.h>
@@ -311,9 +311,8 @@ static int qseecom_unload_app(void)
 	req.app_id = qsee_app_id;
 
 	/* SCM_CALL to unload the app */
-	ret = scm_call(SCM_SVC_TZSCHEDULER, 1,	&req,
-			sizeof(struct qseecom_unload_app_ireq),
-			&resp, sizeof(resp));
+	ret = qcom_scm_tzsched(&req, sizeof(struct qseecom_unload_app_ireq),
+				&resp, sizeof(resp));
 	if (ret)
 		pr_err("scm_call to unload app (id = %d) failed\n", req.app_id);
 
@@ -426,8 +425,7 @@ static int tzapp_test(void *input, void *output, int input_len, int option)
 	if (!ret1 && !ret2) {
 		send_data_req.req_len = sizeof(struct qsc_send_cmd);
 		send_data_req.rsp_len = sizeof(struct qsc_send_cmd_rsp);
-		ret = scm_call(SCM_SVC_TZSCHEDULER, 1,
-					(const void *) &send_data_req,
+		ret = qcom_scm_tzsched((const void *) &send_data_req,
 					sizeof(send_data_req),
 					&resp, sizeof(resp));
 	}
@@ -534,7 +532,7 @@ static int load_app(void)
 	ret1 = dma_mapping_error(NULL, load_req.phy_addr);
 	if (ret1 == 0) {
 		/* SCM_CALL to load the app and get the app_id back */
-		ret = scm_call(SCM_SVC_TZSCHEDULER, 1,	&load_req,
+		ret = qcom_scm_tzsched(&load_req,
 			sizeof(struct qseecom_load_app_ireq),
 			&resp, sizeof(resp));
 		dma_unmap_single(NULL, load_req.phy_addr,
@@ -721,7 +719,7 @@ static DEVICE_ATTR(decrypt, 0644, show_decrypt_output,
 					store_decrypt_input);
 static DEVICE_ATTR(basic_data, 0644, show_basic_output,
 					store_basic_input);
-static DEVICE_ATTR(load_start, 0222, NULL,
+static DEVICE_ATTR(load_start, S_IWUSR, NULL,
 					store_load_start);
 
 static struct attribute *tzapp_attrs[] = {

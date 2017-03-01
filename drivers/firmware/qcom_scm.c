@@ -489,15 +489,15 @@ int qcom_scm_sdi(u32 svc_id, u32 cmd_id)
 }
 EXPORT_SYMBOL(qcom_scm_sdi);
 
-int qcom_scm_tzsched(u32 svc_id, u32 cmdid, const void *req,
-			size_t req_size, void *resp, size_t resp_size)
+int qcom_scm_tzsched(const void *req, size_t req_size,
+				void *resp, size_t resp_size)
 {	int ret;
 
 	ret = qcom_scm_clk_enable();
 	if (ret)
 		return ret;
 
-	ret = __qcom_scm_tzsched(__scm->dev, svc_id, cmdid, req, req_size,
+	ret = __qcom_scm_tzsched(__scm->dev, req, req_size,
 				resp, resp_size);
 
 	qcom_scm_clk_disable();
