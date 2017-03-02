@@ -32,7 +32,7 @@ enum subsys_notif_type {
 	SUBSYS_NOTIF_TYPE_COUNT
 };
 
-#if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
+#if defined(CONFIG_IPQ_SUBSYSTEM_RESTART)
 /* Use the subsys_notif_register_notifier API to register for notifications for
  * a particular subsystem. This API will return a handle that can be used to
  * un-reg for notifications using the subsys_notif_unregister_notifier API by
@@ -82,6 +82,6 @@ static inline int subsys_notif_queue_notification(void *subsys_handle,
 {
 	return 0;
 }
-#endif /* CONFIG_MSM_SUBSYSTEM_RESTART */
+#endif /* CONFIG_IPQ_SUBSYSTEM_RESTART */
 
 #endif

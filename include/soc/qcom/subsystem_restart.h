@@ -104,7 +104,7 @@ struct notif_data {
 	struct platform_device *pdev;
 };
 
-#if defined(CONFIG_MSM_SUBSYSTEM_RESTART)
+#if defined(CONFIG_IPQ_SUBSYSTEM_RESTART)
 
 extern int subsys_get_restart_level(struct subsys_device *dev);
 extern int subsystem_restart_dev(struct subsys_device *dev);
@@ -180,6 +180,6 @@ static inline int wait_for_shutdown_ack(struct subsys_desc *desc)
 {
 	return -ENOSYS;
 }
-#endif /* CONFIG_MSM_SUBSYSTEM_RESTART */
+#endif /* CONFIG_IPQ_SUBSYSTEM_RESTART */
 
 #endif

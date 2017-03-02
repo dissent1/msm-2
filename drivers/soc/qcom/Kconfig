@@ -223,3 +223,13 @@ config QCOM_MEMORY_DUMP_V2
 	  give a snapshot of the system at the time of the crash.
 
 endif # ARCH_QCOM
+
+config IPQ_SUBSYSTEM_RESTART
+	bool "IPQ Subsystem Restart"
+	help
+	  This option enables the IPQ subsystem restart framework.
+
+	  The IPQ subsystem restart framework provides support to boot,
+	  shutdown, and restart subsystems with a reference counted API.
+	  It also notifies userspace of transitions between these states via
+	  sysfs.
