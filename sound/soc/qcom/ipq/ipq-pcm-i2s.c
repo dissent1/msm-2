@@ -257,13 +257,23 @@ static int ipq_pcm_i2s_copy(struct snd_pcm_substream *substream, int chan,
 	struct ipq_pcm_rt_priv *pcm_rtpriv = runtime->private_data;
 	char *hwbuf;
 	u32 offset, size;
+	u32 period_size, i, no_of_descs;
 
 	offset = frames_to_bytes(runtime, hwoff);
 	size = frames_to_bytes(runtime, frames);
+	period_size = pcm_rtpriv->period_size;
 
 	hwbuf = buf->area + offset;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		/* At the EOF, the size of userdata to be copied might be
+		 * greater/lesser than one period size. Since each descriptor
+		 * transfers one period of data, the buffer is padded with 0s
+		 * if the size to be copied is not a multiple of period size.
+		 */
+		if (size % period_size)
+			memset(hwbuf + size, 0,
+					period_size - (size % period_size));
 		if (copy_from_user(hwbuf, ubuf, size))
 			return -EFAULT;
 	} else if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
@@ -271,9 +281,15 @@ static int ipq_pcm_i2s_copy(struct snd_pcm_substream *substream, int chan,
 			return -EFAULT;
 	}
 
-	ipq_mbox_desc_own(pcm_rtpriv->channel, offset / size, 1);
+	no_of_descs = (size + (period_size - 1)) / period_size;
 
-	ipq_mbox_dma_resume(pcm_rtpriv->channel);
+	for (i = 0; i < no_of_descs; i++) {
+		ipq_mbox_desc_own(pcm_rtpriv->channel, offset / period_size, 1);
+		offset += period_size;
+	}
+
+	if (pcm_rtpriv->dma_started)
+		ipq_mbox_dma_resume(pcm_rtpriv->channel);
 
 	return 0;
 }
@@ -353,6 +369,7 @@ static int ipq_pcm_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 			dev_err(ss2dev(substream),
 				"Error in dma start. ret: %d\n", ret);
 		}
+		pcm_rtpriv->dma_started = 1;
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		ret = ipq_mbox_dma_resume(pcm_rtpriv->channel);
@@ -360,6 +377,7 @@ static int ipq_pcm_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 			dev_err(ss2dev(substream),
 				"Error in dma resume. ret: %d\n", ret);
 		}
+		pcm_rtpriv->dma_started = 1;
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -395,6 +413,7 @@ static int ipq_pcm_i2s_trigger(struct snd_pcm_substream *substream, int cmd)
 			dev_err(ss2dev(substream),
 				"Error in dma stop. ret: %d\n", ret);
 		}
+		pcm_rtpriv->dma_started = 0;
 		break;
 	default:
 		ret = -EINVAL;
@@ -458,6 +477,7 @@ static int ipq_pcm_i2s_open(struct snd_pcm_substream *substream)
 	pcm_rtpriv->curr_pos = 0;
 	pcm_rtpriv->mmap_flag = 0;
 	substream->runtime->private_data = pcm_rtpriv;
+	pcm_rtpriv->dma_started = 0;
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_PLAYBACK:

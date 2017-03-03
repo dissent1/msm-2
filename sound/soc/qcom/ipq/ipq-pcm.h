@@ -32,6 +32,7 @@ struct ipq_pcm_rt_priv {
 	uint32_t period_size;
 	uint32_t curr_pos;
 	int mmap_flag;
+	uint32_t dma_started;
 };
 
 #endif /* _IPQ_PCM_H_ */
