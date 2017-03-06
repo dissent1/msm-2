@@ -15,6 +15,7 @@ if CORESIGHT
 
 config CORESIGHT_EVENT
         tristate "CoreSight Event driver"
+	depends on TRACEPOINTS
         help
           This driver provides support for registering with various events
           and performing CoreSight actions like aborting trace on their

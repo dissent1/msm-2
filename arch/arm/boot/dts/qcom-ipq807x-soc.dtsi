@@ -1392,5 +1392,3 @@
 		};
 	};
 };
-
-#include "qcom-ipq807x-coresight.dtsi"
