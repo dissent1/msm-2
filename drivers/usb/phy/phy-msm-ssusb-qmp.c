@@ -968,7 +968,8 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	if (!res) {
 		phy->vls_clamp_reg = NULL;
 	} else {
-		phy->vls_clamp_reg = devm_ioremap_resource(dev, res);
+		phy->vls_clamp_reg = devm_ioremap_nocache(dev, res->start,
+							resource_size(res));
 		if (IS_ERR(phy->vls_clamp_reg)) {
 			dev_err(dev, "couldn't find vls_clamp_reg address.\n");
 			return PTR_ERR(phy->vls_clamp_reg);
@@ -986,7 +987,8 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							"qscratch_base");
 	if (res) {
-		phy->qscratch_base = devm_ioremap_resource(dev, res);
+		phy->qscratch_base = devm_ioremap_nocache(dev, res->start,
+							resource_size(res));
 		if (IS_ERR(phy->qscratch_base)) {
 			dev_err(dev, "couldn't ioremap qscratch_base\n");
 			phy->qscratch_base = NULL;
