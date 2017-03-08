@@ -956,6 +956,8 @@
 
 			phys = <&sata_phy>;
 			phy-names = "sata-phy";
+
+			ports-implemented = <0x1>;
 			status = "disabled";
 		};
 
