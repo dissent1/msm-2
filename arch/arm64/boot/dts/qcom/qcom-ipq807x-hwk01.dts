@@ -531,3 +531,11 @@
 	qcom,bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 	status = "disabled";
 };
+
+&qpic_lcd {
+	status = "ok";
+};
+
+&qpic_lcd_panel {
+	status = "ok";
+};
