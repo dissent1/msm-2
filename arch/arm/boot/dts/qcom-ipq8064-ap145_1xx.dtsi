@@ -370,15 +370,6 @@
 			};
 		};
 
-		amba {
-			/* eMMC */
-			sdcc@12400000 {
-				status = "ok";
-				pinctrl-0 = <&sdcc1_pins>;
-				pinctrl-names = "default";
-			};
-		};
-
 		nss0: nss@40000000 {
 			compatible = "qcom,nss";
 			pinctrl-0 = <&nss_spi_pins>;
@@ -536,4 +527,14 @@
 			qcom,ee = <0>;
 		};
 	};
+
+	amba {
+		/* eMMC */
+		sdcc@12400000 {
+			status = "ok";
+			pinctrl-0 = <&sdcc1_pins>;
+			pinctrl-names = "default";
+		};
+	};
+
 };
