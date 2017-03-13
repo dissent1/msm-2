@@ -1051,7 +1051,7 @@ struct clk_rcg2 apss_axi_clk_src = {
 	.clkr.hw.init = &(struct clk_init_data){
 		.name = "apss_axi_clk_src",
 		.parent_names = gcc_xo_gpll4_gpll6_ubi32_gpll0_gpll0_div2,
-		.num_parents = 7,
+		.num_parents = 6,
 		.ops = &clk_rcg2_ops,
 	},
 };
