@@ -700,7 +700,8 @@ static int qusb_phy_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							"qscratch_base");
 	if (res) {
-		qphy->qscratch_base = devm_ioremap_resource(dev, res);
+		qphy->qscratch_base = devm_ioremap_nocache(dev, res->start,
+							resource_size(res));
 		if (IS_ERR(qphy->qscratch_base)) {
 			dev_dbg(dev, "couldn't ioremap qscratch_base\n");
 			qphy->qscratch_base = NULL;

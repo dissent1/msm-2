@@ -966,15 +966,15 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 			"vls_clamp_reg");
 	if (!res) {
-		dev_err(dev, "failed getting vls_clamp_reg\n");
-		return -ENODEV;
+		phy->vls_clamp_reg = NULL;
+	} else {
+		phy->vls_clamp_reg = devm_ioremap_nocache(dev, res->start,
+							resource_size(res));
+		if (IS_ERR(phy->vls_clamp_reg)) {
+			dev_err(dev, "couldn't find vls_clamp_reg address.\n");
+			return PTR_ERR(phy->vls_clamp_reg);
+		}
 	}
-	phy->vls_clamp_reg = devm_ioremap_resource(dev, res);
-	if (IS_ERR(phy->vls_clamp_reg)) {
-		dev_err(dev, "couldn't find vls_clamp_reg address.\n");
-		return PTR_ERR(phy->vls_clamp_reg);
-	}
-
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 			"tcsr_phy_clk_scheme_sel");
 	if (res) {
@@ -987,7 +987,8 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 							"qscratch_base");
 	if (res) {
-		phy->qscratch_base = devm_ioremap_resource(dev, res);
+		phy->qscratch_base = devm_ioremap_nocache(dev, res->start,
+							resource_size(res));
 		if (IS_ERR(phy->qscratch_base)) {
 			dev_err(dev, "couldn't ioremap qscratch_base\n");
 			phy->qscratch_base = NULL;
@@ -1083,7 +1084,10 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 
 	phy->phy.dev			= dev;
 	phy->phy.init			= msm_ssphy_qmp_init;
-	phy->phy.set_suspend		= msm_ssphy_qmp_set_suspend;
+
+	if (!(of_machine_is_compatible("qcom,ipq807x")))
+		phy->phy.set_suspend = msm_ssphy_qmp_set_suspend;
+
 	phy->phy.notify_connect		= msm_ssphy_qmp_notify_connect;
 	phy->phy.notify_disconnect	= msm_ssphy_qmp_notify_disconnect;
 	phy->phy.type			= USB_PHY_TYPE_USB3;

@@ -681,11 +681,9 @@
 		ssphy_1: ssphy@58000 {
 			compatible = "qcom,usb-ssphy-qmp";
 			reg = <0x58000 0x45c>,
-				<0x0193f244 0x4>,
 				<0x0193f044 0x4>,
 				<0x08cf8800 0x100>;
 			reg-names = "qmp_phy_base",
-				    "vls_clamp_reg",
 				    "tcsr_phy_clk_scheme_sel",
 				    "qscratch_base";
 			qcom,qmp-phy-init-seq = <0xac 0x14 0x1a 0x00
