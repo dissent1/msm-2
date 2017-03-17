@@ -132,4 +132,8 @@
 		compatible = "qcom,arm-cortex-acc";
 		reg = <0x0b1b8000 0x1000>;
 	};
+
+	ess-switch@3a000000 {
+		status = "disabled";
+	};
 };

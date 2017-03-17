@@ -196,4 +196,8 @@
 	q6v5_wcss@CD00000 {
 		qcom,emulation = <1>;
 	};
+
+	ess-switch@3a000000 {
+		status = "disabled";
+	};
 };
